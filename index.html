@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775241770 -->
+<!-- Version: 1775244155 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1795,11 +1795,16 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#667eea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                     Why did Jumi pick this routine?
                     <span id="jumiTooltip" style="
-                        display:none; position:absolute; left:0; top:24px;
-                        background:#1d1d1f; color:white; border-radius:10px;
-                        padding:12px 14px; font-size:12px; line-height:1.6;
-                        width:260px; z-index:200; box-shadow:0 4px 16px rgba(0,0,0,0.25);
-                        font-weight:400; white-space:normal; pointer-events:none;
+                        display:none; position:absolute; left:0; top:28px;
+                        background:rgba(102,126,234,0.15);
+                        backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+                        color:#1d1d1f; border-radius:20px;
+                        padding:14px 16px; font-size:12px; line-height:1.7;
+                        width:300px; z-index:200;
+                        box-shadow:0 8px 24px rgba(0,0,0,0.1);
+                        border:1.5px solid rgba(102,126,234,0.25);
+                        font-weight:500; white-space:normal; pointer-events:none;
+                        font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
                     "></span>
                 </span>
             </div>
@@ -6941,7 +6946,7 @@
                 const ctx = buildJumiContext();
                 const actualDuration = Math.round((currentRoutine || []).reduce((s, e) => s + calculateExerciseTime(e), 0) / 60);
                 const routineSummary = (currentRoutine || []).map(e => `${e.exercise} (${e.phase}, ${e.target})`).join(', ');
-                const prompt = `Based on the user's history, you just generated this ${actualDuration}-minute routine: ${routineSummary}. In 2-3 short sentences, explain why this routine is good for them today. Focus on patterns from their history — what they haven't done recently, what muscle groups need attention. Be specific. Do not use markdown formatting like ** or bullet points. Write in plain sentences.`;
+                const prompt = `Based on the user's history, you just generated this ${actualDuration}-minute routine: ${routineSummary}. Write exactly 2-3 sentences explaining why this routine suits them today. Each sentence on a new line. Focus on specific patterns from their history — gaps, muscle groups not recently worked. No markdown, no bullets, no bold.`;
 
                 const response = await fetch('/.netlify/functions/coach', {
                     method: 'POST',
@@ -6957,7 +6962,8 @@
                 const explanation = data.reply || '';
 
                 if (explanation) {
-                    document.getElementById('jumiTooltip').textContent = explanation;
+                    const jumiTip = document.getElementById('jumiTooltip');
+                    jumiTip.innerHTML = explanation.replace(/\n/g, '<br>');
                     document.getElementById('jumiExplanation').style.display = 'block';
                 }
             } catch(e) {
@@ -7219,7 +7225,7 @@
                 const coachHistory = [];
                 // Pass full history context to Jumi
                 const jumiCtx = buildJumiContext();
-                const systemPrompt = `You are Jumi, a flexibility and mobility AI coach. You have full access to the user's exercise history. Be direct and practical. Max 2-3 short sentences per response. No filler, no sycophancy. Do not use markdown formatting like ** or ##.
+                const systemPrompt = `You are Jumi, a flexibility and mobility AI coach. You have full access to the user's exercise history. Be direct and practical. Write 2-3 short sentences maximum. Put each sentence on its own line. No markdown, no bold, no bullet points, no headers. No filler.
 
 Today's session: ${sessionSummary}
 
@@ -9660,7 +9666,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
                 <!-- Version Content -->
                 <div id="settingsVersionContent" class="settings-content-panel" style="display: none;">
                     <h2 style="margin-bottom: 8px;">Version</h2>
-                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">3.8</div>
+                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">3.10</div>
                     <div style="font-size: 14px; color: #86868b; margin-bottom: 4px;">flex.</div>
                     <div id="buildDateDisplay" style="font-size: 12px; color: #aeaeb2;"></div>
                 </div>
