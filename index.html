@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775256782 -->
+<!-- Version: 1775256910 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -7076,6 +7076,9 @@ Return only the JSON.`;
                     const scalableTime = scalableExercises.reduce((s, e) => s + calcTime(e), 0);
 
                     if (scalableTime > 0) {
+                        const protectedTime = currentRoutine
+                            .filter(e => protectedPhases.has(e.phase))
+                            .reduce((s, e) => s + calcTime(e), 0);
                         const availableTime = targetSecs - protectedTime;
                         const scaleFactor = availableTime / scalableTime;
 
