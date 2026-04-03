@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775256910 -->
+<!-- Version: 1775257711 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -6973,16 +6973,16 @@
                 `${e.exercise} | phase:${e.phase} | target:${e.target} | position:${e.position} | sides:${e.sides} | bodyPart:${e.bodyPart} | duration:${e.duration}s | rest:${e.rest}s`
             ).join('\n');
 
-            const systemPrompt = `You are Jumi, an expert flexibility and mobility coach with access to the latest sports science research. You build personalised flexibility routines based on user history, goals, and evidence-based practices.
+            const systemPrompt = `You are Jumi, an expert flexibility and mobility coach. You build personalised flexibility routines based on user history and goals.
 
-Draw on your knowledge of flexibility science, sports physiology, and evidence-based stretch programming to inform your decisions on exercise selection and hold durations. The exercise library lists only the primary target muscle for each exercise, but you know that most stretches work multiple muscle groups simultaneously — use your anatomical knowledge to consider the full muscle groups affected by each exercise when analysing the user's history and planning the routine.
+The exercise library lists only the primary target muscle, but use your anatomical knowledge of secondary muscles to inform duration decisions.
 
-CRITICAL: You must respond with ONLY valid JSON in this exact format, no other text:
+CRITICAL: Respond with ONLY valid JSON, no other text:
 {
   "routine": [
     {
-      "exercise": "exercise name exactly as in library",
-      "phase": "phase name exactly as in library",
+      "exercise": "exact name from library",
+      "phase": "exact phase from library",
       "target": "target muscle",
       "position": "position",
       "sides": 1 or 2,
@@ -6991,17 +6991,23 @@ CRITICAL: You must respond with ONLY valid JSON in this exact format, no other t
       "rest": seconds as integer
     }
   ],
-  "explanation": "2-3 sentences in plain English explaining the routine. Each sentence on a new line. Reference specific history patterns and research findings."
+  "explanation": "2-3 sentences explaining the routine. Each sentence on a new line."
 }
 
-Rules:
+DURATION RULES — follow these precisely:
+1. Warm-Up: vary between 20-40s per exercise based on goal relevance and recency.
+2. Foam Roller: vary between 25-60s per exercise based on goal relevance and recency.
+3. Mobility: vary between 25-45s per exercise based on goal relevance and recency.
+4. Static Stretching: choose a duration per exercise based on goal relevance and recency. Goal-relevant or long-gap exercises get longer holds than others.
+5. Active Stretch: use the SAME duration logic as Static Stretching — these are static stretches performed more intensely, not longer.
+6. Deep Stretch: each Deep Stretch exercise must be 1.5x to 2x longer than the equivalent Static Stretch duration. This is the key distinction between the phases.
+7. Cool Down: 45-60s per exercise.
+8. Final Rest (Savasana): exactly 120s. MANDATORY as last exercise.
+
+SELECTION RULES:
 - Only use exercises from the provided library (exact names)
-- Group exercises by phase (Warm-Up first, then Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits if relevant, Cool Down, Final Rest last)
-- Target the duration: ${durationTarget}
-- Set duration INDIVIDUALLY for every exercise — never use the same duration for all exercises in a phase. Vary based on: user goals (exercises targeting muscles relevant to those goals get longer holds), days since that specific exercise was last done (longer gap = longer hold), and the nature of the exercise
-- Active Stretch: similar duration to Static Stretching, just performed more intensely. Deep Stretch: significantly longer than Static Stretching — this is the key distinction
-- Exercises relevant to the user's goals should have noticeably longer holds than other exercises in the same phase
-- Always include Savasana (Final Rest phase) as the last exercise — it is mandatory
+- Group by phase in this order: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits (optional), Cool Down, Final Rest
+- Target duration: ${durationTarget}. The app will scale durations proportionally to hit this — so focus on getting the RATIOS right between exercises, not the exact total
 - No markdown in the explanation`;
 
             const userMessage = `Goals: ${goals.length > 0 ? goals.join(', ') : 'General flexibility maintenance'}
