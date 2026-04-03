@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775251818 -->
+<!-- Version: 1775252104 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -7034,10 +7034,11 @@ Please search for relevant flexibility research based on my goals, then build an
                     const cleaned = rawReply.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
                     parsed = JSON.parse(cleaned);
                 } catch(e) {
-                    console.error('JSON parse error:', e, rawReply);
+                    console.error('JSON parse error:', e);
+                    console.error('Raw reply was:', rawReply);
                     btn.disabled = false;
                     btn.textContent = '✦ Generate with Jumi';
-                    await customAlert('Jumi had trouble generating a routine. Please try again.');
+                    await customAlert('Jumi returned: ' + rawReply.substring(0, 300));
                     return;
                 }
 
