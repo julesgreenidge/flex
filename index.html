@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775257711 -->
+<!-- Version: 1775258290 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -7000,7 +7000,7 @@ DURATION RULES — follow these precisely:
 3. Mobility: vary between 25-45s per exercise based on goal relevance and recency.
 4. Static Stretching: choose a duration per exercise based on goal relevance and recency. Goal-relevant or long-gap exercises get longer holds than others.
 5. Active Stretch: use the SAME duration logic as Static Stretching — these are static stretches performed more intensely, not longer.
-6. Deep Stretch: each Deep Stretch exercise must be 1.5x to 2x longer than the equivalent Static Stretch duration. This is the key distinction between the phases.
+6. Deep Stretch: each Deep Stretch exercise should be 1.5x to 2x the duration of a comparable Static Stretch. For example if a Static Stretch is 60s, the equivalent Deep Stretch should be 90-120s. This large difference is the defining characteristic of the Deep Stretch phase.
 7. Cool Down: 45-60s per exercise.
 8. Final Rest (Savasana): exactly 120s. MANDATORY as last exercise.
 
@@ -7103,20 +7103,40 @@ Return only the JSON.`;
                                 const exShare = calcTime(ex) / phaseTotal;
                                 const newExTime = newPhaseTotal * exShare;
                                 // newExTime = (duration + rest) * sides → solve for duration
-                                const newDuration = Math.max(10, Math.round(newExTime / ex.sides) - ex.rest);
+                                const newDuration = Math.max(10, Math.floor(newExTime / ex.sides) - ex.rest);
                                 ex.duration = newDuration;
                             });
                         });
 
                         total = currentRoutine.reduce((s, e) => s + calcTime(e), 0);
+
                     }
 
-                    // If still over, remove whole exercises (never Final Rest)
-                    if (total > targetSecs + 30) {
-                        for (let i = currentRoutine.length - 1; i >= 0 && total > targetSecs; i--) {
-                            if (!protectedPhases.has(currentRoutine[i].phase)) {
-                                total -= calcTime(currentRoutine[i]);
-                                currentRoutine.splice(i, 1);
+                    // Recalculate total after scaling
+                    total = currentRoutine.reduce((s, e) => s + calcTime(e), 0);
+
+                    // If over, trim durations proportionally across non-protected exercises
+                    if (total > targetSecs) {
+                        const trimmable = currentRoutine.filter(e => !protectedPhases.has(e.phase));
+                        const trimmableTime = trimmable.reduce((s, e) => s + calcTime(e), 0);
+                        if (trimmableTime > 0) {
+                            const excess = total - targetSecs;
+                            trimmable.forEach(ex => {
+                                const share = calcTime(ex) / trimmableTime;
+                                const removePerSide = Math.floor((excess * share) / ex.sides);
+                                if (removePerSide >= 1 && ex.duration - removePerSide >= 10) {
+                                    ex.duration -= removePerSide;
+                                    total -= removePerSide * ex.sides;
+                                }
+                            });
+                        }
+                        // If still over after trimming, remove whole exercises as last resort
+                        if (total > targetSecs) {
+                            for (let i = currentRoutine.length - 1; i >= 0 && total > targetSecs; i--) {
+                                if (!protectedPhases.has(currentRoutine[i].phase)) {
+                                    total -= calcTime(currentRoutine[i]);
+                                    currentRoutine.splice(i, 1);
+                                }
                             }
                         }
                     }
