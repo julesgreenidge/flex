@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775254080 -->
+<!-- Version: 1775254475 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -6975,7 +6975,7 @@
 
             const systemPrompt = `You are Jumi, an expert flexibility and mobility coach with access to the latest sports science research. You build personalised flexibility routines based on user history, goals, and evidence-based practices.
 
-Draw on your knowledge of flexibility science, sports physiology, and evidence-based stretch programming to inform your decisions on exercise selection and hold durations.
+Draw on your knowledge of flexibility science, sports physiology, and evidence-based stretch programming to inform your decisions on exercise selection and hold durations. The exercise library lists only the primary target muscle for each exercise, but you know that most stretches work multiple muscle groups simultaneously — use your anatomical knowledge to consider the full muscle groups affected by each exercise when analysing the user's history and planning the routine.
 
 CRITICAL: You must respond with ONLY valid JSON in this exact format, no other text:
 {
@@ -7013,7 +7013,7 @@ ${exerciseLibrary}
 
 Please build an optimised routine based on my goals, history, and your knowledge of flexibility science.
 
-DURATION CONSTRAINT: The total routine must be within 30 seconds of ${durationTarget}. Calculate each exercise's time as (duration + rest) × sides. Sum all exercises and ensure the total is between ${selectedTime === 999 ? 0 : selectedTime * 60 - 30} and ${selectedTime === 999 ? 999999 : selectedTime * 60 + 30} seconds.
+DURATION CONSTRAINT: The total routine must be no more than ${durationTarget} and no less than 30 seconds under that. Calculate each exercise's time as (duration + rest) × sides. Sum all exercises and ensure the total is between ${selectedTime === 999 ? 0 : selectedTime * 60 - 30} and ${selectedTime === 999 ? 999999 : selectedTime * 60} seconds. Do not exceed the target duration.
 
 Return only the JSON.`;
 
