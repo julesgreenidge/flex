@@ -4,21 +4,33 @@ exports.handler = async function(event) {
     }
 
     try {
-        const { system, messages } = JSON.parse(event.body);
+        const body = JSON.parse(event.body);
+        const { system, messages, mode } = body;
+
+        // Jumi routine generation uses Sonnet + web search
+        // Chat mode uses Haiku (cheaper, no search needed)
+        const isJumiGen = mode === 'jumi_generate';
+
+        const requestBody = {
+            model: isJumiGen ? 'claude-sonnet-4-5-20251001' : 'claude-haiku-4-5-20251001',
+            max_tokens: isJumiGen ? 4000 : 1000,
+            system,
+            messages
+        };
+
+        if (isJumiGen) {
+            requestBody.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
+        }
 
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'x-api-key': process.env.ANTHROPIC_API_KEY,
-                'anthropic-version': '2023-06-01'
+                'anthropic-version': '2023-06-01',
+                'anthropic-beta': 'web-search-2025-03-05'
             },
-            body: JSON.stringify({
-                model: 'claude-haiku-4-5-20251001',
-                max_tokens: 1000,
-                system,
-                messages
-            })
+            body: JSON.stringify(requestBody)
         });
 
         const data = await response.json();
@@ -32,7 +44,16 @@ exports.handler = async function(event) {
             };
         }
 
-        const reply = data.content?.[0]?.text || 'No response text returned.';
+        // Extract text from all content blocks (handles tool use interleaving)
+        let reply = '';
+        if (data.content && Array.isArray(data.content)) {
+            for (const block of data.content) {
+                if (block.type === 'text') {
+                    reply += block.text;
+                }
+            }
+        }
+        reply = reply.trim();
 
         return {
             statusCode: 200,

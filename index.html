@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775244749 -->
+<!-- Version: 1775251818 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -13,8 +13,8 @@
             --phase-foamroller: #9b2c52;
             --phase-mobility: #059669;
             --phase-staticstretching: #4338ca;
-            --phase-activestretch: #ca8a04;
-            --phase-deepstretch: #c2410c;
+            --phase-activestretch: #c2410c;
+            --phase-deepstretch: #ca8a04;
             --phase-splits: #d946ef;
             --phase-cooldown: #db2777;
             --phase-finalrest: #1e1b4b;
@@ -679,8 +679,8 @@
         .next-exercise-box.phase-foamroller { border-color: #9b2c52 !important; }
         .next-exercise-box.phase-mobility { border-color: var(--phase-mobility) !important; }
         .next-exercise-box.phase-staticstretching { border-color: #4338ca !important; }
-        .next-exercise-box.phase-activestretch { border-color: #ca8a04 !important; }
-        .next-exercise-box.phase-deepstretch { border-color: #c2410c !important; }
+        .next-exercise-box.phase-activestretch { border-color: #c2410c !important; }
+        .next-exercise-box.phase-deepstretch { border-color: #ca8a04 !important; }
         .next-exercise-box.phase-splits { border-color: var(--phase-splits) !important; }
         .next-exercise-box.phase-cooldown { border-color: #db2777 !important; }
         .next-exercise-box.phase-finalrest { border-color: #1e1b4b !important; }
@@ -768,8 +768,8 @@
         .exercise-list-card.current.phase-foamroller { background: var(--phase-foamroller); border-color: #9b2c52; }
         .exercise-list-card.current.phase-mobility { background: var(--phase-mobility); border-color: #059669; }
         .exercise-list-card.current.phase-staticstretching { background: var(--phase-staticstretching); border-color: #4338ca; }
-        .exercise-list-card.current.phase-activestretch { background: var(--phase-activestretch); border-color: #ca8a04; }
-        .exercise-list-card.current.phase-deepstretch { background: var(--phase-deepstretch); border-color: #c2410c; }
+        .exercise-list-card.current.phase-activestretch { background: var(--phase-activestretch); border-color: #c2410c; }
+        .exercise-list-card.current.phase-deepstretch { background: var(--phase-deepstretch); border-color: #ca8a04; }
         .exercise-list-card.current.phase-splits { background: var(--phase-splits); border-color: #d946ef; }
         .exercise-list-card.current.phase-cooldown { background: var(--phase-cooldown); border-color: #db2777; color: white; }
         .exercise-list-card.current.phase-finalrest { background: #1e1b4b !important; border-color: #1e1b4b !important; color: white !important; }
@@ -2168,7 +2168,7 @@
                 document.getElementById('settingsCustomExercisesContent').style.display = 'none';
                 
                 // Reset all buttons to inactive state
-                ['settingsQuickStartBtn', 'settingsExerciseDurationBtn', 'settingsSoundBtn', 'settingsFrontSplitsBtn', 'settingsCustomExercisesBtn', 'settingsBackupBtn', 'settingsVersionBtn', 'settingsKeyboardBtn'].forEach(id => {
+                ['settingsGoalsBtn', 'settingsQuickStartBtn', 'settingsExerciseDurationBtn', 'settingsSoundBtn', 'settingsFrontSplitsBtn', 'settingsCustomExercisesBtn', 'settingsBackupBtn', 'settingsVersionBtn', 'settingsKeyboardBtn'].forEach(id => {
                     document.getElementById(id).classList.remove('active');
                 });
                 
@@ -2204,7 +2204,7 @@
             });
 
             // Settings tab navigation
-            const settingsNavBtns = ['settingsQuickStartBtn', 'settingsExerciseDurationBtn', 'settingsSoundBtn', 'settingsFrontSplitsBtn', 'settingsCustomExercisesBtn', 'settingsBackupBtn', 'settingsVersionBtn', 'settingsKeyboardBtn'];
+            const settingsNavBtns = ['settingsGoalsBtn', 'settingsQuickStartBtn', 'settingsExerciseDurationBtn', 'settingsSoundBtn', 'settingsFrontSplitsBtn', 'settingsCustomExercisesBtn', 'settingsBackupBtn', 'settingsVersionBtn', 'settingsKeyboardBtn'];
             const settingsContentPanels = ['settingsQuickStartContent', 'settingsExerciseDurationContent', 'settingsSoundContent', 'settingsFrontSplitsContent', 'settingsCustomExercisesContent', 'settingsBackupContent', 'settingsVersionContent', 'settingsKeyboardContent'];
 
             function activateSettingsTab(activeId, activeContent) {
@@ -2252,6 +2252,31 @@
             document.getElementById('settingsKeyboardBtn').addEventListener('click', function() {
                 activateSettingsTab('settingsKeyboardBtn', 'settingsKeyboardContent');
             });
+
+            document.getElementById('settingsGoalsBtn').addEventListener('click', function() {
+                activateSettingsTab('settingsGoalsBtn', 'settingsGoalsContent');
+                // Load saved goals
+                const saved = JSON.parse(localStorage.getItem('jumiGoals') || '{}');
+                ['splits','hips','hamstrings','backpain','posture','recovery','maintenance'].forEach(id => {
+                    const el = document.getElementById('goal_' + id);
+                    if (el) el.checked = saved[id] || false;
+                });
+                const custom = document.getElementById('goal_custom');
+                if (custom) custom.value = saved.custom || '';
+            });
+
+            window.saveGoals = function() {
+                const goals = {};
+                ['splits','hips','hamstrings','backpain','posture','recovery','maintenance'].forEach(id => {
+                    const el = document.getElementById('goal_' + id);
+                    if (el) goals[id] = el.checked;
+                });
+                const custom = document.getElementById('goal_custom');
+                if (custom) goals.custom = custom.value.trim();
+                localStorage.setItem('jumiGoals', JSON.stringify(goals));
+                const msg = document.getElementById('goalsSavedMsg');
+                if (msg) { msg.style.display = 'inline'; setTimeout(() => msg.style.display = 'none', 2000); }
+            };
 
             // Close settings and save
             document.getElementById('settingsCloseBtn').addEventListener('click', () => {
@@ -3449,8 +3474,8 @@
                 'Foam Roller': '#9b2c52',
                 'Mobility': '#059669',
                 'Static Stretching': '#4338ca',
-                'Active Stretch': '#ca8a04',
-                'Deep Stretch': '#c2410c',
+                'Active Stretch': '#c2410c',
+                'Deep Stretch': '#ca8a04',
                 'Splits': '#d946ef',
                 'Cool Down': '#db2777',
                 'Final Rest': '#1e1b4b'
@@ -6217,8 +6242,8 @@
             const currentEx = currentRoutine[currentExerciseIndex];
             const phaseColors = {
                 'Warm-Up': '#7c3aed', 'Foam Roller': '#9b2c52', 'Mobility': '#059669',
-                'Static Stretching': '#4338ca', 'Active Stretch': '#ca8a04',
-                'Deep Stretch': '#c2410c', 'Splits': '#d946ef',
+                'Static Stretching': '#4338ca', 'Active Stretch': '#c2410c',
+                'Deep Stretch': '#ca8a04', 'Splits': '#d946ef',
                 'Cool Down': '#db2777', 'Final Rest': '#1e1b4b'
             };
 
@@ -6375,8 +6400,8 @@
             // LHS panel phase tint
             const phaseColors = {
                 'Warm-Up': '#7c3aed', 'Foam Roller': '#9b2c52', 'Mobility': '#059669',
-                'Static Stretching': '#4338ca', 'Active Stretch': '#ca8a04',
-                'Deep Stretch': '#c2410c', 'Splits': '#d946ef',
+                'Static Stretching': '#4338ca', 'Active Stretch': '#c2410c',
+                'Deep Stretch': '#ca8a04', 'Splits': '#d946ef',
                 'Cool Down': '#db2777', 'Final Rest': '#1e1b4b'
             };
             const phaseColor = phaseColors[exercise.phase] || '#667eea';
@@ -6841,6 +6866,22 @@
         let routineAlreadySaved = false; // Prevent duplicate saves
         
         // ── JUMI: Build history context (last 728 days) ──
+        function getJumiGoals() {
+            const saved = JSON.parse(localStorage.getItem('jumiGoals') || '{}');
+            const goalLabels = {
+                splits: 'Achieve front splits',
+                hips: 'Improve hip mobility',
+                hamstrings: 'Increase hamstring flexibility',
+                backpain: 'Reduce lower back pain',
+                posture: 'Improve posture',
+                recovery: 'Sport/running recovery',
+                maintenance: 'General maintenance'
+            };
+            const selected = Object.keys(goalLabels).filter(k => saved[k]).map(k => goalLabels[k]);
+            if (saved.custom) selected.push(saved.custom);
+            return selected;
+        }
+
         function buildJumiContext() {
             const cutoff = Date.now() - (728 * 24 * 60 * 60 * 1000);
             const allHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
@@ -6902,20 +6943,13 @@
             };
         }
 
-        // ── JUMI: Generate routine + explanation ──
+        // ── JUMI: AI-driven routine generation ──
         async function generateJumiRoutine() {
             const btn = document.getElementById('jumiGenerateBtn');
             btn.disabled = true;
             btn.textContent = 'Jumi is thinking…';
 
-            // Default type to 'full' and hold to 'short' if not already set
-            if (!selectedType || selectedType === 'custom' || selectedType === 'starred') {
-                selectedType = 'full';
-            }
-            if (!selectedHold) {
-                selectedHold = 'short';
-            }
-            // Default duration to 35 if not set
+            // Default duration if not set
             if (!selectedTime) {
                 selectedTime = 35;
                 const defaultBtn = document.querySelector('.jumi-duration-btn[data-time="35"]');
@@ -6925,41 +6959,114 @@
                 }
             }
 
-            // Use same generation logic as Simple
-            await generateRoutine();
-
-            // Hide previous explanation
             document.getElementById('jumiExplanation').style.display = 'none';
             document.getElementById('floatingStartSimple').style.display = 'none';
-            document.getElementById('floatingStartJumi').style.display = 'block';
+            document.getElementById('floatingStartJumi').style.display = 'none';
 
-            // Build context and ask Jumi to explain
+            const isAllMode = selectedTime === 999;
+            const ctx = buildJumiContext();
+            const goals = getJumiGoals();
+            const durationTarget = isAllMode ? 'all exercises, no time limit' : `${selectedTime} minutes`;
+
+            // Build the exercise library summary for Jumi
+            const exerciseLibrary = exercises.map(e =>
+                `${e.exercise} | phase:${e.phase} | target:${e.target} | position:${e.position} | sides:${e.sides} | bodyPart:${e.bodyPart} | duration:${e.duration}s | rest:${e.rest}s`
+            ).join('\n');
+
+            const systemPrompt = `You are Jumi, an expert flexibility and mobility coach with access to the latest sports science research. You build personalised flexibility routines based on user history, goals, and evidence-based practices.
+
+You have web search available. Use it to find relevant research on hold durations, recovery protocols, and goal-specific flexibility approaches before building the routine.
+
+CRITICAL: You must respond with ONLY valid JSON in this exact format, no other text:
+{
+  "routine": [
+    {
+      "exercise": "exercise name exactly as in library",
+      "phase": "phase name exactly as in library",
+      "target": "target muscle",
+      "position": "position",
+      "sides": 1 or 2,
+      "bodyPart": "upper/lower/full",
+      "duration": seconds as integer,
+      "rest": seconds as integer
+    }
+  ],
+  "explanation": "2-3 sentences in plain English explaining the routine. Each sentence on a new line. Reference specific history patterns and research findings."
+}
+
+Rules:
+- Only use exercises from the provided library (exact names)
+- Group exercises by phase (Warm-Up first, then Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits if relevant, Cool Down, Final Rest last)
+- Durations must be multiples of 5 seconds
+- Rest values must be multiples of 5 seconds
+- Target the duration: ${durationTarget}
+- Adjust hold durations based on goals, history gaps, and research
+- No markdown in the explanation`;
+
+            const userMessage = `Goals: ${goals.length > 0 ? goals.join(', ') : 'General flexibility maintenance'}
+
+History (last 728 days):
+${JSON.stringify(ctx, null, 2)}
+
+Exercise library:
+${exerciseLibrary}
+
+Please search for relevant flexibility research based on my goals, then build an optimised ${durationTarget} routine. Return only the JSON.`;
+
             try {
-                const ctx = buildJumiContext();
-                const actualDuration = Math.round((currentRoutine || []).reduce((s, e) => s + calculateExerciseTime(e), 0) / 60);
-                const routineSummary = (currentRoutine || []).map(e => `${e.exercise} (${e.phase}, ${e.target})`).join(', ');
-                const prompt = `Based on the user's history, you just generated this ${actualDuration}-minute routine: ${routineSummary}. Write exactly 2-3 sentences explaining why this routine suits them today. Each sentence on a new line. Focus on specific patterns from their history — gaps, muscle groups not recently worked. No markdown, no bullets, no bold.`;
-
                 const response = await fetch('/.netlify/functions/coach', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        system: 'You are Jumi, a flexibility AI coach. Be direct and specific. Max 3 sentences.',
-                        messages: [
-                            { role: 'user', content: JSON.stringify(ctx) + '\n\n' + prompt }
-                        ]
+                        mode: 'jumi_generate',
+                        system: systemPrompt,
+                        messages: [{ role: 'user', content: userMessage }]
                     })
                 });
-                const data = await response.json();
-                const explanation = data.reply || '';
 
-                if (explanation) {
+                const data = await response.json();
+                const rawReply = data.reply || '';
+
+                // Parse JSON from response
+                let parsed;
+                try {
+                    // Strip any markdown code fences if present
+                    const cleaned = rawReply.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                    parsed = JSON.parse(cleaned);
+                } catch(e) {
+                    console.error('JSON parse error:', e, rawReply);
+                    btn.disabled = false;
+                    btn.textContent = '✦ Generate with Jumi';
+                    await customAlert('Jumi had trouble generating a routine. Please try again.');
+                    return;
+                }
+
+                // Load the routine into the app
+                currentRoutine = parsed.routine;
+                selectedType = 'full'; // Jumi decides body type internally
+                selectedHold = 'short';
+
+                // Render the routine
+                renderRoutine(currentRoutine);
+                updateRoutineStats();
+                setStarVisible(true);
+                if (document.getElementById('floatingEditBtn')) {
+                    document.getElementById('floatingEditBtn').style.display = 'flex';
+                }
+                document.getElementById('floatingStartJumi').style.display = 'block';
+
+                // Show explanation
+                if (parsed.explanation && !isAllMode) {
                     const jumiTip = document.getElementById('jumiTooltip');
-                    jumiTip.innerHTML = explanation.replace(/\n/g, '<br>');
+                    jumiTip.innerHTML = parsed.explanation
+                        .replace(/\n\n/g, '<br><br>')
+                        .replace(/\n/g, '<br>');
                     document.getElementById('jumiExplanation').style.display = 'block';
                 }
-            } catch(e) {
-                console.warn('Jumi explanation failed:', e);
+
+            } catch(err) {
+                console.error('Jumi generation error:', err);
+                await customAlert('Could not reach Jumi. Please check your connection and try again.');
             }
 
             btn.disabled = false;
@@ -8313,6 +8420,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
             // Update tab button styles
             document.getElementById('customTab').classList.add('selected');
             document.getElementById('simpleTab').classList.remove('selected');
+            document.getElementById('jumiTab').classList.remove('selected');
         };
         
         // Helper functions for stats rendering
@@ -8726,7 +8834,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
             
             const phaseColors = {
                 'Warm-Up': '#7c3aed', 'Foam Roller': '#9b2c52', 'Mobility': '#059669',
-                'Static Stretching': '#4338ca', 'Active Stretch': '#ca8a04', 'Deep Stretch': '#c2410c', 'Splits': '#d946ef',
+                'Static Stretching': '#4338ca', 'Active Stretch': '#c2410c', 'Deep Stretch': '#ca8a04', 'Splits': '#d946ef',
                 'Cool Down': '#db2777', 'Final Rest': '#1e1b4b'
             };
 
@@ -8865,7 +8973,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
 
                 const phaseColors = {
                     'Warm-Up': '#7c3aed', 'Foam Roller': '#9b2c52', 'Mobility': '#059669',
-                    'Static Stretching': '#4338ca', 'Active Stretch': '#ca8a04', 'Deep Stretch': '#c2410c',
+                    'Static Stretching': '#4338ca', 'Active Stretch': '#c2410c', 'Deep Stretch': '#ca8a04',
                     'Splits': '#d946ef', 'Cool Down': '#db2777', 'Final Rest': '#1e1b4b'
                 };
                 const phaseOrder2 = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
@@ -9074,6 +9182,12 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
                 <!-- Settings Navigation -->
                 <div class="section">
                     <div style="display: flex; flex-direction: column; gap: 16px;">
+                        <div>
+                            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #86868b; margin-bottom: 6px;">Jumi</div>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <button id="settingsGoalsBtn" class="sidebar-nav-btn">Goals</button>
+                            </div>
+                        </div>
                         <div>
                             <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #86868b; margin-bottom: 6px;">Exercises</div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -9597,6 +9711,53 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
                 </div>
 
                 <!-- Backup Content -->
+                <div id="settingsGoalsContent" class="settings-content-panel" style="display: none;">
+                    <h2 style="margin-top:0; margin-bottom:8px; color:#1d1d1f;">Goals</h2>
+                    <p style="font-size:14px; color:#86868b; margin-bottom:20px;">Tell Jumi what you're working towards. It will use these to personalise your routines, exercise durations, and explanations. Leave blank for general flexibility maintenance.</p>
+                    
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:13px; font-weight:600; color:#1d1d1f; margin-bottom:10px;">Common goals</div>
+                        <div style="display:flex; flex-direction:column; gap:8px;">
+                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
+                                <input type="checkbox" id="goal_splits" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
+                                Achieve front splits
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
+                                <input type="checkbox" id="goal_hips" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
+                                Improve hip mobility
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
+                                <input type="checkbox" id="goal_hamstrings" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
+                                Increase hamstring flexibility
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
+                                <input type="checkbox" id="goal_backpain" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
+                                Reduce lower back pain
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
+                                <input type="checkbox" id="goal_posture" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
+                                Improve posture
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
+                                <input type="checkbox" id="goal_recovery" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
+                                Sport/running recovery
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
+                                <input type="checkbox" id="goal_maintenance" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
+                                General maintenance
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:13px; font-weight:600; color:#1d1d1f; margin-bottom:8px;">Anything else</div>
+                        <textarea id="goal_custom" placeholder="e.g. I want to be able to touch my toes by summer, or I have tight hip flexors from sitting at a desk all day…" style="width:100%; height:100px; border:1.5px solid #d2d2d7; border-radius:12px; padding:12px; font-size:14px; font-family:inherit; color:#1d1d1f; resize:vertical; outline:none; box-sizing:border-box;" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#d2d2d7'"></textarea>
+                    </div>
+
+                    <button onclick="saveGoals()" style="background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; padding:12px 28px; border-radius:12px; font-size:14px; font-weight:600; cursor:pointer;">Save Goals</button>
+                    <span id="goalsSavedMsg" style="display:none; margin-left:12px; font-size:13px; color:#34c759;">✅ Saved</span>
+                </div>
+
                 <div id="settingsBackupContent" class="settings-content-panel" style="display: none;">
                     <h2 style="margin-bottom: 24px;">Backup</h2>
 
@@ -9658,7 +9819,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
                 <!-- Version Content -->
                 <div id="settingsVersionContent" class="settings-content-panel" style="display: none;">
                     <h2 style="margin-bottom: 8px;">Version</h2>
-                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">3.11</div>
+                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">4.0</div>
                     <div style="font-size: 14px; color: #86868b; margin-bottom: 4px;">flex.</div>
                     <div id="buildDateDisplay" style="font-size: 12px; color: #aeaeb2;"></div>
                 </div>
