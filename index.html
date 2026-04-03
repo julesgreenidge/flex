@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775258909 -->
+<!-- Version: 1775259421 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -2243,43 +2243,92 @@
                 const container = document.getElementById('exerciseLibraryTable');
                 if (!container) return;
                 const phases = [...new Set(exercises.map(e => e.phase))];
-                let html = '';
+
+                // Single table with colgroup for consistent column widths across all phases
+                let html = `<table style="width:100%;border-collapse:collapse;font-size:13px;" id="exLibTable">
+                    <colgroup>
+                        <col style="width:32px;">
+                        <col style="width:35%;">
+                        <col style="width:20%;">
+                        <col style="width:20%;">
+                        <col style="width:8%;">
+                        <col style="width:8%;">
+                        <col style="width:auto;">
+                    </colgroup>
+                    <thead>
+                        <tr style="border-bottom:2px solid #e8e8ed;text-align:left;">
+                            <th style="padding:6px 4px;"></th>
+                            <th style="padding:6px 8px;color:#86868b;font-weight:600;">Exercise</th>
+                            <th style="padding:6px 8px;color:#86868b;font-weight:600;">Target</th>
+                            <th style="padding:6px 8px;color:#86868b;font-weight:600;">Position</th>
+                            <th style="padding:6px 8px;color:#86868b;font-weight:600;">Sides</th>
+                            <th style="padding:6px 8px;color:#86868b;font-weight:600;">Body</th>
+                            <th style="padding:6px 8px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="exLibBody">`;
+
                 phases.forEach(phase => {
                     const phaseExercises = exercises.filter(e => e.phase === phase);
-                    html += `<div style="margin-bottom:24px;">
-                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#86868b;margin-bottom:8px;">${phase}</div>
-                        <table style="width:100%;border-collapse:collapse;font-size:13px;">
-                            <thead>
-                                <tr style="border-bottom:2px solid #e8e8ed;text-align:left;">
-                                    <th style="padding:6px 8px;color:#86868b;font-weight:600;">Exercise</th>
-                                    <th style="padding:6px 8px;color:#86868b;font-weight:600;">Target</th>
-                                    <th style="padding:6px 8px;color:#86868b;font-weight:600;">Position</th>
-                                    <th style="padding:6px 8px;color:#86868b;font-weight:600;">Sides</th>
-                                    <th style="padding:6px 8px;color:#86868b;font-weight:600;">Duration</th>
-                                    <th style="padding:6px 8px;color:#86868b;font-weight:600;">Rest</th>
-                                    <th style="padding:6px 8px;"></th>
-                                </tr>
-                            </thead>
-                            <tbody>`;
+                    // Phase header row
+                    html += `<tr><td colspan="7" style="padding:14px 8px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#86868b;border-top:2px solid #e8e8ed;">${phase}</td></tr>`;
                     phaseExercises.forEach(ex => {
                         const globalIdx = exercises.indexOf(ex);
-                        html += `<tr style="border-bottom:1px solid #f0f0f5;">
+                        html += `<tr data-idx="${globalIdx}" draggable="true" style="border-bottom:1px solid #f0f0f5;cursor:grab;" class="ex-drag-row"
+                            ondragstart="exDragStart(event,${globalIdx})"
+                            ondragover="exDragOver(event)"
+                            ondrop="exDrop(event,${globalIdx})"
+                            ondragend="exDragEnd(event)">
+                            <td style="padding:8px 4px;color:#d2d2d7;text-align:center;font-size:16px;cursor:grab;">⠿</td>
                             <td style="padding:8px;">${ex.exercise}</td>
                             <td style="padding:8px;">${ex.target}</td>
                             <td style="padding:8px;">${ex.position}</td>
                             <td style="padding:8px;">${ex.sides}</td>
-                            <td style="padding:8px;">${ex.duration}s</td>
-                            <td style="padding:8px;">${ex.rest}s</td>
+                            <td style="padding:8px;">${ex.bodyPart}</td>
                             <td style="padding:8px;white-space:nowrap;">
-                                <button onclick="openEditExerciseModal(${globalIdx})" style="background:none;border:1px solid #d2d2d7;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;margin-right:4px;">Edit</button>
-                                <button onclick="deleteExercise(${globalIdx})" style="background:none;border:1px solid #ff3b30;color:#ff3b30;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;">Delete</button>
+                                <button onclick="openEditExerciseModal(${globalIdx})" style="background:none;border:1px solid #d2d2d7;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;margin-right:3px;">Edit</button>
+                                <button onclick="duplicateExercise(${globalIdx})" style="background:none;border:1px solid #667eea;color:#667eea;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;margin-right:3px;">Copy</button>
+                                <button onclick="deleteExercise(${globalIdx})" style="background:none;border:1px solid #ff3b30;color:#ff3b30;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;">Del</button>
                             </td>
                         </tr>`;
                     });
-                    html += '</tbody></table></div>';
                 });
+
+                html += '</tbody></table>';
                 container.innerHTML = html;
             }
+
+            // Drag and drop for exercise reordering
+            let exDragIdx = null;
+            window.exDragStart = function(e, idx) {
+                exDragIdx = idx;
+                e.dataTransfer.effectAllowed = 'move';
+                e.currentTarget.style.opacity = '0.4';
+            };
+            window.exDragOver = function(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            };
+            window.exDrop = function(e, targetIdx) {
+                e.preventDefault();
+                if (exDragIdx === null || exDragIdx === targetIdx) return;
+                const moved = exercises.splice(exDragIdx, 1)[0];
+                exercises.splice(targetIdx, 0, moved);
+                localStorage.setItem('flexibilityRoutineExercises', JSON.stringify(exercises));
+                exDragIdx = null;
+                renderExerciseLibraryTable();
+            };
+            window.exDragEnd = function(e) {
+                e.currentTarget.style.opacity = '1';
+                exDragIdx = null;
+            };
+
+            window.duplicateExercise = function(idx) {
+                const copy = {...exercises[idx], exercise: exercises[idx].exercise + ' (copy)'};
+                exercises.splice(idx + 1, 0, copy);
+                localStorage.setItem('flexibilityRoutineExercises', JSON.stringify(exercises));
+                renderExerciseLibraryTable();
+            };
 
             const PHASE_OPTIONS = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
             const BODYPART_OPTIONS = ['upper','lower','full'];
@@ -2302,10 +2351,7 @@
                                 <label style="font-size:13px;font-weight:600;">Sides<select id="exSides" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"><option value="1"${v.sides===1?' selected':''}>1</option><option value="2"${v.sides===2?' selected':''}>2</option></select></label>
                                 <label style="font-size:13px;font-weight:600;">Body Part<select id="exBodyPart" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;">${BODYPART_OPTIONS.map(b => '<option value="' + b + '"' + (b===v.bodyPart?' selected':'') + '>' + b + '</option>').join('')}</select></label>
                             </div>
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                                <label style="font-size:13px;font-weight:600;">Duration (s)<input id="exDuration" type="number" value="${v.duration}" min="5" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"/></label>
-                                <label style="font-size:13px;font-weight:600;">Rest (s)<input id="exRest" type="number" value="${v.rest}" min="0" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"/></label>
-                            </div>
+
                         </div>
                         <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
                             <button onclick="document.getElementById('exModalOverlay').remove()" style="background:white;border:1.5px solid #d2d2d7;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
@@ -2324,6 +2370,8 @@
             };
 
             window.saveExerciseModal = function(idx) {
+                const isEdit = idx !== null && idx !== undefined && idx !== 'null';
+                const existing = isEdit ? exercises[idx] : null;
                 const ex = {
                     exercise: document.getElementById('exName').value.trim(),
                     phase: document.getElementById('exPhase').value,
@@ -2331,8 +2379,8 @@
                     position: document.getElementById('exPosition').value.trim(),
                     sides: parseInt(document.getElementById('exSides').value),
                     bodyPart: document.getElementById('exBodyPart').value,
-                    duration: parseInt(document.getElementById('exDuration').value),
-                    rest: parseInt(document.getElementById('exRest').value)
+                    duration: existing ? existing.duration : 45,
+                    rest: existing ? existing.rest : 15
                 };
                 if (!ex.exercise || !ex.target || !ex.position) {
                     alert('Please fill in Name, Target, and Position.');
