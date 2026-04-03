@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775252104 -->
+<!-- Version: 1775253045 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -6975,7 +6975,7 @@
 
             const systemPrompt = `You are Jumi, an expert flexibility and mobility coach with access to the latest sports science research. You build personalised flexibility routines based on user history, goals, and evidence-based practices.
 
-You have web search available. Use it to find relevant research on hold durations, recovery protocols, and goal-specific flexibility approaches before building the routine.
+Draw on your knowledge of flexibility science, sports physiology, and evidence-based stretch programming to inform your decisions on exercise selection and hold durations.
 
 CRITICAL: You must respond with ONLY valid JSON in this exact format, no other text:
 {
@@ -7011,7 +7011,7 @@ ${JSON.stringify(ctx, null, 2)}
 Exercise library:
 ${exerciseLibrary}
 
-Please search for relevant flexibility research based on my goals, then build an optimised ${durationTarget} routine. Return only the JSON.`;
+Please build an optimised ${durationTarget} routine based on my goals, history, and your knowledge of flexibility science. Return only the JSON.`;
 
             try {
                 const response = await fetch('/.netlify/functions/coach', {
