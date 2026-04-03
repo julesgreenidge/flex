@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775254772 -->
+<!-- Version: 1775254932 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -7075,21 +7075,26 @@ Return only the JSON.`;
                         }
                     }
 
-                    // If still under by more than 30s, extend durations on static stretches
+                    // If under by more than 30s, extend durations on static/active/deep stretches
                     total = currentRoutine.reduce((s, e) => s + calcTime(e), 0);
-                    if (total < targetSecs - 30) {
-                        const extendable = currentRoutine.filter(e =>
-                            ['Static Stretching', 'Active Stretch', 'Deep Stretch'].includes(e.phase)
-                        );
+                    const extendablePhases = new Set(['Static Stretching', 'Active Stretch', 'Deep Stretch']);
+                    let passes = 0;
+                    while (total < targetSecs - 30 && passes < 10) {
+                        passes++;
+                        const extendable = currentRoutine.filter(e => extendablePhases.has(e.phase));
+                        if (extendable.length === 0) break;
+                        let madeChange = false;
                         for (const ex of extendable) {
                             if (total >= targetSecs - 30) break;
-                            const add = Math.min(15, targetSecs - 30 - total);
-                            const addRounded = Math.round(add / 5) * 5;
-                            if (addRounded > 0) {
-                                ex.duration += addRounded;
-                                total += addRounded * ex.sides;
+                            const deficit = targetSecs - 30 - total;
+                            const addPerSide = Math.min(15, Math.ceil(deficit / ex.sides / 5) * 5);
+                            if (addPerSide >= 5 && ex.duration + addPerSide <= 120) {
+                                ex.duration += addPerSide;
+                                total += addPerSide * ex.sides;
+                                madeChange = true;
                             }
                         }
+                        if (!madeChange) break;
                     }
                 }
 
