@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775240112 -->
+<!-- Version: 1775241770 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1796,10 +1796,10 @@
                     Why did Jumi pick this routine?
                     <span id="jumiTooltip" style="
                         display:none; position:absolute; left:0; top:24px;
-                        background:#1d1d1f; color:white; border-radius:12px;
-                        padding:14px 16px; font-size:13px; line-height:1.5;
-                        width:280px; z-index:200; box-shadow:0 8px 24px rgba(0,0,0,0.3);
-                        font-weight:400; white-space:normal;
+                        background:#1d1d1f; color:white; border-radius:10px;
+                        padding:12px 14px; font-size:12px; line-height:1.6;
+                        width:260px; z-index:200; box-shadow:0 4px 16px rgba(0,0,0,0.25);
+                        font-weight:400; white-space:normal; pointer-events:none;
                     "></span>
                 </span>
             </div>
@@ -6939,8 +6939,9 @@
             // Build context and ask Jumi to explain
             try {
                 const ctx = buildJumiContext();
+                const actualDuration = Math.round((currentRoutine || []).reduce((s, e) => s + calculateExerciseTime(e), 0) / 60);
                 const routineSummary = (currentRoutine || []).map(e => `${e.exercise} (${e.phase}, ${e.target})`).join(', ');
-                const prompt = `Based on the user's history, you just generated this routine: ${routineSummary}. In 2-3 short sentences, explain why this routine is good for them today. Focus on patterns you noticed — what they haven't done recently, what they need. Be specific, not generic.`;
+                const prompt = `Based on the user's history, you just generated this ${actualDuration}-minute routine: ${routineSummary}. In 2-3 short sentences, explain why this routine is good for them today. Focus on patterns from their history — what they haven't done recently, what muscle groups need attention. Be specific. Do not use markdown formatting like ** or bullet points. Write in plain sentences.`;
 
                 const response = await fetch('/.netlify/functions/coach', {
                     method: 'POST',
@@ -7216,7 +7217,13 @@
 
                 // Conversation history for multi-turn
                 const coachHistory = [];
-                const systemPrompt = `You are a flexibility and mobility coach. The user just finished a routine. Be direct and practical. Max 2-3 short sentences per response. No filler, no sycophancy. Session: ${sessionSummary}`;
+                // Pass full history context to Jumi
+                const jumiCtx = buildJumiContext();
+                const systemPrompt = `You are Jumi, a flexibility and mobility AI coach. You have full access to the user's exercise history. Be direct and practical. Max 2-3 short sentences per response. No filler, no sycophancy. Do not use markdown formatting like ** or ##.
+
+Today's session: ${sessionSummary}
+
+User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
 
                 window.sendCoachMessage = async function() {
                     const input = document.getElementById('coachInput');
@@ -7256,11 +7263,17 @@
                             })
                         });
                         const data = await response.json();
-                        const reply = data.reply || 'Sorry, I could not get a response. Please try again.';
+                        const rawReply = data.reply || 'Sorry, I could not get a response. Please try again.';
+                        // Strip markdown formatting
+                        const reply = rawReply
+                            .replace(/\*\*(.*?)\*\*/g, '$1')
+                            .replace(/\*(.*?)\*/g, '$1')
+                            .replace(/#{1,6} /g, '')
+                            .trim();
 
-                        // Replace thinking with reply
+                        // Replace thinking with reply — use innerHTML for line breaks
                         thinkingBubble.style.color = '#1d1d1f';
-                        thinkingBubble.textContent = reply;
+                        thinkingBubble.innerHTML = reply.replace(/\n/g, '<br>');
 
                         // Add assistant reply to history
                         coachHistory.push({ role: 'assistant', content: reply });
@@ -9647,7 +9660,7 @@
                 <!-- Version Content -->
                 <div id="settingsVersionContent" class="settings-content-panel" style="display: none;">
                     <h2 style="margin-bottom: 8px;">Version</h2>
-                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">3.7</div>
+                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">3.8</div>
                     <div style="font-size: 14px; color: #86868b; margin-bottom: 4px;">flex.</div>
                     <div id="buildDateDisplay" style="font-size: 12px; color: #aeaeb2;"></div>
                 </div>
