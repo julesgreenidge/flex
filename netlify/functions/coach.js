@@ -12,7 +12,7 @@ exports.handler = async function(event) {
         const isJumiGen = mode === 'jumi_generate';
 
         const requestBody = {
-            model: isJumiGen ? 'claude-sonnet-4-5-20251001' : 'claude-haiku-4-5-20251001',
+            model: isJumiGen ? 'claude-sonnet-4-5' : 'claude-haiku-4-5-20251001',
             max_tokens: isJumiGen ? 4000 : 1000,
             system,
             messages
