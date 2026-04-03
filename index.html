@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775255949 -->
+<!-- Version: 1775256782 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -6997,8 +6997,6 @@ CRITICAL: You must respond with ONLY valid JSON in this exact format, no other t
 Rules:
 - Only use exercises from the provided library (exact names)
 - Group exercises by phase (Warm-Up first, then Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits if relevant, Cool Down, Final Rest last)
-- Durations must be multiples of 5 seconds
-- Rest values must be multiples of 5 seconds
 - Target the duration: ${durationTarget}
 - Set duration INDIVIDUALLY for every exercise — never use the same duration for all exercises in a phase. Vary based on: user goals (exercises targeting muscles relevant to those goals get longer holds), days since that specific exercise was last done (longer gap = longer hold), and the nature of the exercise
 - Active Stretch: similar duration to Static Stretching, just performed more intensely. Deep Stretch: significantly longer than Static Stretching — this is the key distinction
@@ -7054,6 +7052,9 @@ Return only the JSON.`;
                 selectedType = 'full';
                 selectedHold = 'short';
 
+                // Log Jumi's raw output before adjustment
+                console.log('Jumi raw durations:', currentRoutine.map(e => `${e.exercise}: ${e.duration}s x${e.sides}`).join(', '));
+
                 // Trim or pad routine to hit duration target
                 if (selectedTime !== 999) {
                     const targetSecs = selectedTime * 60;
@@ -7065,55 +7066,49 @@ Return only the JSON.`;
                     if (!hasFinalRest) {
                         const savasana = exercises.find(e => e.exercise === 'Savasana');
                         if (savasana) currentRoutine.push({...savasana});
+                    }
+                    total = currentRoutine.reduce((s, e) => s + calcTime(e), 0);
+
+                    // Scale routine to target duration while preserving proportions
+                    // Only Final Rest is protected; everything else scales
+                    const protectedPhases = new Set(['Final Rest']);
+                    const scalableExercises = currentRoutine.filter(e => !protectedPhases.has(e.phase));
+                    const scalableTime = scalableExercises.reduce((s, e) => s + calcTime(e), 0);
+
+                    if (scalableTime > 0) {
+                        const availableTime = targetSecs - protectedTime;
+                        const scaleFactor = availableTime / scalableTime;
+
+                        // Group scalable exercises by phase, preserve phase % and intra-phase %
+                        const phaseGroups = {};
+                        scalableExercises.forEach(ex => {
+                            if (!phaseGroups[ex.phase]) phaseGroups[ex.phase] = [];
+                            phaseGroups[ex.phase].push(ex);
+                        });
+
+                        // Scale each phase's total time, then each exercise within the phase
+                        Object.values(phaseGroups).forEach(group => {
+                            const phaseTotal = group.reduce((s, e) => s + calcTime(e), 0);
+                            const newPhaseTotal = phaseTotal * scaleFactor;
+                            group.forEach(ex => {
+                                const exShare = calcTime(ex) / phaseTotal;
+                                const newExTime = newPhaseTotal * exShare;
+                                // newExTime = (duration + rest) * sides → solve for duration
+                                const newDuration = Math.max(10, Math.round(newExTime / ex.sides) - ex.rest);
+                                ex.duration = newDuration;
+                            });
+                        });
+
                         total = currentRoutine.reduce((s, e) => s + calcTime(e), 0);
                     }
 
-                    // If over, first reduce durations proportionally on stretch phases
-                    if (total > targetSecs) {
-                        const trimmablePhases = new Set(['Deep Stretch', 'Static Stretching', 'Active Stretch', 'Cool Down']);
-                        const trimmable = currentRoutine.filter(e => trimmablePhases.has(e.phase));
-                        if (trimmable.length > 0) {
-                            const excess = total - targetSecs;
-                            const weightedTotal = trimmable.reduce((s, e) => s + e.duration * e.sides, 0);
-                            trimmable.forEach(ex => {
-                                const share = (ex.duration * ex.sides) / weightedTotal;
-                                const removePerSide = Math.round((excess * share) / ex.sides / 5) * 5;
-                                if (removePerSide >= 5 && ex.duration - removePerSide >= 15) {
-                                    ex.duration -= removePerSide;
-                                    total -= removePerSide * ex.sides;
-                                }
-                            });
-                        }
-                        // If still over, remove whole exercises from end (unprotected only)
-                        const protectedPhases = new Set(['Final Rest', 'Cool Down', 'Warm-Up', 'Splits']);
+                    // If still over, remove whole exercises (never Final Rest)
+                    if (total > targetSecs + 30) {
                         for (let i = currentRoutine.length - 1; i >= 0 && total > targetSecs; i--) {
                             if (!protectedPhases.has(currentRoutine[i].phase)) {
                                 total -= calcTime(currentRoutine[i]);
                                 currentRoutine.splice(i, 1);
                             }
-                        }
-                    }
-
-                    // If under by more than 30s, extend durations on static/active/deep stretches
-                    total = currentRoutine.reduce((s, e) => s + calcTime(e), 0);
-                    // Scale durations proportionally to fill the deficit
-                    const extendablePhases = new Set(['Deep Stretch', 'Static Stretching', 'Active Stretch', 'Cool Down']);
-                    const extendable = currentRoutine.filter(e => extendablePhases.has(e.phase));
-                    if (extendable.length > 0) {
-                        const deficit = targetSecs - 30 - total;
-                        if (deficit > 0) {
-                            // Total weighted time across extendable exercises
-                            const weightedTotal = extendable.reduce((s, e) => s + e.duration * e.sides, 0);
-                            // Distribute deficit proportionally
-                            extendable.forEach(ex => {
-                                const share = (ex.duration * ex.sides) / weightedTotal;
-                                const addTotal = deficit * share;
-                                const addPerSide = Math.round(addTotal / ex.sides / 5) * 5;
-                                if (addPerSide >= 5) {
-                                    ex.duration += addPerSide;
-                                    total += addPerSide * ex.sides;
-                                }
-                            });
                         }
                     }
                 }
