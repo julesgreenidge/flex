@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775253045 -->
+<!-- Version: 1775253421 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -7044,16 +7044,14 @@ Please build an optimised ${durationTarget} routine based on my goals, history, 
 
                 // Load the routine into the app
                 currentRoutine = parsed.routine;
-                selectedType = 'full'; // Jumi decides body type internally
+                selectedType = 'full';
                 selectedHold = 'short';
 
-                // Render the routine
-                renderRoutine(currentRoutine);
-                updateRoutineStats();
+                // Render the routine using the same path as generateRoutine
+                initAudio();
+                displayRoutine();
                 setStarVisible(true);
-                if (document.getElementById('floatingEditBtn')) {
-                    document.getElementById('floatingEditBtn').style.display = 'flex';
-                }
+                document.getElementById('floatingEditBtn').style.display = 'flex';
                 document.getElementById('floatingStartJumi').style.display = 'block';
 
                 // Show explanation
