@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775253421 -->
+<!-- Version: 1775254080 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -7011,7 +7011,11 @@ ${JSON.stringify(ctx, null, 2)}
 Exercise library:
 ${exerciseLibrary}
 
-Please build an optimised ${durationTarget} routine based on my goals, history, and your knowledge of flexibility science. Return only the JSON.`;
+Please build an optimised routine based on my goals, history, and your knowledge of flexibility science.
+
+DURATION CONSTRAINT: The total routine must be within 30 seconds of ${durationTarget}. Calculate each exercise's time as (duration + rest) × sides. Sum all exercises and ensure the total is between ${selectedTime === 999 ? 0 : selectedTime * 60 - 30} and ${selectedTime === 999 ? 999999 : selectedTime * 60 + 30} seconds.
+
+Return only the JSON.`;
 
             try {
                 const response = await fetch('/.netlify/functions/coach', {
