@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775254932 -->
+<!-- Version: 1775255361 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -7001,6 +7001,7 @@ Rules:
 - Rest values must be multiples of 5 seconds
 - Target the duration: ${durationTarget}
 - Adjust hold durations based on goals, history gaps, and research
+- Phase duration guidance: Warm-Up 20-30s, Foam Roller 30-45s, Mobility 30-45s, Static Stretching 45-75s, Active Stretch 45-75s (same length as static, just pushed harder/deeper), Deep Stretch 90-150s (significantly longer than static — this is the key differentiator), Cool Down 45-60s
 - Always include Savasana (Final Rest phase) as the last exercise — it is mandatory
 - No markdown in the explanation`;
 
@@ -7077,21 +7078,23 @@ Return only the JSON.`;
 
                     // If under by more than 30s, extend durations on static/active/deep stretches
                     total = currentRoutine.reduce((s, e) => s + calcTime(e), 0);
-                    const extendablePhases = new Set(['Static Stretching', 'Active Stretch', 'Deep Stretch']);
+                    // Extend Deep Stretch first, then Static/Active, then Cool Down
+                    const extendPriority = ['Deep Stretch', 'Static Stretching', 'Active Stretch', 'Cool Down'];
                     let passes = 0;
-                    while (total < targetSecs - 30 && passes < 10) {
+                    while (total < targetSecs - 30 && passes < 20) {
                         passes++;
-                        const extendable = currentRoutine.filter(e => extendablePhases.has(e.phase));
-                        if (extendable.length === 0) break;
                         let madeChange = false;
-                        for (const ex of extendable) {
-                            if (total >= targetSecs - 30) break;
-                            const deficit = targetSecs - 30 - total;
-                            const addPerSide = Math.min(15, Math.ceil(deficit / ex.sides / 5) * 5);
-                            if (addPerSide >= 5 && ex.duration + addPerSide <= 120) {
-                                ex.duration += addPerSide;
-                                total += addPerSide * ex.sides;
-                                madeChange = true;
+                        for (const phase of extendPriority) {
+                            const extendable = currentRoutine.filter(e => e.phase === phase);
+                            for (const ex of extendable) {
+                                if (total >= targetSecs - 30) break;
+                                const deficit = targetSecs - 30 - total;
+                                const addPerSide = Math.ceil(deficit / ex.sides / 5) * 5;
+                                if (addPerSide >= 5) {
+                                    ex.duration += addPerSide;
+                                    total += addPerSide * ex.sides;
+                                    madeChange = true;
+                                }
                             }
                         }
                         if (!madeChange) break;
