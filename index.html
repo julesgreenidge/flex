@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775309535 -->
+<!-- Version: 1775328908 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1580,39 +1580,36 @@
                 <h1 style="margin: 0; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">flex.</h1>
             </div>
 
-            <!-- DURATION (global, always visible) -->
+            <!-- DURATION — primary decision, always visible -->
             <div class="section" style="margin-bottom:14px;">
-                <div class="section-title">Duration</div>
+                <div class="section-title">Quick Start</div>
                 <div class="segmented" id="globalDurationBtns">
-                    <button class="global-duration-btn" data-time="25">25m</button>
-                    <button class="global-duration-btn" data-time="35">35m</button>
-                    <button class="global-duration-btn" data-time="45">45m</button>
-                    <button class="global-duration-btn" data-time="999">All</button>
-                    <button class="global-duration-btn" data-time="custom">Custom</button>
+                    <button class="global-dur-btn" data-time="25">25m</button>
+                    <button class="global-dur-btn" data-time="35">35m</button>
+                    <button class="global-dur-btn" data-time="45">45m</button>
+                    <button class="global-dur-btn" data-time="999">All</button>
+                    <button class="global-dur-btn" data-time="custom">Custom</button>
                 </div>
                 <input type="number" id="globalCustomDuration" class="custom-duration-input" placeholder="Enter minutes (minimum 20)" min="20" max="120" step="5" style="display:none; margin-top:10px;">
             </div>
 
-            <!-- QUICK START 2x2 -->
-            <div id="quickStartSection" style="margin-bottom:14px;">
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-                    <button id="trueQuickStartBtn" onclick="trueQuickStart()" class="generate-btn" style="margin-top:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:12px 8px; background:linear-gradient(135deg,#34c759,#2da44e); box-shadow:0 4px 16px rgba(52,199,89,0.4);">
-                        <span style="font-size:14px; font-weight:600; display:flex; align-items:center; gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Quick Start</span>
+            <!-- QUICK START -->
+            <div id="quickStartSection" style="margin-bottom: 14px;">
+                <div style="display: flex; gap: 8px; align-items: stretch;">
+                    <button id="trueQuickStartBtn" onclick="trueQuickStart()" class="generate-btn" style="flex:1; margin-top:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:12px 8px; background:linear-gradient(135deg,#34c759,#2da44e); box-shadow:0 4px 16px rgba(52,199,89,0.4);">
+                        <span style="font-size:14px; font-weight:600; display:flex; align-items:center; gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Quick Build</span>
                         <span id="qsSubtitle" style="font-size:10px; opacity:0.75; font-weight:400; white-space:nowrap;">Full Body · Short Hold</span>
                     </button>
-                    <button id="jumiQuickStartBtn" onclick="jumiQuickStart()" class="generate-btn" style="margin-top:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:12px 8px; background:linear-gradient(135deg,#667eea,#764ba2); box-shadow:0 4px 16px rgba(102,126,234,0.4);">
+                    <button id="jumiQuickBtn" onclick="jumiQuickStart()" class="generate-btn" style="flex:1; margin-top:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:12px 8px; background:linear-gradient(135deg,#667eea,#764ba2); box-shadow:0 4px 16px rgba(102,126,234,0.4);">
                         <span style="font-size:14px; font-weight:600;">✦ Jumi</span>
-                        <span style="font-size:10px; opacity:0.75; font-weight:400;">AI routine</span>
-                    </button>
-                    <button id="quickStartBtn" class="generate-btn" style="margin-top:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:12px 8px; background:#3a3a3c; box-shadow:none;">
-                        <span style="font-size:14px; font-weight:600; display:flex; align-items:center; gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M12 2 L13.5 9 L20 10.5 L13.5 12 L12 19 L10.5 12 L4 10.5 L10.5 9 Z"/></svg> Last Session</span>
-                        <span id="quickStartSummary" style="font-size:10px; opacity:0.75; font-weight:400; white-space:nowrap;"></span>
+                        <span id="jumiQuickSubtitle" style="font-size:10px; opacity:0.75; font-weight:400;">AI routine</span>
                     </button>
                     <button class="btn type-btn" data-type="starred" id="starredBtn" style="
-                        display:flex; flex-direction:column; align-items:center; justify-content:center;
-                        gap:4px; background:white; border:2px solid #d2d2d7; border-radius:14px;
-                        padding:10px 8px; margin-top:0; cursor:pointer;
-                        font-size:var(--button-font-size); font-weight:600; color:#1d1d1f; transition:all 0.2s;">
+                        display: flex; flex-direction: column; align-items: center; justify-content: center;
+                        gap: 4px; background: white; border: 2px solid #d2d2d7; border-radius: 14px;
+                        padding: 10px 14px; flex-shrink: 0; margin-top: 0; cursor: pointer;
+                        min-width: 72px; font-size: var(--button-font-size); font-weight: 600;
+                        color: #1d1d1f; transition: all 0.2s;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                         </svg>
@@ -1620,9 +1617,9 @@
                     </button>
                 </div>
             </div>
-
+            
             <!-- Separator -->
-            <div style="display:flex; align-items:center; gap:10px; margin:16px 0;">
+            <div style="display:flex; align-items:center; gap:10px; margin: 16px 0;">
                 <div style="flex:1; height:1px; background:#e5e5e7;"></div>
             </div>
 
@@ -1756,7 +1753,7 @@
             <!-- JUMI MODE CONTROLS -->
             <div id="jumiControls" style="display: none;">
 
-            <button class="generate-btn" id="jumiGenerateBtn" onclick="generateJumiRoutine()" style="font-size:14px; background:#3a3a3c; color:white; border:none; box-shadow:none; display:flex; align-items:center; justify-content:center; gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M12 2 L13.5 9 L20 10.5 L13.5 12 L12 19 L10.5 12 L4 10.5 L10.5 9 Z"/><path d="M19 2 L19.75 5.25 L23 6 L19.75 6.75 L19 10 L18.25 6.75 L15 6 L18.25 5.25 Z" opacity="0.7"/><path d="M5 16 L5.5 18 L7.5 18.5 L5.5 19 L5 21 L4.5 19 L2.5 18.5 L4.5 18 Z" opacity="0.7"/></svg>Generate with Jumi</button>
+            <button class="generate-btn" id="jumiGenerateBtn"" onclick="generateJumiRoutine()" style="font-size:14px; background:#3a3a3c; color:white; border:none; box-shadow:none; display:flex; align-items:center; justify-content:center; gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M12 2 L13.5 9 L20 10.5 L13.5 12 L12 19 L10.5 12 L4 10.5 L10.5 9 Z"/><path d="M19 2 L19.75 5.25 L23 6 L19.75 6.75 L19 10 L18.25 6.75 L15 6 L18.25 5.25 Z" opacity="0.7"/><path d="M5 16 L5.5 18 L7.5 18.5 L5.5 19 L5 21 L4.5 19 L2.5 18.5 L4.5 18 Z" opacity="0.7"/></svg>Generate with Jumi</button>
             <!-- Jumi explanation tooltip area -->
             <div id="jumiExplanation" style="display:none; margin: 24px 0 16px; text-align:center;">
                 <span id="jumiInfoIcon"
@@ -3549,30 +3546,14 @@
         }
 
         function setupEventListeners() {
-            // Duration buttons (now using global duration — .duration-btn may not exist)
-            const customDurationInput = document.getElementById('globalCustomDuration');
-
+            // Duration buttons (.duration-btn no longer used — global bar handles this)
             document.querySelectorAll('.duration-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('selected'));
                     this.classList.add('selected');
-                    if (this.dataset.time === 'custom') {
-                        if (customDurationInput) { customDurationInput.style.display = 'block'; customDurationInput.focus(); }
-                        const val = parseInt(customDurationInput ? customDurationInput.value : '');
-                        selectedTime = (val >= 20) ? val : null;
-                    } else {
-                        if (customDurationInput) customDurationInput.style.display = 'none';
-                        selectedTime = parseInt(this.dataset.time);
-                    }
+                    selectedTime = this.dataset.time === '999' ? 999 : parseInt(this.dataset.time);
                 });
             });
-
-            if (customDurationInput) {
-                customDurationInput.addEventListener('input', function() {
-                    const val = parseInt(this.value);
-                    selectedTime = (val >= 20) ? val : null;
-                });
-            }
 
             // Focus dropdown
             document.getElementById('focusSelect').addEventListener('change', function() {
@@ -3662,55 +3643,47 @@
             }
 
             // Tab switching
-            // ── GLOBAL DURATION ──
-            (function initGlobalDuration() {
-                const saved = localStorage.getItem('globalSelectedTime');
+            // ── GLOBAL DURATION BAR ──
+            (function() {
+                const saved = localStorage.getItem('globalDuration');
                 selectedTime = saved ? (saved === '999' ? 999 : parseInt(saved)) : 35;
 
-                document.querySelectorAll('.global-duration-btn').forEach(btn => {
-                    const val = btn.dataset.time === 'custom' ? 'custom' : (btn.dataset.time === '999' ? 999 : parseInt(btn.dataset.time));
-                    btn.classList.toggle('selected', String(btn.dataset.time) === String(selectedTime));
-
-                    btn.addEventListener('click', function() {
-                        document.querySelectorAll('.global-duration-btn').forEach(b => b.classList.remove('selected'));
-                        this.classList.add('selected');
-                        const gc = document.getElementById('globalCustomDuration');
-                        if (this.dataset.time === 'custom') {
-                            gc.style.display = 'block';
-                            gc.focus();
-                            const v = parseInt(gc.value);
-                            selectedTime = (v >= 20) ? v : null;
-                        } else {
-                            gc.style.display = 'none';
-                            selectedTime = this.dataset.time === '999' ? 999 : parseInt(this.dataset.time);
-                            localStorage.setItem('globalSelectedTime', this.dataset.time);
-                        }
-                        // Keep simple duration buttons in sync
-                        document.querySelectorAll('.duration-btn').forEach(b => {
-                            b.classList.toggle('selected', b.dataset.time === this.dataset.time);
-                        });
-                    });
-                });
-
-                document.getElementById('globalCustomDuration').addEventListener('input', function() {
-                    const v = parseInt(this.value);
-                    if (v >= 20) {
-                        selectedTime = v;
-                        localStorage.setItem('globalSelectedTime', String(v));
+                function selectGlobalDur(timeVal) {
+                    if (timeVal !== 'custom') {
+                        selectedTime = timeVal === '999' ? 999 : parseInt(timeVal);
+                        localStorage.setItem('globalDuration', timeVal);
                     }
-                });
+                    document.querySelectorAll('.global-dur-btn').forEach(b => {
+                        b.classList.toggle('selected', b.dataset.time === timeVal);
+                    });
+                    const gc = document.getElementById('globalCustomDuration');
+                    if (gc) gc.style.display = timeVal === 'custom' ? 'block' : 'none';
+                }
 
-                // Sync simple duration buttons → global on click
-                document.querySelectorAll('.duration-btn').forEach(btn => {
+                // Set initial selection
+                const initialBtn = saved || '35';
+                selectGlobalDur(initialBtn);
+
+                document.querySelectorAll('.global-dur-btn').forEach(btn => {
                     btn.addEventListener('click', function() {
-                        document.querySelectorAll('.global-duration-btn').forEach(b => {
-                            b.classList.toggle('selected', b.dataset.time === this.dataset.time);
-                        });
-                        if (this.dataset.time !== 'custom') {
-                            localStorage.setItem('globalSelectedTime', this.dataset.time);
+                        selectGlobalDur(this.dataset.time);
+                        if (this.dataset.time === 'custom') {
+                            const gc = document.getElementById('globalCustomDuration');
+                            if (gc) gc.focus();
                         }
                     });
                 });
+
+                const gc = document.getElementById('globalCustomDuration');
+                if (gc) {
+                    gc.addEventListener('input', function() {
+                        const v = parseInt(this.value);
+                        if (v >= 20) {
+                            selectedTime = v;
+                            localStorage.setItem('globalDuration', String(v));
+                        }
+                    });
+                }
             })();
 
             document.getElementById('simpleTab').addEventListener('click', function() {
@@ -3838,27 +3811,7 @@
                 document.getElementById('customTab').classList.remove('selected');
             });
 
-            // Jumi duration buttons
-            document.querySelectorAll('.jumi-duration-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.querySelectorAll('.jumi-duration-btn').forEach(b => b.classList.remove('selected'));
-                    this.classList.add('selected');
-                    const jumiCustom = document.getElementById('jumiCustomDuration');
-                    if (this.dataset.time === 'custom') {
-                        jumiCustom.style.display = 'block';
-                        jumiCustom.focus();
-                        const val = parseInt(jumiCustom.value);
-                        selectedTime = (val >= 20) ? val : null;
-                    } else {
-                        jumiCustom.style.display = 'none';
-                        selectedTime = parseInt(this.dataset.time);
-                    }
-                });
-            });
-            document.getElementById('jumiCustomDuration').addEventListener('input', function() {
-                const val = parseInt(this.value);
-                selectedTime = (val >= 20) ? val : null;
-            });
+            // Jumi duration buttons — removed, duration now global
 
             // Helper to safely hide floating buttons (removed from UI)
             function hideFloatingButtons() {
@@ -4768,7 +4721,7 @@
             document.getElementById('generateBtn').addEventListener('click', generateRoutine);
 
             // Quick Start button
-            document.getElementById('quickStartBtn').addEventListener('click', quickStart);
+
 
             // Start button
             // startBtn moved to floating RHS button
@@ -6068,57 +6021,50 @@
             btn.style.cursor = 'pointer';
 
             const last = history[history.length - 1];
-            const typeLabel = last.type === 'full' ? 'Full Body' : last.type === 'upper' ? 'Upper' : last.type === 'lower' ? 'Lower' : '';
-            const holdLabel = (last.hold === 'long') ? 'Long Hold' : 'Short Hold';
-            const parts = [typeLabel, holdLabel].filter(Boolean);
+            const parts = [];
+            if (last.duration) parts.push(last.duration + 'm');
+            const typeLabel = last.type === 'full' ? 'Full Body' : last.type === 'upper' ? 'Upper' : last.type === 'lower' ? 'Lower' : last.type;
+            if (last.type && last.type !== 'starred') parts.push(typeLabel);
+            parts.push((last.hold === 'long') ? 'Long Hold' : 'Short Hold');
+            if (last.focus && last.focus !== 'None') parts.push(last.focus);
             if (summary) summary.textContent = parts.join(' · ');
         }
 
         async function trueQuickStart() {
-            // Uses global selected duration, always full body + short hold
             if (!selectedTime) selectedTime = 35;
-            selectedType = 'full';
-            selectedHold = 'short';
-            longSession = false;
-            selectedFocus = '';
-            document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('selected', b.dataset.type === 'full'));
-            document.querySelectorAll('[data-hold]').forEach(b => b.classList.toggle('selected', b.dataset.hold === 'short'));
-            await generateRoutine();
-            startRoutine();
-        }
-
-        async function quickStart() {
-            // Uses global selected duration + last session's body type and hold
-            const history = JSON.parse(localStorage.getItem('routineHistory') || '[]');
-            if (history.length === 0) return;
-            const last = history[history.length - 1];
-
-            if (!selectedTime) selectedTime = 35;
-            selectedType = last.type || 'full';
-            selectedHold = last.hold || 'short';
+            selectedType = appSettings.quickStartType || 'full';
+            selectedHold = appSettings.quickStartHold || 'short';
             longSession = selectedHold === 'long';
-            selectedFocus = (last.focus && last.focus !== 'None') ? last.focus : '';
+            selectedFocus = '';
 
-            document.querySelectorAll('.type-btn').forEach(b => {
-                b.classList.toggle('selected', b.dataset.type === selectedType);
-            });
-            document.querySelectorAll('[data-hold]').forEach(b => {
-                b.classList.toggle('selected', b.dataset.hold === selectedHold);
-            });
-            const focusSelect = document.getElementById('focusSelect');
-            if (focusSelect) focusSelect.value = selectedFocus;
+            // Open Simple tab if not already open
+            const simpleControls = document.getElementById('simpleControls');
+            if (simpleControls && simpleControls.style.display === 'none') {
+                document.getElementById('simpleTab').click();
+            }
+
+            // Sync type and hold UI
+            document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('selected', b.dataset.type === selectedType));
+            document.querySelectorAll('[data-hold]').forEach(b => b.classList.toggle('selected', b.dataset.hold === selectedHold));
 
             await generateRoutine();
         }
 
         async function jumiQuickStart() {
-            // Uses global selected duration, Jumi decides everything else
             if (!selectedTime) selectedTime = 35;
-            // Open Jumi tab then generate
-            const jumiTab = document.getElementById('jumiTab');
-            if (jumiTab) jumiTab.click();
-            await generateJumiRoutine();
+            const btn = document.getElementById('jumiQuickBtn');
+            const sub = document.getElementById('jumiQuickSubtitle');
+            if (btn) btn.disabled = true;
+            if (sub) sub.textContent = 'Thinking…';
+            try {
+                await generateJumiRoutine();
+            } finally {
+                if (btn) btn.disabled = false;
+                if (sub) sub.textContent = 'AI routine';
+            }
         }
+
+
 
         function startCustomRoutine(hold) {
             if (customRoutine.length === 0) return;
@@ -10106,7 +10052,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
                 <!-- Version Content -->
                 <div id="settingsVersionContent" class="settings-content-panel" style="display: none;">
                     <h2 style="margin-bottom: 8px;">Version</h2>
-                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">4.3</div>
+                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">4.5</div>
                     <div style="font-size: 14px; color: #86868b; margin-bottom: 4px;">flex.</div>
                     <div id="buildDateDisplay" style="font-size: 12px; color: #aeaeb2;"></div>
                 </div>
