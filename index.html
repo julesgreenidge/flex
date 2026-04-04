@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775309322 -->
+<!-- Version: 1775309535 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -3549,31 +3549,30 @@
         }
 
         function setupEventListeners() {
-            // Duration buttons
-            const customDurationInput = document.getElementById('customDuration');
-            
+            // Duration buttons (now using global duration — .duration-btn may not exist)
+            const customDurationInput = document.getElementById('globalCustomDuration');
+
             document.querySelectorAll('.duration-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('selected'));
                     this.classList.add('selected');
-                    
                     if (this.dataset.time === 'custom') {
-                        customDurationInput.style.display = 'block';
-                        customDurationInput.focus();
-                        // Don't set selectedTime yet — wait for the user to type a value
-                        const val = parseInt(customDurationInput.value);
+                        if (customDurationInput) { customDurationInput.style.display = 'block'; customDurationInput.focus(); }
+                        const val = parseInt(customDurationInput ? customDurationInput.value : '');
                         selectedTime = (val >= 20) ? val : null;
                     } else {
-                        customDurationInput.style.display = 'none';
+                        if (customDurationInput) customDurationInput.style.display = 'none';
                         selectedTime = parseInt(this.dataset.time);
                     }
                 });
             });
-            
-            customDurationInput.addEventListener('input', function() {
-                const val = parseInt(this.value);
-                selectedTime = (val >= 20) ? val : null;
-            });
+
+            if (customDurationInput) {
+                customDurationInput.addEventListener('input', function() {
+                    const val = parseInt(this.value);
+                    selectedTime = (val >= 20) ? val : null;
+                });
+            }
 
             // Focus dropdown
             document.getElementById('focusSelect').addEventListener('change', function() {
@@ -5106,7 +5105,7 @@
             if (!durationSelected) {
                 if (customIsActive) {
                     await customAlert('⚠️ Please enter a custom duration (minimum 20 minutes)');
-                    document.getElementById('customDuration').focus();
+                    document.getElementById('globalCustomDuration') && document.getElementById('globalCustomDuration').focus();
                 } else {
                     await customAlert('⚠️ Please select a duration:\n• 25, 35, or 45 minutes\n• All exercises\n• Custom duration');
                 }
