@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775259829 -->
+<!-- Version: 1775289809 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -2205,7 +2205,7 @@
 
             // Settings tab navigation
             const settingsNavBtns = ['settingsGoalsBtn', 'settingsQuickStartBtn', 'settingsExerciseDurationBtn', 'settingsSoundBtn', 'settingsFrontSplitsBtn', 'settingsCustomExercisesBtn', 'settingsBackupBtn', 'settingsVersionBtn', 'settingsKeyboardBtn'];
-            const settingsContentPanels = ['settingsQuickStartContent', 'settingsExerciseDurationContent', 'settingsSoundContent', 'settingsFrontSplitsContent', 'settingsCustomExercisesContent', 'settingsBackupContent', 'settingsVersionContent', 'settingsKeyboardContent'];
+            const settingsContentPanels = ['settingsGoalsContent', 'settingsQuickStartContent', 'settingsExerciseDurationContent', 'settingsSoundContent', 'settingsFrontSplitsContent', 'settingsCustomExercisesContent', 'settingsBackupContent', 'settingsVersionContent', 'settingsKeyboardContent'];
 
             function activateSettingsTab(activeId, activeContent) {
                 settingsNavBtns.forEach(id => document.getElementById(id).classList.remove('active'));
@@ -2239,16 +2239,26 @@
                 renderExerciseLibraryTable();
             });
 
+            const capFirst = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+
             function renderExerciseLibraryTable() {
                 const container = document.getElementById('exerciseLibraryTable');
                 if (!container) return;
                 const phases = [...new Set(exercises.map(e => e.phase))];
                 let html = '';
+                // Column header (once, outside phases)
+                html += `<div style="display:grid;grid-template-columns:24px 2fr 1fr 1fr 50px 60px 1fr;gap:0;padding:6px 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#86868b;border-bottom:2px solid #e8e8ed;margin-bottom:4px;">
+                    <div></div>
+                    <div>Exercise</div>
+                    <div>Target</div>
+                    <div>Position</div>
+                    <div>Sides</div>
+                    <div>Body</div>
+                    <div></div>
+                </div>`;
                 phases.forEach(phase => {
                     const phaseExercises = exercises.filter(e => e.phase === phase);
-                    html += `<div style="margin-bottom:28px;">
-                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#86868b;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e8e8ed;">${phase}</div>
-                        <div style="display:flex;flex-direction:column;gap:8px;">`;
+                    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#86868b;margin:14px 0 4px;padding-top:10px;border-top:1.5px solid #e8e8ed;">${phase}</div>`;
                     phaseExercises.forEach(ex => {
                         const globalIdx = exercises.indexOf(ex);
                         html += `<div data-idx="${globalIdx}" draggable="true"
@@ -2256,20 +2266,20 @@
                             ondragover="exDragOver(event)"
                             ondrop="exDrop(event,${globalIdx})"
                             ondragend="exDragEnd(event)"
-                            style="background:white;border:1.5px solid #e8e8ed;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;transition:box-shadow 0.15s;">
-                            <span style="color:#d2d2d7;font-size:18px;cursor:grab;flex-shrink:0;line-height:1;">⠿</span>
-                            <div style="flex:1;min-width:0;">
-                                <div style="font-size:14px;font-weight:600;color:#1d1d1f;margin-bottom:2px;">${ex.exercise}</div>
-                                <div style="font-size:12px;color:#86868b;">${ex.target} · ${ex.position} · ${ex.sides === 1 ? '1 side' : '2 sides'} · ${ex.bodyPart}</div>
-                            </div>
-                            <div style="display:flex;gap:6px;flex-shrink:0;">
-                                <button data-action="edit" data-idx="${globalIdx}" style="background:none;border:1.5px solid #d2d2d7;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;color:#1d1d1f;">Edit</button>
-                                <button data-action="copy" data-idx="${globalIdx}" style="background:none;border:1.5px solid #667eea;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;color:#667eea;">Copy</button>
-                                <button data-action="delete" data-idx="${globalIdx}" style="background:none;border:1.5px solid #ff3b30;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;color:#ff3b30;">Delete</button>
+                            style="display:grid;grid-template-columns:24px 2fr 1fr 1fr 50px 60px 1fr;gap:0;align-items:center;padding:7px 8px;border-bottom:1px solid #f0f0f5;font-size:13px;color:#1d1d1f;">
+                            <span style="color:#c7c7cc;font-size:16px;cursor:grab;line-height:1;">⠿</span>
+                            <div style="font-weight:500;padding-right:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ex.exercise}</div>
+                            <div style="color:#86868b;padding-right:8px;">${ex.target}</div>
+                            <div style="color:#86868b;padding-right:8px;">${ex.position}</div>
+                            <div style="color:#86868b;">${ex.sides}</div>
+                            <div style="color:#86868b;">${capFirst(ex.bodyPart)}</div>
+                            <div style="display:flex;gap:5px;justify-content:flex-end;">
+                                <button data-action="edit" data-idx="${globalIdx}" class="btn" style="padding:6px 10px;font-size:12px;border-radius:8px;">Edit</button>
+                                <button data-action="copy" data-idx="${globalIdx}" class="btn" style="padding:6px 10px;font-size:12px;border-radius:8px;">Copy</button>
+                                <button data-action="delete" data-idx="${globalIdx}" class="btn" style="padding:6px 10px;font-size:12px;border-radius:8px;border-color:#ff3b30;color:#ff3b30;">Del</button>
                             </div>
                         </div>`;
                     });
-                    html += '</div></div>';
                 });
                 container.innerHTML = html;
 
@@ -4900,7 +4910,7 @@
             if (file) {
                 const statusEl = document.getElementById('csvUploadStatus');
                 if (statusEl) {
-                    statusEl.textContent = 'Uploading…';
+                    statusEl.textContent = '';
                     statusEl.style.color = '#86868b';
                 }
                 
@@ -7231,6 +7241,15 @@ Return only the JSON.`;
                     const calcTime = ex => (ex.duration + ex.rest) * ex.sides;
                     let total = currentRoutine.reduce((s, e) => s + calcTime(e), 0);
 
+                    // Respect splits frequency setting
+                    const splitsFreq = appSettings.splitsFrequency ?? 0.1;
+                    const splitsForced = window.splitsForced || false;
+                    if (!splitsForced && Math.random() >= splitsFreq) {
+                        // Remove splits exercises if frequency check fails
+                        const before = currentRoutine.length;
+                        currentRoutine = currentRoutine.filter(e => e.phase !== 'Splits');
+                    }
+
                     // Ensure Savasana is always present
                     const hasFinalRest = currentRoutine.some(e => e.phase === 'Final Rest');
                     if (!hasFinalRest) {
@@ -7266,14 +7285,12 @@ Return only the JSON.`;
                             group.forEach(ex => {
                                 const exShare = calcTime(ex) / phaseTotal;
                                 const newExTime = newPhaseTotal * exShare;
-                                // newExTime = (duration + rest) * sides → solve for duration
-                                const newDuration = Math.max(10, Math.floor(newExTime / ex.sides) - ex.rest);
+                                const newDuration = Math.max(10, (newExTime / ex.sides) - ex.rest);
                                 ex.duration = newDuration;
                             });
                         });
 
                         total = currentRoutine.reduce((s, e) => s + calcTime(e), 0);
-
                     }
 
                     // Recalculate total after scaling
@@ -7311,6 +7328,7 @@ Return only the JSON.`;
                 displayRoutine();
                 setStarVisible(true);
                 document.getElementById('floatingEditBtn').style.display = 'flex';
+                document.getElementById('floatingStartSimple').style.display = 'none';
                 document.getElementById('floatingStartJumi').style.display = 'block';
 
                 // Show explanation
@@ -8062,37 +8080,29 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
         }
         
         window.exportExerciseCSV = function() {
-            const exercises = JSON.parse(localStorage.getItem('flexibilityRoutineExercises') || '[]');
-            if (exercises.length === 0) {
-                const status = document.getElementById('exerciseExportStatus');
-                if (status) { status.style.color = '#ff3b30'; status.textContent = 'No exercise list to export.'; }
+            const exList = JSON.parse(localStorage.getItem('flexibilityRoutineExercises') || '[]');
+            const status = document.getElementById('csvUploadStatus');
+            if (exList.length === 0) {
+                if (status) { status.style.color = '#ff3b30'; status.textContent = 'No exercises to export.'; }
                 return;
             }
             const headers = ['phase', 'exercise', 'target', 'position', 'sides', 'bodyPart', 'duration', 'rest'];
-            const rows = [headers, ...exercises.map(e => headers.map(h => `"${String(e[h] ?? '').replace(/"/g, '""')}"`)  )];
+            const rows = [headers, ...exList.map(e => headers.map(h => '"' + String(e[h] ?? '').replace(/"/g, '""') + '"'))];
             const csv = rows.map(r => r.join(',')).join('\n');
             const blob = new Blob([csv], {type: 'text/csv'});
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `exercise-list-${new Date().toISOString().split('T')[0]}.csv`;
+            link.download = 'exercise-list-' + new Date().toISOString().split('T')[0] + '.csv';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
-
-            const showStatus = () => {
-                window.removeEventListener('focus', showStatus);
-                clearTimeout(t);
-                const status = document.getElementById('exerciseExportStatus');
-                if (status) {
-                    status.style.color = '#34c759';
-                    status.textContent = `✅ Exported ${exercises.length} exercises`;
-                    setTimeout(() => { if (status) status.textContent = ''; }, 4000);
-                }
-            };
-            window.addEventListener('focus', showStatus);
-            const t = setTimeout(showStatus, 300);
+            if (status) {
+                status.style.color = '#34c759';
+                status.textContent = '✅ Exported ' + exList.length + ' exercises';
+                setTimeout(() => { if (status) status.textContent = ''; }, 3000);
+            }
         };
 
         window.exportHistoryCSV = function() {
