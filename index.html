@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775407663 -->
+<!-- Version: 1775408708 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1671,30 +1671,6 @@
                 </div>
             </div>
             
-            <!-- Jumi explanation (appears after Jumi generates) -->
-            <div id="jumiExplanation" style="display:none; margin: 10px 0 0; text-align:center;">
-                <span id="jumiInfoIcon"
-                    onmouseenter="document.getElementById('jumiTooltip').style.display='block'"
-                    onmouseleave="document.getElementById('jumiTooltip').style.display='none'"
-                    onclick="var t=document.getElementById('jumiTooltip'); t.style.display=t.style.display==='block'?'none':'block';"
-                    style="display:inline-flex; align-items:center; gap:6px; font-size:13px; color:#667eea; cursor:pointer; font-weight:500; position:relative;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#667eea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                    Why did Jumi pick this routine?
-                    <span id="jumiTooltip" style="
-                        display:none; position:absolute; left:0; top:28px;
-                        background:rgba(102,126,234,0.15);
-                        backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
-                        color:#1d1d1f; border-radius:20px;
-                        padding:14px 16px; font-size:12px; line-height:1.7;
-                        width:300px; z-index:200;
-                        box-shadow:0 8px 24px rgba(0,0,0,0.1);
-                        border:1.5px solid rgba(102,126,234,0.25);
-                        font-weight:500; white-space:normal; pointer-events:none;
-                        font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
-                    "></span>
-                </span>
-            </div>
-
             <!-- Separator -->
             <div style="display:flex; align-items:center; gap:10px; margin: 16px 0;">
                 <div style="flex:1; height:1px; background:#e5e5e7;"></div>
@@ -1708,6 +1684,17 @@
             <div id="jumiPanel" style="display:none;">
                 <textarea id="jumiPromptInput" placeholder="Optional — tell Jumi anything: how you're feeling, areas to focus on, exercises you'd like…" style="width:100%; box-sizing:border-box; border:1.5px solid #e0e0e5; border-radius:12px; padding:12px 14px; font-size:14px; font-family:inherit; color:#1d1d1f; background:white; resize:none; height:90px; outline:none; margin-bottom:10px;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();jumiGenerate();}"></textarea>
                 <button onclick="jumiGenerate()" style="width:100%; background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; border-radius:12px; padding:12px; font-size:15px; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(102,126,234,0.35);">✦ Generate with Jumi</button>
+                <div id="jumiExplanation" style="display:none; margin-top:12px;">
+                    <button onclick="toggleJumiExplanation()" id="jumiExplanationToggle" style="width:100%; display:flex; align-items:center; justify-content:space-between; background:none; border:none; padding:4px 0; cursor:pointer;">
+                        <div style="display:flex; align-items:center; gap:10px; flex:1;">
+                            <div style="flex:1; height:1px; background:#e5e5e7;"></div>
+                            <span style="font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.8px; color:#aaa;">Why did Jumi pick this?</span>
+                            <div style="flex:1; height:1px; background:#e5e5e7;"></div>
+                        </div>
+                        <svg id="jumiExplanationChevron" width="10" height="10" viewBox="0 0 10 6" fill="#aaa" style="margin-left:8px; flex-shrink:0; transition:transform 0.2s;"><path d="M0 0 L10 0 L5 6 Z"/></svg>
+                    </button>
+                    <div id="jumiExplanationText" style="display:none; margin-top:10px; font-size:13px; color:#3a3a3c; line-height:1.7; padding:0 2px;"></div>
+                </div>
             </div>
 
             <!-- SIMPLE MODE CONTROLS -->
@@ -7273,7 +7260,7 @@
             const systemPrompt = `You are Jumi, a flexibility coach. Build personalised routines based on user history and goals. Use anatomical knowledge of secondary muscles when setting durations.
 
 Respond with ONLY valid JSON:
-{"routine":[{"exercise":"exact library name","phase":"exact library phase","target":"muscle","position":"position","sides":1,"bodyPart":"upper/lower/full","duration":45,"rest":15}],"explanation":"2-3 sentences, each on a new line. No markdown."}
+{"routine":[{"exercise":"exact library name","phase":"exact library phase","target":"muscle","position":"position","sides":1,"bodyPart":"upper/lower/full","duration":45,"rest":15}],"explanation":"2-3 sentences. Separate each sentence with a blank line. No markdown."}
 
 DURATION RULES:
 - Warm-Up: 20-40s. Foam Roller: 25-60s. Mobility: 25-45s. Cool Down: 45-60s.
@@ -7452,11 +7439,16 @@ Return only the JSON.`;
 
                 // Show explanation
                 if (parsed.explanation && !isAllMode) {
-                    const jumiTip = document.getElementById('jumiTooltip');
-                    jumiTip.innerHTML = parsed.explanation
-                        .replace(/\n\n/g, '<br><br>')
+                    const jumiTip = document.getElementById('jumiExplanationText');
+                    if (jumiTip) jumiTip.innerHTML = parsed.explanation
+                        .replace(/\n\n/g, '</p><p style="margin:0 0 8px;">')
                         .replace(/\n/g, '<br>');
                     document.getElementById('jumiExplanation').style.display = 'block';
+                    // Reset chevron to closed state
+                    const chev = document.getElementById('jumiExplanationChevron');
+                    if (chev) chev.style.transform = '';
+                    const txt = document.getElementById('jumiExplanationText');
+                    if (txt) txt.style.display = 'none';
                 }
 
             } catch(err) {
@@ -8527,6 +8519,15 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
         }
 
         window.splitsForced = false;
+
+        window.toggleJumiExplanation = function() {
+            const txt = document.getElementById('jumiExplanationText');
+            const chev = document.getElementById('jumiExplanationChevron');
+            if (!txt) return;
+            const open = txt.style.display !== 'none';
+            txt.style.display = open ? 'none' : 'block';
+            if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
+        };
 
         window.toggleOptional = function() {
             const section = document.getElementById('optionalSection');
