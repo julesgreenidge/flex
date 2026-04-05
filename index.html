@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775410521 -->
+<!-- Version: 1775419393 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -328,14 +328,19 @@
         .card-active .card-expand-chevron { display: block !important; }
 
         @keyframes spin { to { transform: rotate(360deg); } }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        #durPickerCustomInput::placeholder { color: rgba(255,255,255,0.6); }
         .dur-pick-btn {
-            display: flex; align-items: center; justify-content: space-between;
-            background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.25); border-radius: 12px;
-            padding: 12px 16px; cursor: pointer; width: 100%; text-align: left;
-            transition: all 0.15s; color: white;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.25); border-radius: 14px;
+            padding: 15px 16px; cursor: pointer; width: 100%; text-align: center;
+            transition: all 0.15s; color: white; box-sizing: border-box;
+            font-size: 18px; font-weight: 700;
         }
-        .dur-pick-btn:hover { background: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.5); }
-        .dur-pick-btn.selected { background: rgba(255,255,255,0.35); border-color: white; }
+        .dur-pick-btn:hover { background: rgba(255,255,255,0.28); border-color: rgba(255,255,255,0.6); }
+        .dur-pick-btn.selected { background: white; color: #667eea; border-color: white; }
 
         .phase-section {
             margin-bottom: 32px;
@@ -1590,47 +1595,34 @@
         <!-- Left Column: Exercise Selection -->
         <div class="selection-column">
             <!-- DURATION PICKER SCREEN — shown on every session load -->
-            <div id="durationPickerScreen" style="position:absolute; top:0; left:0; width:100%; height:100%; background:linear-gradient(160deg,#667eea 0%,#764ba2 100%); z-index:500; display:flex; flex-direction:column; justify-content:center; padding:28px; box-sizing:border-box; transition:opacity 0.4s ease, transform 0.4s ease;">
-                <h1 style="margin:0 0 4px; color:white; font-size:26px; font-weight:700;">flex.</h1>
-                <div style="font-size:18px; font-weight:600; color:rgba(255,255,255,0.85); margin-bottom:22px;">How much time do you have?</div>
-                <div style="display:flex; flex-direction:column; gap:8px;" id="durationPickerOptions">
-                    <button onclick="selectDuration('25')" class="dur-pick-btn">
-                        <span style="font-size:18px; font-weight:700;">25m</span>
-                        <span style="font-size:12px; opacity:0.7;">short session</span>
-                    </button>
-                    <button onclick="selectDuration('35')" class="dur-pick-btn">
-                        <span style="font-size:18px; font-weight:700;">35m</span>
-                        <span style="font-size:12px; opacity:0.7;">recommended</span>
-                    </button>
-                    <button onclick="selectDuration('45')" class="dur-pick-btn">
-                        <span style="font-size:18px; font-weight:700;">45m</span>
-                        <span style="font-size:12px; opacity:0.7;">full session</span>
-                    </button>
-                    <button onclick="selectDuration('60')" class="dur-pick-btn">
-                        <span style="font-size:18px; font-weight:700;">60m</span>
-                        <span style="font-size:12px; opacity:0.7;">extended</span>
-                    </button>
-                    <button onclick="selectDuration('999')" class="dur-pick-btn">
-                        <span style="font-size:18px; font-weight:700;">All</span>
-                        <span style="font-size:12px; opacity:0.7;">no time limit</span>
-                    </button>
-                    <button onclick="selectDuration('custom')" class="dur-pick-btn">
-                        <span style="font-size:18px; font-weight:700;">Custom</span>
-                        <span style="font-size:12px; opacity:0.7;">enter minutes</span>
-                    </button>
-                    <input type="number" id="durPickerCustomInput" placeholder="Enter minutes (min 20)" min="20" max="180" style="display:none; margin-top:2px; padding:12px 16px; border:none; border-radius:12px; font-size:16px; font-family:inherit; outline:none; background:rgba(255,255,255,0.2); color:white;" oninput="if(parseInt(this.value)>=20){selectDuration('custom',parseInt(this.value));}">
+            <div id="durationPickerScreen" style="position:absolute; top:0; left:0; width:100%; height:100%; background:linear-gradient(160deg,#667eea 0%,#764ba2 100%); z-index:500; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; transition:opacity 0.4s ease, transform 0.4s ease;">
+                <div style="width:100%; max-width:320px; padding:0 24px; box-sizing:border-box; text-align:center;">
+                    <div style="font-size:42px; font-weight:800; color:white; letter-spacing:-1px; margin-bottom:8px;">flex.</div>
+                    <div style="font-size:15px; font-weight:400; color:rgba(255,255,255,0.75); margin-bottom:32px;">How much time do you have?</div>
+                    <div style="display:flex; flex-direction:column; gap:10px;" id="durationPickerOptions">
+                        <button onclick="selectDuration('25')" class="dur-pick-btn">25m</button>
+                        <button onclick="selectDuration('35')" class="dur-pick-btn">35m</button>
+                        <button onclick="selectDuration('45')" class="dur-pick-btn">45m</button>
+                        <button onclick="selectDuration('999')" class="dur-pick-btn">All</button>
+                        <div class="dur-pick-btn" style="cursor:default; gap:12px;">
+                            <span>Custom</span>
+                            <input type="number" id="durPickerCustomInput" placeholder="mins" min="20" max="180"
+                                style="width:60px; padding:4px 8px; border:none; border-radius:8px; font-size:16px; font-weight:600; font-family:inherit; outline:none; background:rgba(255,255,255,0.2); color:white; text-align:center; -webkit-appearance:none; -moz-appearance:textfield;"
+                                onkeydown="if(event.key==='Enter'&&parseInt(this.value)>=20){selectDuration('custom',parseInt(this.value));}"
+                                onclick="event.stopPropagation();">
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- MAIN UI — hidden until duration selected -->
             <div id="mainUI" style="opacity:0; pointer-events:none; transition:opacity 0.4s ease;">
-                <!-- Logo small -->
-                <div style="margin-bottom:20px; display:flex; align-items:center; justify-content:space-between;">
+                <div style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between;">
                     <h1 style="margin:0; font-size:20px; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">flex.</h1>
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span id="selectedDurationDisplay" style="font-size:15px; font-weight:600; color:#1d1d1f;"></span>
-                        <button onclick="showDurationPicker()" style="font-size:12px; color:#667eea; background:none; border:none; cursor:pointer; font-weight:500; padding:0;">Edit</button>
-                    </div>
+                    <button onclick="showDurationPicker()" style="display:flex; align-items:center; gap:6px; background:linear-gradient(135deg,#667eea,#764ba2); border:none; border-radius:20px; padding:6px 14px; cursor:pointer; transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                        <span id="selectedDurationDisplay" style="font-size:15px; font-weight:700; color:white; letter-spacing:-0.3px;"></span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
                 </div>
             </div>
 
@@ -1652,7 +1644,7 @@
                     <!-- Quick card -->
                     <button id="trueQuickStartBtn" onclick="if(this.classList.contains('card-active')){expandCards();this.classList.remove('card-active');}else{trueQuickStart();this.classList.add('card-active');}" style="
                         display:flex; align-items:center; justify-content:space-between;
-                        background:#3478f6; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:all 0.15s; box-shadow:0 4px 12px rgba(0,0,0,0.18);"
+                        background:#f97316; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:all 0.15s; box-shadow:0 4px 12px rgba(249,115,22,0.35);"
                         onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,0.26)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.18)'">
                         <div style="display:flex; align-items:center; gap:10px;">
                             <span id="qsIcon" style="font-size:14px; color:white;">▶</span>
@@ -3651,12 +3643,13 @@
                 jumiWrapper.style.display = activeId === 'jumiQuickBtn' ? 'flex' : 'none';
             }
 
-            // Show expand chevron on active card only
-            const activeEl = document.getElementById(activeId) || (activeId === 'jumiQuickBtn' ? document.getElementById('jumiQuickBtn') : null);
+            // On active card: show expand chevron, hide nav chevron
             document.querySelectorAll('.card-expand-chevron').forEach(c => c.style.display = 'none');
+            document.querySelectorAll('.card-nav-chevron').forEach(c => c.style.display = 'none');
+            const activeEl = document.getElementById(activeId);
             if (activeEl) {
-                const chev = activeEl.querySelector('.card-expand-chevron');
-                if (chev) chev.style.display = 'block';
+                const exp = activeEl.querySelector('.card-expand-chevron');
+                if (exp) exp.style.display = 'block';
             }
         }
 
@@ -3670,8 +3663,9 @@
             });
             if (jumiWrapper) jumiWrapper.style.display = 'flex';
 
+            // Restore: hide expand chevrons, show nav chevrons
             document.querySelectorAll('.card-expand-chevron').forEach(c => c.style.display = 'none');
-            document.querySelectorAll('.card-nav-chevron').forEach(c => c.style.display = 'block');
+            document.querySelectorAll('.card-nav-chevron').forEach(c => c.style.display = 'inline');
         }
 
         function setActiveCard(activeId) {
@@ -3785,9 +3779,15 @@
                 const durLabels = { '25':'25m', '35':'35m', '45':'45m', '60':'60m', '999':'All' };
 
                 window.selectDuration = function(val, customVal) {
+                    // Highlight selected button
+                    document.querySelectorAll('.dur-pick-btn').forEach(b => b.classList.remove('selected'));
+                    if (val !== 'custom') {
+                        const btns = document.querySelectorAll('.dur-pick-btn');
+                        const map = {'25':0,'35':1,'45':2,'999':3};
+                        if (map[val] !== undefined) btns[map[val]].classList.add('selected');
+                    }
                     if (val === 'custom') {
                         const inp = document.getElementById('durPickerCustomInput');
-                        inp.style.display = 'block';
                         inp.focus();
                         if (!customVal) {
                             return;
@@ -3959,12 +3959,19 @@
                 const isCustomOpen = customControls.style.display === 'flex';
                 if (isCustomOpen) {
                     customControls.style.display = 'none';
+                    customControls.style.flexDirection = '';
                     document.querySelector('.selection-column').style.overflow = 'auto';
+                    document.getElementById('routineDisplayWrapper').style.display = 'block';
+                    document.getElementById('customDisplay').style.display = 'none';
+                    document.getElementById('customNavActions').style.display = 'none';
+                    expandCards();
+                    document.querySelectorAll('.card-active').forEach(el => el.classList.remove('card-active'));
                     this.classList.remove('selected');
                     return;
                 }
                 document.getElementById('simpleControls').style.display = 'none';
                 const _jc = document.getElementById('jumiControls'); if(_jc) _jc.style.display = 'none';
+                document.getElementById('floatingRegenBtn').style.display = 'none';
                 customControls.style.display = 'flex';
                 customControls.style.flexDirection = 'column';
                 customControls.style.height = '100%';
@@ -6276,9 +6283,14 @@
         function jumiQuickStart() {
             setActiveCard('jumiQuickBtn');
             if (!selectedTime) selectedTime = 35;
-            // Hide Simple controls, show Jumi panel
+            // Hide all LHS controls, show Jumi panel
             const sc = document.getElementById('simpleControls');
             if (sc) sc.style.display = 'none';
+            const cc = document.getElementById('customControls');
+            if (cc) { cc.style.display = 'none'; cc.style.flexDirection = ''; }
+            document.getElementById('customNavActions').style.display = 'none';
+            document.getElementById('routineDisplayWrapper').style.display = 'block';
+            document.getElementById('customDisplay').style.display = 'none';
             const jp = document.getElementById('jumiPanel');
             if (jp) jp.style.display = 'block';
             // Restore prompt from session if exists
@@ -6526,7 +6538,7 @@
 
             display.innerHTML = html;
             document.getElementById('floatingStartSimple').style.display = 'block';
-            document.getElementById('floatingRegenBtn').style.display = 'flex';
+            if (selectedType !== 'custom') document.getElementById('floatingRegenBtn').style.display = 'flex';
             
             // Show floating star button only if routine has exercises
             if (currentRoutine && currentRoutine.length > 0) {
