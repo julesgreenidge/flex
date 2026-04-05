@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775406193 -->
+<!-- Version: 1775407663 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -326,6 +326,8 @@
 
         .card-active .card-nav-chevron { display: none !important; }
         .card-active .card-expand-chevron { display: block !important; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         .phase-section {
             margin-bottom: 32px;
@@ -1701,7 +1703,13 @@
             <!-- Hidden tab triggers — kept for JS compatibility -->
             <button id="simpleTab" style="display:none;"></button>
             <button id="customTab" style="display:none;"></button>
-            
+
+            <!-- JUMI PANEL -->
+            <div id="jumiPanel" style="display:none;">
+                <textarea id="jumiPromptInput" placeholder="Optional — tell Jumi anything: how you're feeling, areas to focus on, exercises you'd like…" style="width:100%; box-sizing:border-box; border:1.5px solid #e0e0e5; border-radius:12px; padding:12px 14px; font-size:14px; font-family:inherit; color:#1d1d1f; background:white; resize:none; height:90px; outline:none; margin-bottom:10px;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();jumiGenerate();}"></textarea>
+                <button onclick="jumiGenerate()" style="width:100%; background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; border-radius:12px; padding:12px; font-size:15px; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(102,126,234,0.35);">✦ Generate with Jumi</button>
+            </div>
+
             <!-- SIMPLE MODE CONTROLS -->
             <div id="simpleControls" style="display: none;">
 
@@ -6109,6 +6117,11 @@
             document.getElementById('trueQuickStartBtn').classList.add('card-active');
             setActiveCard('trueQuickStartBtn');
             currentJumiRoutine = null;
+            sessionStorage.removeItem('jumiPrompt');
+            const _jp = document.getElementById('jumiPanel');
+            if (_jp) _jp.style.display = 'none';
+            const _ji2b = document.getElementById('jumiPromptInput');
+            if (_ji2b) _ji2b.value = '';
             const _ji2 = document.getElementById('jumiQuickIcon');
             if (_ji2) _ji2.textContent = '✦';
 
@@ -6135,52 +6148,51 @@
             if (je) je.style.display = 'none';
         }
 
+        function showToast(msg) {
+            const existing = document.getElementById('jumiToastMsg');
+            if (existing) existing.remove();
+            const t = document.createElement('div');
+            t.id = 'jumiToastMsg';
+            t.textContent = msg;
+            t.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#667eea;color:white;padding:10px 20px;border-radius:20px;font-size:14px;font-weight:600;z-index:99999;opacity:0;transition:opacity 0.3s;pointer-events:none;';
+            document.body.appendChild(t);
+            requestAnimationFrame(() => { t.style.opacity = '1'; });
+            setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2000);
+        }
+
         function regenerateRoutine() {
-            // Determine what to regenerate based on last active mode
             if (currentJumiRoutine !== null) {
-                // Was a Jumi routine — regenerate via Jumi
-                currentJumiRoutine = null;
-                const icon = document.getElementById('jumiQuickIcon');
-                if (icon) icon.textContent = '✦';
-                generateJumiRoutine();
+                jumiRegenerate();
             } else {
-                // Was a Simple routine — regenerate with same settings
                 generateRoutine();
             }
         }
 
-        async function jumiQuickStart() {
+        function jumiQuickStart() {
             setActiveCard('jumiQuickBtn');
             if (!selectedTime) selectedTime = 35;
-            // Hide Simple controls
+            // Hide Simple controls, show Jumi panel
             const sc = document.getElementById('simpleControls');
             if (sc) sc.style.display = 'none';
+            const jp = document.getElementById('jumiPanel');
+            if (jp) jp.style.display = 'block';
+            // Restore prompt from session if exists
+            const savedPrompt = sessionStorage.getItem('jumiPrompt') || '';
+            const input = document.getElementById('jumiPromptInput');
+            if (input && savedPrompt) input.value = savedPrompt;
+        }
 
-            // If a Jumi routine already exists, restore it without regenerating
-            if (currentJumiRoutine) {
-                currentRoutine = currentJumiRoutine.map(e => ({...e}));
-                document.getElementById('routineDisplayWrapper').style.display = 'block';
-                document.getElementById('customDisplay').style.display = 'none';
-                const _jcn = document.getElementById('customNavActions');
-                if (_jcn) _jcn.style.display = 'none';
-                document.getElementById('floatingStartSimple').style.display = 'none';
-                document.getElementById('floatingStartJumi').style.display = 'block';
-                document.getElementById('floatingEditBtn').style.display = 'flex';
-                const _je = document.getElementById('jumiExplanation');
-                if (_je) _je.style.display = 'block';
-                initAudio();
-                displayRoutine();
-                setStarVisible(true);
-                return;
-            }
-
-            // No existing routine — generate one
-            await generateJumiRoutine();
+        async function jumiGenerate() {
+            const input = document.getElementById('jumiPromptInput');
+            const prompt = input ? input.value.trim() : '';
+            // Save prompt for session persistence
+            sessionStorage.setItem('jumiPrompt', prompt);
+            await generateJumiRoutine(prompt);
         }
 
         async function jumiRegenerate() {
             currentJumiRoutine = null;
-            await generateJumiRoutine();
+            await jumiGenerate();
         }
 
 
@@ -7095,6 +7107,8 @@
             document.querySelectorAll('.card-active').forEach(el => el.classList.remove('card-active'));
             setActiveCard(null);
             document.getElementById('floatingRegenBtn').style.display = 'none';
+            const _jph = document.getElementById('jumiPanel');
+            if (_jph) _jph.style.display = 'none';
             const _durBar3 = document.querySelector('#quickStartSection') && document.querySelector('#quickStartSection').previousElementSibling;
             if (_durBar3) _durBar3.style.display = 'block';
             if (timerInterval) clearInterval(timerInterval);
@@ -7215,7 +7229,7 @@
         }
 
         // ── JUMI: AI-driven routine generation ──
-        async function generateJumiRoutine() {
+        async function generateJumiRoutine(userPrompt) {
             const btn = document.getElementById('jumiQuickBtn');
             if (btn) { btn.disabled = true; }
             const _jqs = document.getElementById('jumiQuickSubtitle');
@@ -7234,6 +7248,17 @@
             document.getElementById('jumiExplanation').style.display = 'none';
             document.getElementById('floatingStartSimple').style.display = 'none';
             document.getElementById('floatingStartJumi').style.display = 'none';
+            document.getElementById('floatingRegenBtn').style.display = 'none';
+
+            // Clear RHS and show thinking placeholder
+            document.getElementById('routineDisplayWrapper').style.display = 'block';
+            document.getElementById('customDisplay').style.display = 'none';
+            if (domCache.routineDisplay) {
+                domCache.routineDisplay.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:16px;">
+                    <div style="width:36px;height:36px;border:3px solid #e8e8ed;border-top-color:#667eea;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+                    <div style="font-size:15px;color:#86868b;">Jumi is thinking…</div>
+                </div>`;
+            }
 
             const isAllMode = selectedTime === 999;
             const ctx = buildJumiContext();
@@ -7242,47 +7267,27 @@
 
             // Build the exercise library summary for Jumi
             const exerciseLibrary = exercises.map(e =>
-                `${e.exercise} | phase:${e.phase} | target:${e.target} | position:${e.position} | sides:${e.sides} | bodyPart:${e.bodyPart} | duration:${e.duration}s | rest:${e.rest}s`
+                `${e.exercise} | phase:${e.phase} | target:${e.target} | position:${e.position} | sides:${e.sides} | bodyPart:${e.bodyPart}`
             ).join('\n');
 
-            const systemPrompt = `You are Jumi, an expert flexibility and mobility coach. You build personalised flexibility routines based on user history and goals.
+            const systemPrompt = `You are Jumi, a flexibility coach. Build personalised routines based on user history and goals. Use anatomical knowledge of secondary muscles when setting durations.
 
-The exercise library lists only the primary target muscle, but use your anatomical knowledge of secondary muscles to inform duration decisions.
+Respond with ONLY valid JSON:
+{"routine":[{"exercise":"exact library name","phase":"exact library phase","target":"muscle","position":"position","sides":1,"bodyPart":"upper/lower/full","duration":45,"rest":15}],"explanation":"2-3 sentences, each on a new line. No markdown."}
 
-CRITICAL: Respond with ONLY valid JSON, no other text:
-{
-  "routine": [
-    {
-      "exercise": "exact name from library",
-      "phase": "exact phase from library",
-      "target": "target muscle",
-      "position": "position",
-      "sides": 1 or 2,
-      "bodyPart": "upper/lower/full",
-      "duration": seconds as integer,
-      "rest": seconds as integer
-    }
-  ],
-  "explanation": "2-3 sentences explaining the routine. Each sentence on a new line."
-}
-
-DURATION RULES — follow these precisely:
-1. Warm-Up: vary between 20-40s per exercise based on goal relevance and recency.
-2. Foam Roller: vary between 25-60s per exercise based on goal relevance and recency.
-3. Mobility: vary between 25-45s per exercise based on goal relevance and recency.
-4. Static Stretching: choose a duration per exercise based on goal relevance and recency. Goal-relevant or long-gap exercises get longer holds than others.
-5. Active Stretch: use the SAME duration logic as Static Stretching — these are static stretches performed more intensely, not longer.
-6. Deep Stretch: each Deep Stretch exercise should be 1.5x to 2x the duration of a comparable Static Stretch. For example if a Static Stretch is 60s, the equivalent Deep Stretch should be 90-120s. This large difference is the defining characteristic of the Deep Stretch phase.
-7. Cool Down: 45-60s per exercise.
-8. Final Rest (Savasana): exactly 120s. MANDATORY as last exercise.
+DURATION RULES:
+- Warm-Up: 20-40s. Foam Roller: 25-60s. Mobility: 25-45s. Cool Down: 45-60s.
+- Static Stretching: vary by goal relevance and recency — goal-relevant exercises get longer holds.
+- Active Stretch: same duration logic as Static Stretching (more intensity, not longer).
+- Deep Stretch: 1.5-2x a comparable Static Stretch duration.
+- Final Rest (Savasana): exactly 120s. MANDATORY last exercise.
 
 SELECTION RULES:
-- Only use exercises from the provided library (exact names)
-- Group by phase in this order: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits (optional), Cool Down, Final Rest
-- Target duration: ${durationTarget}. The app will scale durations proportionally to hit this — so focus on getting the RATIOS right between exercises, not the exact total
-- No markdown in the explanation`;
+- Only use exercises from the library (exact names). Phase order: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits (optional), Cool Down, Final Rest.
+- Target: ${durationTarget}. Focus on getting RATIOS right — the app scales to fit.`;
 
-            const userMessage = `Goals: ${goals.length > 0 ? goals.join(', ') : 'General flexibility maintenance'}
+            const promptSection = userPrompt ? `\n\nUser note: ${userPrompt}` : '';
+            const userMessage = `Goals: ${goals.length > 0 ? goals.join(', ') : 'General flexibility maintenance'}${promptSection}
 
 History (last 728 days):
 ${JSON.stringify(ctx, null, 2)}
@@ -7423,6 +7428,7 @@ Return only the JSON.`;
 
                 // Save Jumi routine for restore
                 currentJumiRoutine = currentRoutine.map(e => ({...e}));
+                showToast('Routine ready');
 
                 // Switch RHS to routine display (away from custom builder)
                 document.getElementById('routineDisplayWrapper').style.display = 'block';
