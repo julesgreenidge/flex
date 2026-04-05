@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775328908 -->
+<!-- Version: 1775330436 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1596,12 +1596,12 @@
             <!-- QUICK START -->
             <div id="quickStartSection" style="margin-bottom: 14px;">
                 <div style="display: flex; gap: 8px; align-items: stretch;">
-                    <button id="trueQuickStartBtn" onclick="trueQuickStart()" class="generate-btn" style="flex:1; margin-top:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:12px 8px; background:linear-gradient(135deg,#34c759,#2da44e); box-shadow:0 4px 16px rgba(52,199,89,0.4);">
-                        <span style="font-size:14px; font-weight:600; display:flex; align-items:center; gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Quick Build</span>
+                    <button id="trueQuickStartBtn" onclick="trueQuickStart()" class="generate-btn" style="flex:1; margin-top:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:12px 8px; background:#3a3a3c; box-shadow:none;">
+                        <span style="font-size:14px; font-weight:600; display:flex; align-items:center; gap:6px;"><span id="qsIcon">▶</span> Quick Build</span>
                         <span id="qsSubtitle" style="font-size:10px; opacity:0.75; font-weight:400; white-space:nowrap;">Full Body · Short Hold</span>
                     </button>
                     <button id="jumiQuickBtn" onclick="jumiQuickStart()" class="generate-btn" style="flex:1; margin-top:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:12px 8px; background:linear-gradient(135deg,#667eea,#764ba2); box-shadow:0 4px 16px rgba(102,126,234,0.4);">
-                        <span style="font-size:14px; font-weight:600;">✦ Jumi</span>
+                        <span style="font-size:14px; font-weight:600;"><span id="jumiQuickIcon">✦</span> Jumi</span>
                         <span id="jumiQuickSubtitle" style="font-size:10px; opacity:0.75; font-weight:400;">AI routine</span>
                     </button>
                     <button class="btn type-btn" data-type="starred" id="starredBtn" style="
@@ -1618,6 +1618,30 @@
                 </div>
             </div>
             
+            <!-- Jumi explanation (appears after Jumi generates) -->
+            <div id="jumiExplanation" style="display:none; margin: 10px 0 0; text-align:center;">
+                <span id="jumiInfoIcon"
+                    onmouseenter="document.getElementById('jumiTooltip').style.display='block'"
+                    onmouseleave="document.getElementById('jumiTooltip').style.display='none'"
+                    onclick="var t=document.getElementById('jumiTooltip'); t.style.display=t.style.display==='block'?'none':'block';"
+                    style="display:inline-flex; align-items:center; gap:6px; font-size:13px; color:#667eea; cursor:pointer; font-weight:500; position:relative;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#667eea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    Why did Jumi pick this routine?
+                    <span id="jumiTooltip" style="
+                        display:none; position:absolute; left:0; top:28px;
+                        background:rgba(102,126,234,0.15);
+                        backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+                        color:#1d1d1f; border-radius:20px;
+                        padding:14px 16px; font-size:12px; line-height:1.7;
+                        width:300px; z-index:200;
+                        box-shadow:0 8px 24px rgba(0,0,0,0.1);
+                        border:1.5px solid rgba(102,126,234,0.25);
+                        font-weight:500; white-space:normal; pointer-events:none;
+                        font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+                    "></span>
+                </span>
+            </div>
+
             <!-- Separator -->
             <div style="display:flex; align-items:center; gap:10px; margin: 16px 0;">
                 <div style="flex:1; height:1px; background:#e5e5e7;"></div>
@@ -1629,7 +1653,6 @@
                 <div class="segmented">
                     <button id="simpleTab" style="display:flex;align-items:center;justify-content:center;gap:2px;">Simple <svg style="width:10px;height:10px;margin-left:4px;" viewBox="0 0 10 6" fill="currentColor"><path d="M0 0 L10 0 L5 6 Z"/></svg></button>
                     <button id="customTab" style="display:flex;align-items:center;justify-content:center;gap:2px;">Custom <svg style="width:10px;height:10px;margin-left:4px;" viewBox="0 0 10 6" fill="currentColor"><path d="M0 0 L10 0 L5 6 Z"/></svg></button>
-                    <button id="jumiTab" style="display:flex;align-items:center;justify-content:center;gap:2px;">Jumi <svg style="width:10px;height:10px;margin-left:4px;" viewBox="0 0 10 6" fill="currentColor"><path d="M0 0 L10 0 L5 6 Z"/></svg></button>
                 </div>
             </div>
             
@@ -1708,7 +1731,7 @@
                 </div>
             </div>
 
-            <button class="generate-btn" id="generateBtn" style="font-size:14px; background:#3a3a3c; color:white; border:none; box-shadow:none; display:flex; align-items:center; justify-content:center; gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M12 2 L13.5 9 L20 10.5 L13.5 12 L12 19 L10.5 12 L4 10.5 L10.5 9 Z"/><path d="M19 2 L19.75 5.25 L23 6 L19.75 6.75 L19 10 L18.25 6.75 L15 6 L18.25 5.25 Z" opacity="0.7"/><path d="M5 16 L5.5 18 L7.5 18.5 L5.5 19 L5 21 L4.5 19 L2.5 18.5 L4.5 18 Z" opacity="0.7"/></svg>Generate Routine</button>
+
 
             </div>
             <!-- END SIMPLE MODE CONTROLS -->
@@ -1750,34 +1773,7 @@
             </div>
             <!-- END CUSTOM MODE CONTROLS -->
 
-            <!-- JUMI MODE CONTROLS -->
-            <div id="jumiControls" style="display: none;">
 
-            <button class="generate-btn" id="jumiGenerateBtn"" onclick="generateJumiRoutine()" style="font-size:14px; background:#3a3a3c; color:white; border:none; box-shadow:none; display:flex; align-items:center; justify-content:center; gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M12 2 L13.5 9 L20 10.5 L13.5 12 L12 19 L10.5 12 L4 10.5 L10.5 9 Z"/><path d="M19 2 L19.75 5.25 L23 6 L19.75 6.75 L19 10 L18.25 6.75 L15 6 L18.25 5.25 Z" opacity="0.7"/><path d="M5 16 L5.5 18 L7.5 18.5 L5.5 19 L5 21 L4.5 19 L2.5 18.5 L4.5 18 Z" opacity="0.7"/></svg>Generate with Jumi</button>
-            <!-- Jumi explanation tooltip area -->
-            <div id="jumiExplanation" style="display:none; margin: 24px 0 16px; text-align:center;">
-                <span id="jumiInfoIcon"
-                    onmouseenter="document.getElementById('jumiTooltip').style.display='block'"
-                    onmouseleave="document.getElementById('jumiTooltip').style.display='none'"
-                    onclick="var t=document.getElementById('jumiTooltip'); t.style.display=t.style.display==='block'?'none':'block';"
-                    style="display:inline-flex; align-items:center; gap:6px; font-size:13px; color:#667eea; cursor:pointer; font-weight:500; position:relative;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#667eea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                    Why did Jumi pick this routine?
-                    <span id="jumiTooltip" style="
-                        display:none; position:absolute; left:0; top:28px;
-                        background:rgba(102,126,234,0.15);
-                        backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
-                        color:#1d1d1f; border-radius:20px;
-                        padding:14px 16px; font-size:12px; line-height:1.7;
-                        width:300px; z-index:200;
-                        box-shadow:0 8px 24px rgba(0,0,0,0.1);
-                        border:1.5px solid rgba(102,126,234,0.25);
-                        font-weight:500; white-space:normal; pointer-events:none;
-                        font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
-                    "></span>
-                </span>
-            </div>
-            </div>
         </div>
 
         <!-- Right Column: Routine Display -->
@@ -1860,13 +1856,11 @@
                     <div class="routine-empty-text">Generate a routine to get started</div>
                 </div>
             </div>
-            <!-- Floating Start button for Simple mode -->
+            <!-- Floating Start button -->
             <div id="floatingStartSimple" style="display:none; position:sticky; bottom:20px; left:0; right:0; text-align:center; pointer-events:none;">
                 <button onclick="startRoutine()" style="pointer-events:all; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:16px 48px; border-radius:60px; font-size:17px; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(52,199,89,0.4); transition:all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">▶ Start Routine</button>
             </div>
-            <div id="floatingStartJumi" style="display:none; position:sticky; bottom:20px; left:0; right:0; text-align:center; pointer-events:none;">
-                <button onclick="startRoutine()" style="pointer-events:all; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:16px 48px; border-radius:60px; font-size:17px; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(52,199,89,0.4); transition:all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">▶ Start Routine</button>
-            </div>
+            <div id="floatingStartJumi" style="display:none;"></div>
             </div><!-- end padding wrapper -->
 
 
@@ -3701,7 +3695,7 @@
                 const fromCustom = selectedType === 'custom';
                 simpleControls.style.display = 'block';
                 document.getElementById('customControls').style.display = 'none';
-                document.getElementById('jumiControls').style.display = 'none';
+                const _jc = document.getElementById('jumiControls'); if(_jc) _jc.style.display = 'none';
                 document.getElementById('routineDisplayWrapper').style.display = 'block';
                 document.getElementById('customDisplay').style.display = 'none';
                 document.getElementById('customNavActions').style.display = 'none';
@@ -3739,7 +3733,6 @@
                 
                 this.classList.add('selected');
                 document.getElementById('customTab').classList.remove('selected');
-                document.getElementById('jumiTab').classList.remove('selected');
             });
             
             document.getElementById('customTab').addEventListener('click', function() {
@@ -3752,7 +3745,7 @@
                     return;
                 }
                 document.getElementById('simpleControls').style.display = 'none';
-                document.getElementById('jumiControls').style.display = 'none';
+                const _jc = document.getElementById('jumiControls'); if(_jc) _jc.style.display = 'none';
                 customControls.style.display = 'flex';
                 customControls.style.flexDirection = 'column';
                 customControls.style.height = '100%';
@@ -3777,39 +3770,12 @@
                 
                 this.classList.add('selected');
                 document.getElementById('simpleTab').classList.remove('selected');
-                document.getElementById('jumiTab').classList.remove('selected');
                 
                 initCustomBuilder();
             });
             
             // ── JUMI TAB ──
-            document.getElementById('jumiTab').addEventListener('click', function() {
-                const jumiControls = document.getElementById('jumiControls');
-                const isOpen = jumiControls.style.display !== 'none';
 
-                if (isOpen) {
-                    jumiControls.style.display = 'none';
-                    this.classList.remove('selected');
-                    return;
-                }
-
-                jumiControls.style.display = 'block';
-                document.getElementById('simpleControls').style.display = 'none';
-                document.getElementById('customControls').style.display = 'none';
-                document.getElementById('customControls').style.flexDirection = '';
-                document.getElementById('routineDisplayWrapper').style.display = 'block';
-                document.getElementById('customDisplay').style.display = 'none';
-                document.getElementById('customNavActions').style.display = 'none';
-
-                const selectionCol = document.querySelector('.selection-column');
-                selectionCol.style.overflow = 'auto';
-                document.querySelector('.routine-column').style.background = 'rgba(255, 255, 255, 0.95)';
-                document.querySelectorAll('.routine-info').forEach(el => { el.style.background = '#e8e8ed'; });
-
-                this.classList.add('selected');
-                document.getElementById('simpleTab').classList.remove('selected');
-                document.getElementById('customTab').classList.remove('selected');
-            });
 
             // Jumi duration buttons — removed, duration now global
 
@@ -4718,7 +4684,7 @@
             }
 
             // Generate button
-            document.getElementById('generateBtn').addEventListener('click', generateRoutine);
+// generateBtn removed — Quick Build handles generation
 
             // Quick Start button
 
@@ -6048,16 +6014,22 @@
             document.querySelectorAll('[data-hold]').forEach(b => b.classList.toggle('selected', b.dataset.hold === selectedHold));
 
             await generateRoutine();
+
+            // Switch icon to regenerate arrow
+            const icon = document.getElementById('qsIcon');
+            if (icon) icon.textContent = '↺';
         }
 
         async function jumiQuickStart() {
             if (!selectedTime) selectedTime = 35;
             const btn = document.getElementById('jumiQuickBtn');
             const sub = document.getElementById('jumiQuickSubtitle');
+            const icon = document.getElementById('jumiQuickIcon');
             if (btn) btn.disabled = true;
             if (sub) sub.textContent = 'Thinking…';
             try {
                 await generateJumiRoutine();
+                if (icon) icon.textContent = '↺';
             } finally {
                 if (btn) btn.disabled = false;
                 if (sub) sub.textContent = 'AI routine';
@@ -7090,9 +7062,10 @@
 
         // ── JUMI: AI-driven routine generation ──
         async function generateJumiRoutine() {
-            const btn = document.getElementById('jumiGenerateBtn');
-            btn.disabled = true;
-            btn.textContent = 'Jumi is thinking…';
+            const btn = document.getElementById('jumiQuickBtn');
+            if (btn) { btn.disabled = true; }
+            const _jqs = document.getElementById('jumiQuickSubtitle');
+            if (_jqs) _jqs.textContent = 'Thinking…';
 
             // Default duration if not set
             if (!selectedTime) {
@@ -7316,8 +7289,8 @@ Return only the JSON.`;
                 await customAlert('Could not reach Jumi. Please check your connection and try again.');
             }
 
-            btn.disabled = false;
-            btn.textContent = '✦ Generate with Jumi';
+            if (btn) btn.disabled = false;
+            if (_jqs) _jqs.textContent = 'AI routine';
         }
 
         async function endRoutine() {
@@ -8659,7 +8632,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
             // Update tab button styles
             document.getElementById('customTab').classList.add('selected');
             document.getElementById('simpleTab').classList.remove('selected');
-            document.getElementById('jumiTab').classList.remove('selected');
+            const _jt = document.getElementById('jumiTab'); if(_jt) _jt.classList.remove('selected');
         };
         
         // Helper functions for stats rendering
@@ -10052,7 +10025,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
                 <!-- Version Content -->
                 <div id="settingsVersionContent" class="settings-content-panel" style="display: none;">
                     <h2 style="margin-bottom: 8px;">Version</h2>
-                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">4.5</div>
+                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">4.6</div>
                     <div style="font-size: 14px; color: #86868b; margin-bottom: 4px;">flex.</div>
                     <div id="buildDateDisplay" style="font-size: 12px; color: #aeaeb2;"></div>
                 </div>
