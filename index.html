@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775330436 -->
+<!-- Version: 1775402510 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1594,26 +1594,68 @@
             </div>
 
             <!-- QUICK START -->
-            <div id="quickStartSection" style="margin-bottom: 14px;">
-                <div style="display: flex; gap: 8px; align-items: stretch;">
-                    <button id="trueQuickStartBtn" onclick="trueQuickStart()" class="generate-btn" style="flex:1; margin-top:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:12px 8px; background:#3a3a3c; box-shadow:none;">
-                        <span style="font-size:14px; font-weight:600; display:flex; align-items:center; gap:6px;"><span id="qsIcon">▶</span> Quick Build</span>
-                        <span id="qsSubtitle" style="font-size:10px; opacity:0.75; font-weight:400; white-space:nowrap;">Full Body · Short Hold</span>
+            <div id="quickStartSection" style="margin-bottom: 12px;">
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                    <!-- Quick card -->
+                    <button id="trueQuickStartBtn" onclick="trueQuickStart()" style="
+                        display:flex; align-items:center; justify-content:space-between;
+                        background:#3478f6; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:all 0.15s; box-shadow:0 4px 12px rgba(0,0,0,0.18);"
+                        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,0.26)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.18)'">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span id="qsIcon" style="font-size:14px; color:white;">▶</span>
+                            <div>
+                                <div style="font-size:14px; font-weight:600; color:white; line-height:1.2;">Quick</div>
+                                <div id="qsSubtitle" style="font-size:11px; color:rgba(255,255,255,0.75);">Full body · short hold</div>
+                            </div>
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
-                    <button id="jumiQuickBtn" onclick="jumiQuickStart()" class="generate-btn" style="flex:1; margin-top:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:12px 8px; background:linear-gradient(135deg,#667eea,#764ba2); box-shadow:0 4px 16px rgba(102,126,234,0.4);">
-                        <span style="font-size:14px; font-weight:600;"><span id="jumiQuickIcon">✦</span> Jumi</span>
-                        <span id="jumiQuickSubtitle" style="font-size:10px; opacity:0.75; font-weight:400;">AI routine</span>
+                    <!-- Jumi card -->
+                    <button id="jumiQuickBtn" onclick="jumiQuickStart()" style="
+                        display:flex; align-items:center; justify-content:space-between;
+                        background:linear-gradient(135deg,#667eea,#764ba2); border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:all 0.15s; box-shadow:0 4px 12px rgba(0,0,0,0.18);"
+                        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,0.26)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.18)'">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span id="jumiQuickIcon" style="font-size:14px; color:white;">✦</span>
+                            <div>
+                                <div style="font-size:14px; font-weight:600; color:white; line-height:1.2;">Jumi</div>
+                                <div id="jumiQuickSubtitle" style="font-size:11px; color:rgba(255,255,255,0.75);">AI picks your routine</div>
+                            </div>
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
+                    <!-- Custom card -->
+                    <button id="customCardBtn" onclick="document.getElementById('customTab').click()" style="
+                        display:flex; align-items:center; justify-content:space-between;
+                        background:#3a3a3c; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:all 0.15s; box-shadow:0 4px 12px rgba(0,0,0,0.18);"
+                        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,0.26)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.18)'">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:14px; color:white;">⚙</span>
+                            <div>
+                                <div style="font-size:14px; font-weight:600; color:white; line-height:1.2;">Custom</div>
+                                <div style="font-size:11px; color:rgba(255,255,255,0.6);">I'll choose my exercises</div>
+                            </div>
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                    <!-- Favourites — light grey, same shadow/hover as coloured cards -->
                     <button class="btn type-btn" data-type="starred" id="starredBtn" style="
-                        display: flex; flex-direction: column; align-items: center; justify-content: center;
-                        gap: 4px; background: white; border: 2px solid #d2d2d7; border-radius: 14px;
-                        padding: 10px 14px; flex-shrink: 0; margin-top: 0; cursor: pointer;
-                        min-width: 72px; font-size: var(--button-font-size); font-weight: 600;
-                        color: #1d1d1f; transition: all 0.2s;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                        </svg>
-                        <span style="font-size:11px; font-weight:600; white-space:nowrap;">Favourites</span>
+                        display:flex; align-items:center; justify-content:space-between;
+                        background:#e5e5ea; border:none; border-radius:12px; padding:10px 14px;
+                        cursor:pointer; text-align:left; width:100%; transition:all 0.15s;
+                        box-shadow:0 4px 12px rgba(0,0,0,0.18);"
+                        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,0.26)'" 
+                        onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.18)'">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3a3a3c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                            <div>
+                                <div style="font-size:14px; font-weight:600; color:#1d1d1f; line-height:1.2;">Favourites</div>
+                                <div style="font-size:11px; color:#86868b;">Your saved routines</div>
+                            </div>
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#86868b" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
                 </div>
             </div>
@@ -1647,14 +1689,9 @@
                 <div style="flex:1; height:1px; background:#e5e5e7;"></div>
             </div>
 
-            <!-- CREATE Section -->
-            <div class="section">
-                <div class="section-title">Create <span class="info-icon">i<span class="info-tooltip">Choose how to build your routine.<br><br><b>Simple:</b> set options and generate a complete routine automatically.<br><b>Custom:</b> hand-pick exercises one by one, by muscle, or by starting position.<br><b>Jumi:</b> AI picks the routine based on your history and goals.</span></span></div>
-                <div class="segmented">
-                    <button id="simpleTab" style="display:flex;align-items:center;justify-content:center;gap:2px;">Simple <svg style="width:10px;height:10px;margin-left:4px;" viewBox="0 0 10 6" fill="currentColor"><path d="M0 0 L10 0 L5 6 Z"/></svg></button>
-                    <button id="customTab" style="display:flex;align-items:center;justify-content:center;gap:2px;">Custom <svg style="width:10px;height:10px;margin-left:4px;" viewBox="0 0 10 6" fill="currentColor"><path d="M0 0 L10 0 L5 6 Z"/></svg></button>
-                </div>
-            </div>
+            <!-- Hidden tab triggers — kept for JS compatibility -->
+            <button id="simpleTab" style="display:none;"></button>
+            <button id="customTab" style="display:none;"></button>
             
             <!-- SIMPLE MODE CONTROLS -->
             <div id="simpleControls" style="display: none;">
@@ -2117,13 +2154,12 @@
                     // Update Quick Start button subtitle from settings
                     const qsBtn = document.getElementById('trueQuickStartBtn');
                     if (qsBtn) {
-                        const sub = document.getElementById('qsSubtitle') || qsBtn.querySelector('span:last-child');
+                        const sub = document.getElementById('qsSubtitle');
                         if (sub) {
                             const t = appSettings.quickStartType || 'full';
-                            const d = appSettings.quickStartDuration || 35;
                             const h = appSettings.quickStartHold || 'short';
-                            const tLabel = t === 'full' ? 'Full Body' : t === 'upper' ? 'Upper Body' : 'Lower Body';
-                            sub.textContent = d + 'm · ' + tLabel + ' · ' + (h === 'long' ? 'Long Hold' : 'Short Hold');
+                            const tLabel = t === 'full' ? 'Full body' : t === 'upper' ? 'Upper body' : 'Lower body';
+                            sub.textContent = tLabel + ' · ' + (h === 'long' ? 'long hold' : 'short hold');
                         }
                     }
                 }, 500); // Match CSS transition duration
@@ -3539,6 +3575,15 @@
             }
         }
 
+        function setActiveCard(activeId) {
+            const cards = ['trueQuickStartBtn', 'jumiQuickBtn', 'customCardBtn', 'starredBtn'];
+            cards.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.style.opacity = (id === activeId || activeId === null) ? '1' : '0.45';
+            });
+        }
+
         function setupEventListeners() {
             // Duration buttons (.duration-btn no longer used — global bar handles this)
             document.querySelectorAll('.duration-btn').forEach(btn => {
@@ -3681,6 +3726,7 @@
             })();
 
             document.getElementById('simpleTab').addEventListener('click', function() {
+                setActiveCard('trueQuickStartBtn');
                 const simpleControls = document.getElementById('simpleControls');
                 const isOpen = simpleControls.style.display !== 'none';
 
@@ -3736,6 +3782,7 @@
             });
             
             document.getElementById('customTab').addEventListener('click', function() {
+                setActiveCard('customCardBtn');
                 const customControls = document.getElementById('customControls');
                 const isCustomOpen = customControls.style.display === 'flex';
                 if (isCustomOpen) {
@@ -5997,6 +6044,7 @@
         }
 
         async function trueQuickStart() {
+            setActiveCard('trueQuickStartBtn');
             if (!selectedTime) selectedTime = 35;
             selectedType = appSettings.quickStartType || 'full';
             selectedHold = appSettings.quickStartHold || 'short';
@@ -6021,6 +6069,7 @@
         }
 
         async function jumiQuickStart() {
+            setActiveCard('jumiQuickBtn');
             if (!selectedTime) selectedTime = 35;
             const btn = document.getElementById('jumiQuickBtn');
             const sub = document.getElementById('jumiQuickSubtitle');
@@ -6943,6 +6992,7 @@
         }
 
         async function goHome() {
+            setActiveCard(null);
             if (timerInterval) clearInterval(timerInterval);
             if (timerAnimationFrame) cancelAnimationFrame(timerAnimationFrame);
             if (await customConfirm('End routine and return home?')) {
@@ -10025,7 +10075,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
                 <!-- Version Content -->
                 <div id="settingsVersionContent" class="settings-content-panel" style="display: none;">
                     <h2 style="margin-bottom: 8px;">Version</h2>
-                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">4.6</div>
+                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">4.7</div>
                     <div style="font-size: 14px; color: #86868b; margin-bottom: 4px;">flex.</div>
                     <div id="buildDateDisplay" style="font-size: 12px; color: #aeaeb2;"></div>
                 </div>
