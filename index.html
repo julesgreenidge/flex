@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775423450 -->
+<!-- Version: 1775428075 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -330,6 +330,7 @@
             overflow: hidden;
             transition: height 0.32s cubic-bezier(0.4,0,0.2,1), opacity 0.28s cubic-bezier(0.4,0,0.2,1);
             will-change: height, opacity;
+            min-height: 0;
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -3647,9 +3648,15 @@
         function _measureCards() {
             if (_cardHeights) return;
             _cardHeights = {};
+            let maxH = 0;
             _getCardWrappers().forEach(wrap => {
-                _cardHeights[wrap.id] = wrap.getBoundingClientRect().height;
+                const h = wrap.getBoundingClientRect().height;
+                _cardHeights[wrap.id] = h;
+                if (h > maxH) maxH = h;
             });
+            // All collapsed cards animate to 0 from their own height, not shared height
+            // But store max for reference
+            _cardHeights._max = maxH;
         }
 
         function collapseCards(activeId) {
@@ -3679,6 +3686,8 @@
                     const exp = activeEl.querySelector('.card-expand-chevron');
                     if (exp) exp.style.display = 'block';
                 }
+                const cont = document.getElementById('cardsContainer');
+                if (cont) cont.style.gap = '0';
             }, 320);
         }
 
@@ -3693,6 +3702,8 @@
             setTimeout(() => {
                 document.querySelectorAll('.card-expand-chevron').forEach(c => c.style.display = 'none');
                 document.querySelectorAll('.card-nav-chevron').forEach(c => c.style.display = 'inline');
+                const cont = document.getElementById('cardsContainer');
+                if (cont) cont.style.gap = '10px';
             }, 320);
         }
 
@@ -7467,8 +7478,8 @@ Return only the JSON.`;
                 } catch(e) {
                     console.error('JSON parse error:', e);
                     console.error('Raw reply was:', rawReply);
-                    btn.disabled = false;
-                    btn.textContent = '✦ Generate with Jumi';
+                    if (btn) btn.disabled = false;
+                    if (_jqs) _jqs.textContent = 'AI routine';
                     await customAlert('Jumi returned: ' + rawReply.substring(0, 300));
                     return;
                 }
