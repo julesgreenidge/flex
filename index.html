@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775419393 -->
+<!-- Version: 1775423450 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -326,8 +326,14 @@
 
         .card-active .card-nav-chevron { display: none !important; }
         .card-active .card-expand-chevron { display: block !important; }
+        .qs-card {
+            overflow: hidden;
+            transition: height 0.32s cubic-bezier(0.4,0,0.2,1), opacity 0.28s cubic-bezier(0.4,0,0.2,1);
+            will-change: height, opacity;
+        }
 
         @keyframes spin { to { transform: rotate(360deg); } }
+
         input[type=number]::-webkit-inner-spin-button,
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
@@ -1595,11 +1601,11 @@
         <!-- Left Column: Exercise Selection -->
         <div class="selection-column">
             <!-- DURATION PICKER SCREEN — shown on every session load -->
-            <div id="durationPickerScreen" style="position:absolute; top:0; left:0; width:100%; height:100%; background:linear-gradient(160deg,#667eea 0%,#764ba2 100%); z-index:500; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; transition:opacity 0.4s ease, transform 0.4s ease;">
+            <div id="durationPickerScreen" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:500; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; transition:opacity 0.4s ease, transform 0.4s ease; background:linear-gradient(160deg,#667eea 0%,#764ba2 100%);">
                 <div style="width:100%; max-width:320px; padding:0 24px; box-sizing:border-box; text-align:center;">
-                    <div style="font-size:42px; font-weight:800; color:white; letter-spacing:-1px; margin-bottom:8px;">flex.</div>
-                    <div style="font-size:15px; font-weight:400; color:rgba(255,255,255,0.75); margin-bottom:32px;">How much time do you have?</div>
-                    <div style="display:flex; flex-direction:column; gap:10px;" id="durationPickerOptions">
+                    <div style="font-size:52px; font-weight:800; color:white; letter-spacing:-2px; margin-bottom:32px;">flex.</div>
+                    <div style="font-size:15px; font-weight:400; color:rgba(255,255,255,0.8); margin-bottom:36px;">How much time do you have?</div>
+                    <div style="display:flex; flex-direction:column; gap:14px;" id="durationPickerOptions">
                         <button onclick="selectDuration('25')" class="dur-pick-btn">25m</button>
                         <button onclick="selectDuration('35')" class="dur-pick-btn">35m</button>
                         <button onclick="selectDuration('45')" class="dur-pick-btn">45m</button>
@@ -1617,7 +1623,7 @@
 
             <!-- MAIN UI — hidden until duration selected -->
             <div id="mainUI" style="opacity:0; pointer-events:none; transition:opacity 0.4s ease;">
-                <div style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between;">
+                <div style="margin-bottom:28px; display:flex; align-items:center; justify-content:space-between;">
                     <h1 style="margin:0; font-size:20px; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">flex.</h1>
                     <button onclick="showDurationPicker()" style="display:flex; align-items:center; gap:6px; background:linear-gradient(135deg,#667eea,#764ba2); border:none; border-radius:20px; padding:6px 14px; cursor:pointer; transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
                         <span id="selectedDurationDisplay" style="font-size:15px; font-weight:700; color:white; letter-spacing:-0.3px;"></span>
@@ -1640,11 +1646,12 @@
 
             <!-- QUICK START -->
             <div id="quickStartSection" style="margin-bottom: 12px;">
-                <div style="display:flex; flex-direction:column; gap:6px;">
+                <div id="cardsContainer" style="display:flex; flex-direction:column; gap:10px;">
                     <!-- Quick card -->
+                    <div id="qsCardWrap" class="qs-card">
                     <button id="trueQuickStartBtn" onclick="if(this.classList.contains('card-active')){expandCards();this.classList.remove('card-active');}else{trueQuickStart();this.classList.add('card-active');}" style="
                         display:flex; align-items:center; justify-content:space-between;
-                        background:#f97316; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:all 0.15s; box-shadow:0 4px 12px rgba(249,115,22,0.35);"
+                        background:#f97316; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:box-shadow 0.15s,transform 0.15s; box-shadow:0 4px 12px rgba(249,115,22,0.35);"
                         onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,0.26)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.18)'">
                         <div style="display:flex; align-items:center; gap:10px;">
                             <span id="qsIcon" style="font-size:14px; color:white;">▶</span>
@@ -1656,11 +1663,13 @@
                         <svg class="card-expand-chevron" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
                         <svg class="card-nav-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
+                    </div>
                     <!-- Jumi card -->
+                    <div id="jumiCardWrap" class="qs-card">
                     <div id="jumiCardWrapper" style="display:flex; gap:6px;">
                         <button id="jumiQuickBtn" onclick="if(this.classList.contains('card-active')){expandCards();this.classList.remove('card-active');}else{jumiQuickStart();this.classList.add('card-active');}" style="
                             display:flex; align-items:center; justify-content:space-between;
-                            background:linear-gradient(135deg,#667eea,#764ba2); border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; flex:1; transition:all 0.15s; box-shadow:0 4px 12px rgba(0,0,0,0.18);"
+                            background:linear-gradient(135deg,#667eea,#764ba2); border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; flex:1; transition:box-shadow 0.15s,transform 0.15s; box-shadow:0 4px 12px rgba(0,0,0,0.18);"
                             onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,0.26)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.18)'">
                             <div style="display:flex; align-items:center; gap:10px;">
                                 <span id="jumiQuickIcon" style="font-size:14px; color:white;">✦</span>
@@ -1672,12 +1681,13 @@
                             <svg class="card-expand-chevron" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
                             <svg class="card-nav-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                         </button>
-
+                    </div>
                     </div>
                     <!-- Custom card -->
+                    <div id="customCardWrap" class="qs-card">
                     <button id="customCardBtn" onclick="if(this.classList.contains('card-active')){expandCards();this.classList.remove('card-active');}else{document.getElementById('customTab').click();this.classList.add('card-active');}" style="
                         display:flex; align-items:center; justify-content:space-between;
-                        background:#3a3a3c; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:all 0.15s; box-shadow:0 4px 12px rgba(0,0,0,0.18);"
+                        background:#3a3a3c; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:box-shadow 0.15s,transform 0.15s; box-shadow:0 4px 12px rgba(0,0,0,0.18);"
                         onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,0.26)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.18)'">
                         <div style="display:flex; align-items:center; gap:10px;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -1689,11 +1699,13 @@
                         <svg class="card-expand-chevron" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
                         <svg class="card-nav-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
-                    <!-- Favourites — light grey, same shadow/hover as coloured cards -->
+                    </div>
+                    <!-- Favourites -->
+                    <div id="favsCardWrap" class="qs-card">
                     <button id="starredBtn" onclick="if(this.classList.contains('card-active')){expandCards();this.classList.remove('card-active');}else{openStarredList();this.classList.add('card-active');}" style="
                         display:flex; align-items:center; justify-content:space-between;
                         background:#e5e5ea; border:none; border-radius:12px; padding:10px 14px;
-                        cursor:pointer; text-align:left; width:100%; transition:all 0.15s;
+                        cursor:pointer; text-align:left; width:100%; transition:box-shadow 0.15s,transform 0.15s;
                         box-shadow:0 4px 12px rgba(0,0,0,0.18);"
                         onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,0.26)'" 
                         onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.18)'">
@@ -1709,6 +1721,7 @@
                         <svg class="card-expand-chevron" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3a3a3c" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
                         <svg class="card-nav-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#86868b" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
+                    </div>
                 </div>
             </div>
             
@@ -1724,7 +1737,7 @@
             <!-- JUMI PANEL -->
             <div id="jumiPanel" style="display:none;">
                 <textarea id="jumiPromptInput" placeholder="Optional — tell Jumi anything: how you're feeling, areas to focus on, exercises you'd like…" style="width:100%; box-sizing:border-box; border:1.5px solid #e0e0e5; border-radius:12px; padding:12px 14px; font-size:14px; font-family:inherit; color:#1d1d1f; background:white; resize:none; height:90px; outline:none; margin-bottom:10px;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();jumiGenerate();}"></textarea>
-                <button onclick="jumiGenerate()" style="width:100%; background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; border-radius:12px; padding:12px; font-size:15px; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(102,126,234,0.35);">✦ Generate with Jumi</button>
+                <button id="jumiGeneratePanelBtn" onclick="jumiGenerate()" style="width:100%; background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; border-radius:12px; padding:12px; font-size:15px; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(102,126,234,0.35);">✦ Generate with Jumi</button>
                 <div id="jumiExplanation" style="display:none; margin-top:12px;">
                     <button onclick="toggleJumiExplanation()" id="jumiExplanationToggle" style="width:100%; display:flex; align-items:center; justify-content:space-between; background:none; border:none; padding:4px 0; cursor:pointer;">
                         <div style="display:flex; align-items:center; gap:10px; flex:1;">
@@ -1815,6 +1828,7 @@
 
 
 
+                <button onclick="generateRoutine()" id="simpleRefreshBtn" class="generate-btn" style="width:100%; margin-top:14px; background:#3a3a3c; color:white; border:none; box-shadow:none; display:flex; align-items:center; justify-content:center; gap:8px; font-size:14px;">↺ Refresh</button>
             </div>
             <!-- END SIMPLE MODE CONTROLS -->
             
@@ -1876,13 +1890,7 @@
                         </svg>
                         Favourite
                     </button>
-                    <button id="floatingRegenBtn" class="nav-btn" title="Regenerate" style="display: none;" onclick="regenerateRoutine()">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                        </svg>
-                        Regenerate
-                    </button>
+
                     <!-- Custom mode action buttons (shown only in custom display mode) -->
                     <div id="customNavActions" style="display: none; align-items: center; gap: 4px;">
                         <button id="customUndo" class="nav-btn" title="Undo">
@@ -3628,44 +3636,64 @@
             }
         }
 
-        function collapseCards(activeId) {
-            const cardIds = ['trueQuickStartBtn', 'customCardBtn', 'starredBtn'];
-            const jumiWrapper = document.getElementById('jumiCardWrapper');
+        // Card natural heights — measured once on first interaction
+        let _cardHeights = null;
 
-            cardIds.forEach(id => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                el.style.display = id === activeId ? 'flex' : 'none';
-                el.style.opacity = '1';
+        function _getCardWrappers() {
+            return ['qsCardWrap','jumiCardWrap','customCardWrap','favsCardWrap']
+                .map(id => document.getElementById(id)).filter(Boolean);
+        }
+
+        function _measureCards() {
+            if (_cardHeights) return;
+            _cardHeights = {};
+            _getCardWrappers().forEach(wrap => {
+                _cardHeights[wrap.id] = wrap.getBoundingClientRect().height;
+            });
+        }
+
+        function collapseCards(activeId) {
+            _measureCards();
+            const wrappers = _getCardWrappers();
+            const activeWrapId = {
+                'trueQuickStartBtn': 'qsCardWrap',
+                'jumiQuickBtn': 'jumiCardWrap',
+                'customCardBtn': 'customCardWrap',
+                'starredBtn': 'favsCardWrap'
+            }[activeId];
+
+            wrappers.forEach(wrap => {
+                const isActive = wrap.id === activeWrapId;
+                wrap.style.height = _cardHeights[wrap.id] + 'px';
+                wrap.style.opacity = isActive ? '1' : '0';
+                wrap.style.height = isActive ? _cardHeights[wrap.id] + 'px' : '0';
+                wrap.style.pointerEvents = isActive ? '' : 'none';
             });
 
-            if (jumiWrapper) {
-                jumiWrapper.style.display = activeId === 'jumiQuickBtn' ? 'flex' : 'none';
-            }
-
-            // On active card: show expand chevron, hide nav chevron
-            document.querySelectorAll('.card-expand-chevron').forEach(c => c.style.display = 'none');
-            document.querySelectorAll('.card-nav-chevron').forEach(c => c.style.display = 'none');
-            const activeEl = document.getElementById(activeId);
-            if (activeEl) {
-                const exp = activeEl.querySelector('.card-expand-chevron');
-                if (exp) exp.style.display = 'block';
-            }
+            // Chevrons
+            setTimeout(() => {
+                document.querySelectorAll('.card-expand-chevron').forEach(c => c.style.display = 'none');
+                document.querySelectorAll('.card-nav-chevron').forEach(c => c.style.display = 'none');
+                const activeEl = document.getElementById(activeId);
+                if (activeEl) {
+                    const exp = activeEl.querySelector('.card-expand-chevron');
+                    if (exp) exp.style.display = 'block';
+                }
+            }, 320);
         }
 
         function expandCards() {
-            const cardIds = ['trueQuickStartBtn', 'customCardBtn', 'starredBtn'];
-            const jumiWrapper = document.getElementById('jumiCardWrapper');
-
-            cardIds.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) { el.style.display = 'flex'; el.style.opacity = '1'; }
+            _measureCards();
+            const wrappers = _getCardWrappers();
+            wrappers.forEach(wrap => {
+                wrap.style.height = _cardHeights[wrap.id] + 'px';
+                wrap.style.opacity = '1';
+                wrap.style.pointerEvents = '';
             });
-            if (jumiWrapper) jumiWrapper.style.display = 'flex';
-
-            // Restore: hide expand chevrons, show nav chevrons
-            document.querySelectorAll('.card-expand-chevron').forEach(c => c.style.display = 'none');
-            document.querySelectorAll('.card-nav-chevron').forEach(c => c.style.display = 'inline');
+            setTimeout(() => {
+                document.querySelectorAll('.card-expand-chevron').forEach(c => c.style.display = 'none');
+                document.querySelectorAll('.card-nav-chevron').forEach(c => c.style.display = 'inline');
+            }, 320);
         }
 
         function setActiveCard(activeId) {
@@ -3825,6 +3853,14 @@
                 window.showDurationPicker = function() {
                     const picker = document.getElementById('durationPickerScreen');
                     const main = document.getElementById('mainUI');
+                    // Reset stagger
+                    const logo = document.getElementById('pickerLogo');
+                    const q = document.getElementById('pickerQuestion');
+                    const btns = Array.from(document.querySelectorAll('#durationPickerOptions > *'));
+                    if (logo) { logo.style.transition = 'none'; logo.style.opacity = '0'; logo.style.transform = 'translateY(-10px)'; }
+                    if (q) { q.style.transition = 'none'; q.style.opacity = '0'; }
+                    btns.forEach(b => { b.style.transition = 'none'; b.style.opacity = '0'; b.style.transform = 'translateY(12px)'; });
+
                     picker.style.display = 'flex';
                     picker.style.transform = 'translateY(-20px)';
                     picker.style.opacity = '0';
@@ -3971,7 +4007,7 @@
                 }
                 document.getElementById('simpleControls').style.display = 'none';
                 const _jc = document.getElementById('jumiControls'); if(_jc) _jc.style.display = 'none';
-                document.getElementById('floatingRegenBtn').style.display = 'none';
+                
                 customControls.style.display = 'flex';
                 customControls.style.flexDirection = 'column';
                 customControls.style.height = '100%';
@@ -6236,6 +6272,8 @@
             if (_ji2b) _ji2b.value = '';
             const _ji2 = document.getElementById('jumiQuickIcon');
             if (_ji2) _ji2.textContent = '✦';
+            const _jgpb2 = document.getElementById('jumiGeneratePanelBtn');
+            if (_jgpb2) _jgpb2.textContent = '✦ Generate with Jumi';
 
             if (!selectedTime) selectedTime = 35;
             selectedType = appSettings.quickStartType || 'full';
@@ -6260,19 +6298,7 @@
             if (je) je.style.display = 'none';
         }
 
-        function showToast(msg) {
-            const existing = document.getElementById('jumiToastMsg');
-            if (existing) existing.remove();
-            const t = document.createElement('div');
-            t.id = 'jumiToastMsg';
-            t.textContent = msg;
-            t.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#667eea;color:white;padding:10px 20px;border-radius:20px;font-size:14px;font-weight:600;z-index:99999;opacity:0;transition:opacity 0.3s;pointer-events:none;';
-            document.body.appendChild(t);
-            requestAnimationFrame(() => { t.style.opacity = '1'; });
-            setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2000);
-        }
-
-        function regenerateRoutine() {
+function regenerateRoutine() {
             if (currentJumiRoutine !== null) {
                 jumiRegenerate();
             } else {
@@ -6538,7 +6564,7 @@
 
             display.innerHTML = html;
             document.getElementById('floatingStartSimple').style.display = 'block';
-            if (selectedType !== 'custom') document.getElementById('floatingRegenBtn').style.display = 'flex';
+            if (selectedType !== 'custom') 
             
             // Show floating star button only if routine has exercises
             if (currentRoutine && currentRoutine.length > 0) {
@@ -7223,7 +7249,7 @@
         async function goHome() {
             document.querySelectorAll('.card-active').forEach(el => el.classList.remove('card-active'));
             setActiveCard(null);
-            document.getElementById('floatingRegenBtn').style.display = 'none';
+            
             const _ddh = document.getElementById('selectedDurationDisplay'); if(_ddh) _ddh.style.opacity = '1';
             const _jph = document.getElementById('jumiPanel');
             if (_jph) _jph.style.display = 'none';
@@ -7365,7 +7391,7 @@
             document.getElementById('jumiExplanation').style.display = 'none';
             document.getElementById('floatingStartSimple').style.display = 'none';
             document.getElementById('floatingStartJumi').style.display = 'none';
-            document.getElementById('floatingRegenBtn').style.display = 'none';
+            
 
             // Clear RHS and show thinking placeholder
             document.getElementById('routineDisplayWrapper').style.display = 'block';
@@ -7545,7 +7571,9 @@ Return only the JSON.`;
 
                 // Save Jumi routine for restore
                 currentJumiRoutine = currentRoutine.map(e => ({...e}));
-                showToast('Routine ready');
+                const _jgpb = document.getElementById('jumiGeneratePanelBtn');
+                if (_jgpb) _jgpb.textContent = '↺ Refresh';
+
 
                 // Switch RHS to routine display (away from custom builder)
                 document.getElementById('routineDisplayWrapper').style.display = 'block';
@@ -7560,7 +7588,7 @@ Return only the JSON.`;
                 document.getElementById('floatingEditBtn').style.display = 'flex';
                 document.getElementById('floatingStartSimple').style.display = 'none';
                 document.getElementById('floatingStartJumi').style.display = 'block';
-                document.getElementById('floatingRegenBtn').style.display = 'flex';
+                
 
                 // Update Jumi card icon
                 const _ji = document.getElementById('jumiQuickIcon');
