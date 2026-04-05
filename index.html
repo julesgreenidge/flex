@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775408708 -->
+<!-- Version: 1775410521 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -328,6 +328,14 @@
         .card-active .card-expand-chevron { display: block !important; }
 
         @keyframes spin { to { transform: rotate(360deg); } }
+        .dur-pick-btn {
+            display: flex; align-items: center; justify-content: space-between;
+            background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.25); border-radius: 12px;
+            padding: 12px 16px; cursor: pointer; width: 100%; text-align: left;
+            transition: all 0.15s; color: white;
+        }
+        .dur-pick-btn:hover { background: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.5); }
+        .dur-pick-btn.selected { background: rgba(255,255,255,0.35); border-color: white; }
 
         .phase-section {
             margin-bottom: 32px;
@@ -1581,20 +1589,61 @@
     <div id="mainView" style="display: none;">
         <!-- Left Column: Exercise Selection -->
         <div class="selection-column">
-            <div style="margin-bottom: 30px;">
-                <h1 style="margin: 0; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">flex.</h1>
+            <!-- DURATION PICKER SCREEN — shown on every session load -->
+            <div id="durationPickerScreen" style="position:absolute; top:0; left:0; width:100%; height:100%; background:linear-gradient(160deg,#667eea 0%,#764ba2 100%); z-index:500; display:flex; flex-direction:column; justify-content:center; padding:28px; box-sizing:border-box; transition:opacity 0.4s ease, transform 0.4s ease;">
+                <h1 style="margin:0 0 4px; color:white; font-size:26px; font-weight:700;">flex.</h1>
+                <div style="font-size:18px; font-weight:600; color:rgba(255,255,255,0.85); margin-bottom:22px;">How much time do you have?</div>
+                <div style="display:flex; flex-direction:column; gap:8px;" id="durationPickerOptions">
+                    <button onclick="selectDuration('25')" class="dur-pick-btn">
+                        <span style="font-size:18px; font-weight:700;">25m</span>
+                        <span style="font-size:12px; opacity:0.7;">short session</span>
+                    </button>
+                    <button onclick="selectDuration('35')" class="dur-pick-btn">
+                        <span style="font-size:18px; font-weight:700;">35m</span>
+                        <span style="font-size:12px; opacity:0.7;">recommended</span>
+                    </button>
+                    <button onclick="selectDuration('45')" class="dur-pick-btn">
+                        <span style="font-size:18px; font-weight:700;">45m</span>
+                        <span style="font-size:12px; opacity:0.7;">full session</span>
+                    </button>
+                    <button onclick="selectDuration('60')" class="dur-pick-btn">
+                        <span style="font-size:18px; font-weight:700;">60m</span>
+                        <span style="font-size:12px; opacity:0.7;">extended</span>
+                    </button>
+                    <button onclick="selectDuration('999')" class="dur-pick-btn">
+                        <span style="font-size:18px; font-weight:700;">All</span>
+                        <span style="font-size:12px; opacity:0.7;">no time limit</span>
+                    </button>
+                    <button onclick="selectDuration('custom')" class="dur-pick-btn">
+                        <span style="font-size:18px; font-weight:700;">Custom</span>
+                        <span style="font-size:12px; opacity:0.7;">enter minutes</span>
+                    </button>
+                    <input type="number" id="durPickerCustomInput" placeholder="Enter minutes (min 20)" min="20" max="180" style="display:none; margin-top:2px; padding:12px 16px; border:none; border-radius:12px; font-size:16px; font-family:inherit; outline:none; background:rgba(255,255,255,0.2); color:white;" oninput="if(parseInt(this.value)>=20){selectDuration('custom',parseInt(this.value));}">
+                </div>
             </div>
 
-            <!-- DURATION — primary decision, always visible -->
-            <div class="section" style="margin-bottom:14px;">
-                <div class="segmented" id="globalDurationBtns">
+            <!-- MAIN UI — hidden until duration selected -->
+            <div id="mainUI" style="opacity:0; pointer-events:none; transition:opacity 0.4s ease;">
+                <!-- Logo small -->
+                <div style="margin-bottom:20px; display:flex; align-items:center; justify-content:space-between;">
+                    <h1 style="margin:0; font-size:20px; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">flex.</h1>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span id="selectedDurationDisplay" style="font-size:15px; font-weight:600; color:#1d1d1f;"></span>
+                        <button onclick="showDurationPicker()" style="font-size:12px; color:#667eea; background:none; border:none; cursor:pointer; font-weight:500; padding:0;">Edit</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hidden duration buttons for JS compatibility -->
+            <div style="display:none;">
+                <div id="globalDurationBtns">
                     <button class="global-dur-btn" data-time="25">25m</button>
                     <button class="global-dur-btn" data-time="35">35m</button>
                     <button class="global-dur-btn" data-time="45">45m</button>
                     <button class="global-dur-btn" data-time="999">All</button>
                     <button class="global-dur-btn" data-time="custom">Custom</button>
                 </div>
-                <input type="number" id="globalCustomDuration" class="custom-duration-input" placeholder="Enter minutes (minimum 20)" min="20" max="120" step="5" style="display:none; margin-top:10px;">
+                <input type="number" id="globalCustomDuration" class="custom-duration-input" placeholder="Enter minutes (minimum 20)" min="20" max="120" step="5">
             </div>
 
             <!-- QUICK START -->
@@ -3731,6 +3780,74 @@
             }
 
             // Tab switching
+            // ── DURATION PICKER ──
+            (function() {
+                const durLabels = { '25':'25m', '35':'35m', '45':'45m', '60':'60m', '999':'All' };
+
+                window.selectDuration = function(val, customVal) {
+                    if (val === 'custom') {
+                        const inp = document.getElementById('durPickerCustomInput');
+                        inp.style.display = 'block';
+                        inp.focus();
+                        if (!customVal) {
+                            return;
+                        }
+                        selectedTime = customVal;
+                        localStorage.setItem('globalDuration', String(customVal));
+                        document.getElementById('selectedDurationDisplay').textContent = customVal + 'm';
+                    } else {
+                        selectedTime = val === '999' ? 999 : parseInt(val);
+                        localStorage.setItem('globalDuration', val);
+                        document.getElementById('selectedDurationDisplay').textContent = durLabels[val] || val + 'm';
+                    }
+                    // Highlight selected
+                    document.querySelectorAll('.dur-pick-btn').forEach(b => b.classList.remove('selected'));
+                    // Sync hidden btns
+                    document.querySelectorAll('.global-dur-btn').forEach(b => {
+                        b.classList.toggle('selected', b.dataset.time === val);
+                    });
+                    // Transition to main UI
+                    hideDurationPicker();
+                };
+
+                window.hideDurationPicker = function() {
+                    const picker = document.getElementById('durationPickerScreen');
+                    const main = document.getElementById('mainUI');
+                    picker.style.opacity = '0';
+                    picker.style.transform = 'translateY(-20px)';
+                    setTimeout(() => {
+                        picker.style.display = 'none';
+                        main.style.opacity = '1';
+                        main.style.pointerEvents = 'auto';
+                    }, 400);
+                };
+
+                window.showDurationPicker = function() {
+                    const picker = document.getElementById('durationPickerScreen');
+                    const main = document.getElementById('mainUI');
+                    picker.style.display = 'flex';
+                    picker.style.transform = 'translateY(-20px)';
+                    picker.style.opacity = '0';
+                    main.style.opacity = '0';
+                    main.style.pointerEvents = 'none';
+                    requestAnimationFrame(() => {
+                        picker.style.transform = 'translateY(0)';
+                        picker.style.opacity = '1';
+                    });
+                };
+
+                // Show picker after splash delay
+                setTimeout(() => {
+                    const picker = document.getElementById('durationPickerScreen');
+                    picker.style.opacity = '0';
+                    picker.style.transform = 'translateY(20px)';
+                    setTimeout(() => {
+                        picker.style.opacity = '1';
+                        picker.style.transform = 'translateY(0)';
+                    }, 50);
+                }, 800);
+            })();
+
             // ── GLOBAL DURATION BAR ──
             (function() {
                 const saved = localStorage.getItem('globalDuration');
@@ -3776,8 +3893,8 @@
 
             document.getElementById('simpleTab').addEventListener('click', function() {
                 setActiveCard('trueQuickStartBtn');
-                const _durBar2 = document.querySelector('#quickStartSection').previousElementSibling;
-                if (_durBar2) _durBar2.style.display = 'block';
+                const _dds = document.getElementById('selectedDurationDisplay'); if(_dds) _dds.style.opacity = '1';
+
                 const simpleControls = document.getElementById('simpleControls');
                 const isOpen = simpleControls.style.display !== 'none';
 
@@ -3835,8 +3952,9 @@
             document.getElementById('customTab').addEventListener('click', function() {
                 setActiveCard('customCardBtn');
                 const _je2 = document.getElementById('jumiExplanation'); if(_je2) _je2.style.display = 'none';
-                const _durBar = document.querySelector('#quickStartSection').previousElementSibling;
-                if (_durBar) _durBar.style.display = 'none';
+                const _jp2 = document.getElementById('jumiPanel'); if(_jp2) _jp2.style.display = 'none';
+                const _dd = document.getElementById('selectedDurationDisplay'); if(_dd) _dd.style.opacity = '0.35';
+
                 const customControls = document.getElementById('customControls');
                 const isCustomOpen = customControls.style.display === 'flex';
                 if (isCustomOpen) {
@@ -7094,10 +7212,10 @@
             document.querySelectorAll('.card-active').forEach(el => el.classList.remove('card-active'));
             setActiveCard(null);
             document.getElementById('floatingRegenBtn').style.display = 'none';
+            const _ddh = document.getElementById('selectedDurationDisplay'); if(_ddh) _ddh.style.opacity = '1';
             const _jph = document.getElementById('jumiPanel');
             if (_jph) _jph.style.display = 'none';
-            const _durBar3 = document.querySelector('#quickStartSection') && document.querySelector('#quickStartSection').previousElementSibling;
-            if (_durBar3) _durBar3.style.display = 'block';
+
             if (timerInterval) clearInterval(timerInterval);
             if (timerAnimationFrame) cancelAnimationFrame(timerAnimationFrame);
             if (await customConfirm('End routine and return home?')) {
@@ -8591,9 +8709,11 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
             document.getElementById('floatingStartSimple').style.display = 'none';
             document.getElementById('floatingStartJumi').style.display = 'none';
             document.getElementById('simpleControls').style.display = 'none';
+            const _ddf = document.getElementById('selectedDurationDisplay'); if(_ddf) _ddf.style.opacity = '0.35';
             const _cc = document.getElementById('customControls'); if(_cc) { _cc.style.display = 'none'; _cc.style.flexDirection = ''; }
             const _jc = document.getElementById('jumiControls'); if(_jc) _jc.style.display = 'none';
             const _je = document.getElementById('jumiExplanation'); if(_je) _je.style.display = 'none';
+            const _jpf = document.getElementById('jumiPanel'); if(_jpf) _jpf.style.display = 'none';
 
             const display = domCache.routineDisplay;
 
