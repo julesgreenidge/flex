@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775402510 -->
+<!-- Version: 1775403871 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1793,7 +1793,7 @@
                             </div>
                         </div>
                         
-                        <div id="customFilterChips" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; min-height: 24px;"></div>
+                        <div id="customFilterChips" style="display: none; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;"></div>
                         <div id="customFilterDropdown" style="display: none; position: absolute; background: white; border: 2px solid #d2d2d7; border-radius: 6px; margin-top: 4px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 250px; max-height: 200px; overflow-y: auto; padding: 4px;"></div>
                     </div>
                 </div>
@@ -1818,7 +1818,7 @@
             <!-- NAV BAR -->
             <div id="mainNavBar">
                 <div class="nav-group">
-                    <button id="floatingEditBtn" class="nav-btn" title="Edit Routine" style="display: none;" onclick="reopenCustomBuilder()">
+                    <button id="floatingEditBtn" class="nav-btn" title="Edit Routine" style="display: none;" onclick="setActiveCard('customCardBtn'); reopenCustomBuilder()">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
@@ -3783,6 +3783,7 @@
             
             document.getElementById('customTab').addEventListener('click', function() {
                 setActiveCard('customCardBtn');
+                const _je2 = document.getElementById('jumiExplanation'); if(_je2) _je2.style.display = 'none';
                 const customControls = document.getElementById('customControls');
                 const isCustomOpen = customControls.style.display === 'flex';
                 if (isCustomOpen) {
@@ -3896,7 +3897,7 @@
                     const color = phaseColorMap[phase];
                     html += `
                         <tr>
-                            <td colspan="5" style="padding: 16px 0 12px 0;">
+                            <td colspan="5" style="padding: 8px 0 4px 0;">
                                 <div style="display: flex; align-items: center; gap: 12px;">
                                     <div style="height: 3px; background: ${color}; width: 40px; border-radius: 2px;"></div>
                                     <div style="font-weight: 600; font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${phase}</div>
@@ -3915,10 +3916,10 @@
                         
                         html += `
                             <tr>
-                                <td colspan="5" style="padding: 0 0 8px 0;">
+                                <td colspan="5" style="padding: 0 0 4px 0;">
                                     <div draggable="true" 
                                          data-exercise="${exData}"
-                                         style="padding: 12px 14px; background: white; border-radius: 8px; border: 1.5px solid #c7c7cc; display: flex; align-items: center; gap: 12px; cursor: move; transition: all 0.2s;"
+                                         style="padding: 7px 10px; background: white; border-radius: 8px; border: 1.5px solid #c7c7cc; display: flex; align-items: center; gap: 10px; cursor: move; transition: all 0.2s;"
                                          onmouseover="this.style.background='#f9f9f9'"
                                          onmouseout="this.style.background='white'"
                                          ondblclick="addSingleEx('${exData}')"
@@ -3926,8 +3927,8 @@
                                          ondragend="dragFromTableEnd(event)">
                                         <input type="checkbox" class="ex-checkbox" value="${ex.exercise}" data-exercise="${exData}" style="flex-shrink: 0; cursor: pointer;" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()">
                                         <div style="flex: 1;">
-                                            <div style="font-weight: 600; font-size: 13px; margin-bottom: 3px;">${ex.exercise}</div>
-                                            <div style="font-size: 11px; color: #999;">${ex.target} • ${ex.position} • ${dur}s${ex.sides > 1 ? ' × ' + ex.sides : ''}</div>
+                                            <div style="font-weight: 600; font-size: 12px; margin-bottom: 1px;">${ex.exercise}</div>
+                                            <div style="font-size: 10px; color: #999;">${ex.target} • ${ex.position} • ${dur}s${ex.sides > 1 ? ' × ' + ex.sides : ''}</div>
                                         </div>
                                     </div>
                                 </td>
@@ -4527,7 +4528,9 @@
                         `;
                     });
                 });
-                document.getElementById('customFilterChips').innerHTML = html;
+                const chipContainer = document.getElementById('customFilterChips');
+                chipContainer.innerHTML = html;
+                chipContainer.style.display = html ? 'flex' : 'none';
             };
             
             window.removeFilterChip = function(type, val) {
@@ -6066,11 +6069,17 @@
             // Switch icon to regenerate arrow
             const icon = document.getElementById('qsIcon');
             if (icon) icon.textContent = '↺';
+            // Hide Jumi explanation
+            const je = document.getElementById('jumiExplanation');
+            if (je) je.style.display = 'none';
         }
 
         async function jumiQuickStart() {
             setActiveCard('jumiQuickBtn');
             if (!selectedTime) selectedTime = 35;
+            // Hide Simple controls so they don't bleed into Jumi view
+            const sc = document.getElementById('simpleControls');
+            if (sc) sc.style.display = 'none';
             const btn = document.getElementById('jumiQuickBtn');
             const sub = document.getElementById('jumiQuickSubtitle');
             const icon = document.getElementById('jumiQuickIcon');
@@ -6136,8 +6145,8 @@
         function displayRoutine() {
             const display = domCache.routineDisplay;
             const totalTime = currentRoutine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0);
-            const mins = Math.floor(totalTime / 60);
-            const secs = totalTime % 60;
+            const mins = Math.floor(Math.round(totalTime) / 60);
+            const secs = Math.round(totalTime) % 60;
             const totalExercises = currentRoutine.reduce((sum, ex) => sum + ex.sides, 0);
 
             let html = `
@@ -6180,8 +6189,8 @@
                 // Preserve original routine order (no special sorting needed)
                 
                 const phaseTime = exs.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0);
-                const phaseMins = Math.floor(phaseTime / 60);
-                const phaseSecs = phaseTime % 60;
+                const phaseMins = Math.floor(Math.round(phaseTime) / 60);
+                const phaseSecs = Math.round(phaseTime) % 60;
                 
                 // Generate phase class name
                 const phaseClass = phase.toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
@@ -6195,8 +6204,9 @@
                 `;
                 
                 exs.forEach((ex, exIndex) => {
-                    const exMins = Math.floor(ex.duration / 60);
-                    const exSecs = ex.duration % 60;
+                    const exDurRounded = Math.round(ex.duration);
+                    const exMins = Math.floor(exDurRounded / 60);
+                    const exSecs = exDurRounded % 60;
                     const timeStr = exMins > 0 ? `${exMins}:${exSecs.toString().padStart(2, '0')}` : `${exSecs}s`;
                     const sidesStr = ex.sides === 1 ? '1x' : '2x';
                     const routineIndex = currentRoutine.indexOf(ex);
@@ -8455,59 +8465,57 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
         };
         
         function openStarredList() {
+            setActiveCard('starredBtn');
             const starredRoutines = JSON.parse(localStorage.getItem('starredRoutines') || '[]');
             starredRoutines.sort((a, b) => new Date(b.dateCreated) - new Date(a.dateCreated));
-            const list = document.getElementById('starredRoutinesList');
-            
+
+            // Show in RHS routine display area
+            document.getElementById('routineDisplayWrapper').style.display = 'block';
+            document.getElementById('customDisplay').style.display = 'none';
+            document.getElementById('floatingStartSimple').style.display = 'none';
+            document.getElementById('floatingStartJumi').style.display = 'none';
+            const _jc = document.getElementById('jumiControls'); if(_jc) _jc.style.display = 'none';
+            const _je = document.getElementById('jumiExplanation'); if(_je) _je.style.display = 'none';
+
+            const display = domCache.routineDisplay;
+
             if (starredRoutines.length === 0) {
-                list.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">No starred routines yet. Star a routine to save it here!</div>';
-            } else {
-                // Just generate data rows - header is now in modal HTML
-                let html = '<div style="display: grid; gap: 8px;">';
-                
-                starredRoutines.forEach((routine, index) => {
-                    const date = new Date(routine.dateCreated);
-                    const dateStr = date.toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'});
-                    const typeText = routine.type ? routine.type.charAt(0).toUpperCase() + routine.type.slice(1) + ' Body' : 'N/A';
-                    const holdText = routine.hold === 'long' ? 'Long Hold' : 'Short Hold';
-                    
-                    // Calculate actual duration for All routines
-                    let durationText;
-                    if (routine.time === 999 && routine.routine) {
-                        const totalSeconds = routine.routine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0) + 15;
-                        const actualMinutes = Math.round(totalSeconds / 60);
-                        durationText = `${actualMinutes}m (All)`;
-                    } else {
-                        durationText = routine.time + 'm';
-                    }
-                    
-                    html += `
-                        <div style="border: 2px solid #d2d2d7; border-radius: 8px; padding: 10px 16px; background: white;">
-                            <div style="display: grid; grid-template-columns: 3fr 0.9fr 1fr 1fr 0.9fr 0.9fr auto; gap: 16px; align-items: center;">
-                                <div style="font-weight: 600; font-size: 15px; color: #1d1d1f;">${routine.name}</div>
-                                <div style="font-size: 13px; color: #666; white-space: nowrap;">${typeText}</div>
-                                <div style="font-size: 13px; color: #666; white-space: nowrap;">${durationText}</div>
-                                <div style="font-size: 13px; color: #666; white-space: nowrap;">${holdText}</div>
-                                <div style="font-size: 13px; color: #666; white-space: nowrap;">${routine.focus || '—'}</div>
-                                <div style="font-size: 12px; color: #999; white-space: nowrap;">${dateStr}</div>
-                                <div style="display: flex; gap: 6px; white-space: nowrap;">
-                                    <button onclick="quickStartStarredRoutine(${index})" style="padding: 5px 10px; background: linear-gradient(135deg,#34c759,#2da44e); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">▶ Start</button>
-                                    <button onclick="loadStarredRoutine(${index})" style="padding: 5px 10px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">Load</button>
-                                    <button onclick="editStarredRoutine(${index})" style="padding: 5px 10px; background: #e8e8ed; color: #1d1d1f; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">Edit</button>
-                                    <button onclick="deleteStarredRoutine(${index})" style="padding: 5px 10px; background: #ff3b30; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">Delete</button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                html += '</div>';
-                list.innerHTML = html;
+                display.innerHTML = '<div style="padding:40px; text-align:center; color:#86868b; font-size:15px;">No saved routines yet.<br>Star a routine to save it here.</div>';
+                return;
             }
-            
-            document.getElementById('starredListModal').style.display = 'block';
+
+            let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
+            starredRoutines.forEach((routine, index) => {
+                const date = new Date(routine.dateCreated);
+                const dateStr = date.toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'});
+                const typeText = routine.type === 'full' ? 'Full Body' : routine.type === 'upper' ? 'Upper Body' : routine.type === 'lower' ? 'Lower Body' : '—';
+                const holdText = routine.hold === 'long' ? 'Long Hold' : 'Short Hold';
+                let durationText;
+                if (routine.time === 999 && routine.routine) {
+                    const totalSeconds = routine.routine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0) + 15;
+                    durationText = Math.round(totalSeconds / 60) + 'm';
+                } else {
+                    durationText = (routine.time || '?') + 'm';
+                }
+                html += `<div class="exercise-card" style="grid-template-columns:1fr auto; cursor:default;">
+                    <div>
+                        <div class="exercise-name">${routine.name}</div>
+                        <div class="exercise-details">
+                            <span>${typeText}</span><span>·</span><span>${durationText}</span><span>·</span><span>${holdText}</span><span>·</span><span>${dateStr}</span>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end;">
+                        <button onclick="quickStartStarredRoutine(${index})" class="btn" style="padding:5px 10px; font-size:12px; border-radius:8px; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none;">▶ Start</button>
+                        <button onclick="loadStarredRoutine(${index})" class="btn" style="padding:5px 10px; font-size:12px; border-radius:8px;">Load</button>
+                        <button onclick="setActiveCard('customCardBtn'); editStarredRoutine(${index})" class="btn" style="padding:5px 10px; font-size:12px; border-radius:8px;">Edit</button>
+                        <button onclick="deleteStarredRoutine(${index})" class="btn" style="padding:5px 10px; font-size:12px; border-radius:8px; border-color:#ff3b30; color:#ff3b30;">Delete</button>
+                    </div>
+                </div>`;
+            });
+            html += '</div>';
+            display.innerHTML = html;
         }
-        
+
         window.closeStarredList = function() {
             document.getElementById('starredListModal').style.display = 'none';
         };
