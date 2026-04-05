@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775428075 -->
+<!-- Version: 1775429511 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -3715,6 +3715,189 @@
             }
         }
 
+
+        // ── JUMI CHAT ──
+        let jumiChatHistory = [];
+        let _pendingExercise = null;
+
+        function showJumiChatBtn() {
+            const btn = document.getElementById('jumiChatBtn');
+            if (btn) btn.style.display = 'flex';
+        }
+        function hideJumiChatBtn() {
+            const btn = document.getElementById('jumiChatBtn');
+            if (btn) btn.style.display = 'none';
+        }
+
+        function toggleJumiChat() {
+            const panel = document.getElementById('jumiChatPanel');
+            const isOpen = panel.style.transform === 'translateX(0px)' || panel.style.transform === 'translateX(0)';
+            if (isOpen) {
+                closeJumiChat();
+            } else {
+                openJumiChat();
+            }
+        }
+
+        function openJumiChat() {
+            const panel = document.getElementById('jumiChatPanel');
+            panel.style.transform = 'translateX(0)';
+            if (jumiChatHistory.length === 0) {
+                appendChatMessage('jumi', "Hi! I'm Jumi. Ask me anything about your training \u2014 progress, what to focus on, exercise advice, or anything else.");
+            }
+            setTimeout(() => document.getElementById('jumiChatInput').focus(), 350);
+        }
+
+        window.closeJumiChat = function() {
+            document.getElementById('jumiChatPanel').style.transform = 'translateX(100%)';
+        };
+
+        function appendChatMessage(role, text) {
+            const container = document.getElementById('jumiChatMessages');
+            const isJumi = role === 'jumi';
+            const div = document.createElement('div');
+            div.style.cssText = `display:flex; flex-direction:column; align-items:${isJumi?'flex-start':'flex-end'};`;
+            const bubble = document.createElement('div');
+            bubble.style.cssText = `max-width:85%; padding:10px 14px; border-radius:${isJumi?'4px 16px 16px 16px':'16px 4px 16px 16px'}; font-size:14px; line-height:1.5; white-space:pre-wrap; background:${isJumi?'#f2f2f7':'linear-gradient(135deg,#667eea,#764ba2)'}; color:${isJumi?'#1d1d1f':'white'};`;
+            bubble.textContent = text;
+            div.appendChild(bubble);
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+            jumiChatHistory.push({role: isJumi ? 'assistant' : 'user', content: text});
+        }
+
+        function appendChatAction(label, onclick) {
+            const container = document.getElementById('jumiChatMessages');
+            const div = document.createElement('div');
+            div.style.cssText = 'display:flex; justify-content:flex-start; margin-top:-4px;';
+            const btn = document.createElement('button');
+            btn.textContent = label;
+            btn.style.cssText = 'background:white; border:1.5px solid #667eea; color:#667eea; border-radius:20px; padding:6px 14px; font-size:13px; font-weight:600; cursor:pointer;';
+            btn.onclick = onclick;
+            div.appendChild(btn);
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendJumiChat() {
+            const input = document.getElementById('jumiChatInput');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+            input.style.height = 'auto';
+
+            appendChatMessage('user', text);
+
+            // Thinking indicator
+            const container = document.getElementById('jumiChatMessages');
+            const thinking = document.createElement('div');
+            thinking.id = 'chatThinking';
+            thinking.style.cssText = 'font-size:13px; color:#86868b; padding:4px 0;';
+            thinking.textContent = 'Jumi is thinking…';
+            container.appendChild(thinking);
+            container.scrollTop = container.scrollHeight;
+
+            const goals = getJumiGoals();
+            const contextTable = buildChatContext();
+
+            const systemPrompt = `You are Jumi, a flexibility and mobility coach with access to this user's full training history.
+
+Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
+
+Training history summary (exercise | phase | muscle | position | sides | count 12m | 6m | 3m | 1m | 2w | 1w | mins 12m | 6m | 3m | 1m | 2w | 1w | last done):
+${contextTable}
+
+Answer questions about their training honestly and specifically. Reference their actual data where relevant.
+
+If the user asks you to suggest a new exercise not in their library, respond with a JSON block at the end of your message in this exact format:
+<exercise>{"exercise":"name","phase":"phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}  </exercise>
+
+Otherwise respond in plain conversational text. No markdown. Be direct and specific.`;
+
+            try {
+                const messages = [...jumiChatHistory.slice(-10)];
+                const response = await fetch('/.netlify/functions/coach', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({
+                        mode: 'jumi_chat',
+                        system: systemPrompt,
+                        messages
+                    })
+                });
+                const data = await response.json();
+                const reply = (data.reply || '').trim();
+
+                thinking.remove();
+
+                // Check for exercise suggestion
+                const exMatch = reply.match(/<exercise>([\s\S]*?)<\/exercise>/);
+                const cleanReply = reply.replace(/<exercise>[\s\S]*?<\/exercise>/g, '').trim();
+
+                if (cleanReply) appendChatMessage('jumi', cleanReply);
+
+                if (exMatch) {
+                    try {
+                        _pendingExercise = JSON.parse(exMatch[1].trim());
+                        appendChatAction('Review & add to library →', openExApproval);
+                    } catch(e) {}
+                }
+            } catch(err) {
+                thinking.remove();
+                appendChatMessage('jumi', "Sorry, I couldn't connect. Please check your connection and try again.");
+            }
+        }
+
+        function openExApproval() {
+            if (!_pendingExercise) return;
+            const ex = _pendingExercise;
+            const phaseOptions = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
+            const fields = [
+                {id:'apName', label:'Name', val: ex.exercise || ''},
+                {id:'apPhase', label:'Phase', val: ex.phase || 'Static Stretching', type:'select', options: phaseOptions},
+                {id:'apTarget', label:'Target Muscle', val: ex.target || ''},
+                {id:'apPosition', label:'Position', val: ex.position || ''},
+                {id:'apSides', label:'Sides', val: ex.sides || 2, type:'select', options:[1,2]},
+                {id:'apBodyPart', label:'Body Part', val: ex.bodyPart || 'lower', type:'select', options:['upper','lower','full']},
+            ];
+            const container = document.getElementById('exApprovalFields');
+            container.innerHTML = fields.map(f => {
+                if (f.type === 'select') {
+                    return `<label style="font-size:13px; font-weight:600;">${f.label}
+                        <select id="${f.id}" style="display:block; width:100%; margin-top:4px; border:1.5px solid #d2d2d7; border-radius:8px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;">
+                            ${f.options.map(o => `<option value="${o}" ${String(o)===String(f.val)?'selected':''}>${o}</option>`).join('')}
+                        </select></label>`;
+                }
+                return `<label style="font-size:13px; font-weight:600;">${f.label}
+                    <input id="${f.id}" value="${f.val}" style="display:block; width:100%; margin-top:4px; border:1.5px solid #d2d2d7; border-radius:8px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;"/></label>`;
+            }).join('');
+            document.getElementById('exApprovalModal').style.display = 'flex';
+        }
+
+        window.approveExercise = function() {
+            const ex = {
+                exercise: document.getElementById('apName').value.trim(),
+                phase: document.getElementById('apPhase').value,
+                target: document.getElementById('apTarget').value.trim(),
+                position: document.getElementById('apPosition').value.trim(),
+                sides: parseInt(document.getElementById('apSides').value),
+                bodyPart: document.getElementById('apBodyPart').value,
+                duration: 45,
+                rest: 15
+            };
+            if (!ex.exercise || !ex.target || !ex.position) {
+                alert('Please fill in Name, Target Muscle, and Position.');
+                return;
+            }
+            exercises.push(ex);
+            localStorage.setItem('flexibilityRoutineExercises', JSON.stringify(exercises));
+            // Invalidate context cache
+            localStorage.removeItem('jumiContextCache');
+            document.getElementById('exApprovalModal').style.display = 'none';
+            _pendingExercise = null;
+            appendChatMessage('jumi', `"${ex.exercise}" has been added to your exercise library.`);
+        };
+
         function setupEventListeners() {
             // Duration buttons (.duration-btn no longer used — global bar handles this)
             document.querySelectorAll('.duration-btn').forEach(btn => {
@@ -3858,6 +4041,7 @@
                         picker.style.display = 'none';
                         main.style.opacity = '1';
                         main.style.pointerEvents = 'auto';
+                        showJumiChatBtn();
                     }, 400);
                 };
 
@@ -6595,6 +6779,8 @@ function regenerateRoutine() {
 
         // ===== TIMER FUNCTIONS =====
         function startRoutine() {
+            hideJumiChatBtn();
+            closeJumiChat();
             initAudio();
             routineAlreadySaved = false; // Reset save flag for new routine
             domCache.mainView.style.display = 'none';
@@ -7260,6 +7446,7 @@ function regenerateRoutine() {
         async function goHome() {
             document.querySelectorAll('.card-active').forEach(el => el.classList.remove('card-active'));
             setActiveCard(null);
+            showJumiChatBtn();
             
             const _ddh = document.getElementById('selectedDurationDisplay'); if(_ddh) _ddh.style.opacity = '1';
             const _jph = document.getElementById('jumiPanel');
@@ -7321,7 +7508,78 @@ function regenerateRoutine() {
             return selected;
         }
 
-        function buildJumiContext() {
+        function buildChatContext() {
+            const cached = JSON.parse(localStorage.getItem('jumiContextCache') || '{}');
+            const now = Date.now();
+            if (cached.ts && (now - cached.ts) < 24*60*60*1000 && cached.table) return cached.table;
+
+            const allHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
+            const phaseOrder = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
+            const wins = [
+                {label:'12m', ms:365*24*60*60*1000},
+                {label:'6m',  ms:182*24*60*60*1000},
+                {label:'3m',  ms: 91*24*60*60*1000},
+                {label:'1m',  ms: 30*24*60*60*1000},
+                {label:'2w',  ms: 14*24*60*60*1000},
+                {label:'1w',  ms:  7*24*60*60*1000},
+            ];
+
+            // Per-exercise stats
+            const exStats = {};
+            allHistory.forEach(s => {
+                const sMs = new Date(s.date).getTime();
+                (s.routine || []).forEach(ex => {
+                    if (!exStats[ex.exercise]) exStats[ex.exercise] = {
+                        phase: ex.phase||'', target: ex.target||'', position: ex.position||'', sides: ex.sides||1,
+                        counts: {}, mins: {}, lastMs: 0
+                    };
+                    const e = exStats[ex.exercise];
+                    if (sMs > e.lastMs) e.lastMs = sMs;
+                    wins.forEach(w => {
+                        if (now - sMs <= w.ms) {
+                            e.counts[w.label] = (e.counts[w.label]||0) + 1;
+                            e.mins[w.label] = (e.mins[w.label]||0) + Math.round(((ex.duration||0) + (ex.rest||0)) * (ex.sides||1) / 60 * 10) / 10;
+                        }
+                    });
+                });
+            });
+
+            // Session summary
+            const totalSessions = allHistory.length;
+            const last = allHistory[allHistory.length-1];
+            const avgMins = totalSessions ? Math.round(allHistory.reduce((s,h)=>s+(h.totalTime||0),0)/totalSessions/60) : 0;
+            const lastDate = last ? new Date(last.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'never';
+
+            const daysAgo = ms => {
+                const d = Math.round((now - ms)/(24*60*60*1000));
+                return d === 0 ? 'today' : d === 1 ? 'yesterday' : d + ' days ago';
+            };
+
+            // Build table grouped by phase, exercise first
+            let table = `Sessions: ${totalSessions} | Avg duration: ${avgMins}m | Last session: ${lastDate}\n\n`;
+            table += `Exercise | Phase | Muscle | Position | Sides | Count 12m | Count 6m | Count 3m | Count 1m | Count 2w | Count 1w | Mins 12m | Mins 6m | Mins 3m | Mins 1m | Mins 2w | Mins 1w | Last done\n`;
+            table += `${'---'} | `.repeat(17).slice(0,-3) + '\n';
+
+            phaseOrder.forEach(phase => {
+                const phaseExs = Object.entries(exStats)
+                    .filter(([,e]) => e.phase === phase)
+                    .sort((a,b) => b[1].counts['12m']||0 - a[1].counts['12m']||0);
+                phaseExs.forEach(([name, e]) => {
+                    const row = [
+                        name, phase, e.target, e.position, e.sides,
+                        ...wins.map(w => e.counts[w.label]||0),
+                        ...wins.map(w => e.mins[w.label]||0),
+                        daysAgo(e.lastMs)
+                    ].join(' | ');
+                    table += row + '\n';
+                });
+            });
+
+            localStorage.setItem('jumiContextCache', JSON.stringify({ts: now, table}));
+            return table;
+        }
+
+                function buildJumiContext() {
             const cutoff = Date.now() - (728 * 24 * 60 * 60 * 1000);
             const allHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
             const history = allHistory.filter(s => new Date(s.date).getTime() >= cutoff);
@@ -10381,6 +10639,46 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
     </div>
 
 
+
+
+    <!-- JUMI CHAT PANEL -->
+    <div id="jumiChatPanel" style="position:fixed; top:0; right:0; width:380px; height:100vh; background:white; box-shadow:-4px 0 24px rgba(0,0,0,0.12); z-index:1000; display:flex; flex-direction:column; transform:translateX(100%); transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);">
+        <!-- Header -->
+        <div style="padding:16px 20px; border-bottom:1px solid #e8e8ed; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+            <div>
+                <div style="font-size:16px; font-weight:700; color:#1d1d1f;">✦ Jumi</div>
+                <div style="font-size:11px; color:#86868b; margin-top:1px;">Ask me anything about your training</div>
+            </div>
+            <button onclick="closeJumiChat()" style="background:none; border:none; cursor:pointer; padding:4px; color:#86868b; font-size:20px; line-height:1;">✕</button>
+        </div>
+        <!-- Messages -->
+        <div id="jumiChatMessages" style="flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:12px;"></div>
+        <!-- Input -->
+        <div style="padding:12px 16px; border-top:1px solid #e8e8ed; flex-shrink:0;">
+            <div style="display:flex; gap:8px; align-items:flex-end;">
+                <textarea id="jumiChatInput" placeholder="Ask Jumi anything…" rows="1" style="flex:1; border:1.5px solid #e0e0e5; border-radius:12px; padding:10px 14px; font-size:14px; font-family:inherit; resize:none; outline:none; line-height:1.4; max-height:120px; overflow-y:auto;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendJumiChat();}"></textarea>
+                <button onclick="sendJumiChat()" style="background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; border-radius:10px; padding:10px 14px; cursor:pointer; font-size:14px; font-weight:600; flex-shrink:0;">↑</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FLOATING CHAT BUTTON -->
+    <button id="jumiChatBtn" onclick="toggleJumiChat()" style="position:fixed; bottom:24px; right:24px; width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; cursor:pointer; font-size:20px; box-shadow:0 4px 16px rgba(102,126,234,0.45); z-index:999; display:none; align-items:center; justify-content:center; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.08)';this.style.boxShadow='0 6px 20px rgba(102,126,234,0.6)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 16px rgba(102,126,234,0.45)'">✦</button>
+
+    <!-- EXERCISE APPROVAL MODAL -->
+    <div id="exApprovalModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
+        <div style="background:white; border-radius:20px; padding:28px; width:min(560px,92vw); max-height:85vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0; font-size:17px;">Review Exercise</h3>
+                <button onclick="document.getElementById('exApprovalModal').style.display='none'" style="background:none; border:none; font-size:22px; cursor:pointer; color:#86868b;">✕</button>
+            </div>
+            <div id="exApprovalFields" style="display:flex; flex-direction:column; gap:12px;"></div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button onclick="document.getElementById('exApprovalModal').style.display='none'" style="background:white; border:1.5px solid #d2d2d7; padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer;">Cancel</button>
+                <button onclick="approveExercise()" style="background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer;">Add to Library</button>
+            </div>
+        </div>
+    </div>
 
 </body>
 </html>
