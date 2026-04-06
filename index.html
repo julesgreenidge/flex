@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775493137 -->
+<!-- Version: 1775499201 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -6645,7 +6645,7 @@ Brief 1-2 sentence explanation then JSON. Always end with Savasana (duration:120
             document.querySelectorAll('.card-active').forEach(el => el.classList.remove('card-active'));
             document.getElementById('trueQuickStartBtn').classList.add('card-active');
             setActiveCard('trueQuickStartBtn');
-            currentJumiRoutine = null;
+            // Don't clear currentJumiRoutine — user may return to Jumi tab
             sessionStorage.removeItem('jumiPrompt');
             const _jp = document.getElementById('jumiPanel');
             if (_jp) _jp.style.display = 'none';
