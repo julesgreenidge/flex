@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775492137 -->
+<!-- Version: 1775493137 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -3899,11 +3899,28 @@ If the user asks you to suggest a new exercise not in their library, include a J
 
                 thinking.remove();
 
-                // Check for exercise suggestion
-                const exMatch = reply.match(/<exercise>([\s\S]*?)<\/exercise>/);
-                const cleanReply = reply.replace(/<exercise>[\s\S]*?<\/exercise>/g, '').trim();
+                // Strip any markdown code fences from the full reply before parsing
+                const cleanedReply = reply.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+
+                // Check for routine generation
+                const routineMatch = cleanedReply.match(/<routine>([\s\S]*?)<\/routine>/);
+                const exMatch = cleanedReply.match(/<exercise>([\s\S]*?)<\/exercise>/);
+                const cleanReply = cleanedReply
+                    .replace(/<routine>[\s\S]*?<\/routine>/g, '')
+                    .replace(/<exercise>[\s\S]*?<\/exercise>/g, '')
+                    .trim();
 
                 if (cleanReply) appendChatMessage('jumi', cleanReply);
+
+                if (routineMatch) {
+                    try {
+                        const routineData = JSON.parse(routineMatch[1].trim());
+                        window.loadRoutineFromChat(routineData, true);
+                        appendChatAction('▶ Routine loaded — tap to close chat', () => window.closeJumiChat());
+                    } catch(e) {
+                        appendChatMessage('jumi', '(Could not parse routine — please try again.)');
+                    }
+                }
 
                 if (exMatch) {
                     try {
@@ -4021,8 +4038,9 @@ Brief 1-2 sentence explanation then JSON. Always end with Savasana (duration:120
                 const data = await response.json();
                 const reply = (data.reply || '').trim();
                 thinking.remove();
-                const routineMatch = reply.match(/<routine>([\s\S]*?)<\/routine>/);
-                const cleanReply = reply.replace(/<routine>[\s\S]*?<\/routine>/g, '').trim();
+                const cleanedReply2 = reply.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+                const routineMatch = cleanedReply2.match(/<routine>([\s\S]*?)<\/routine>/);
+                const cleanReply = cleanedReply2.replace(/<routine>[\s\S]*?<\/routine>/g, '').trim();
                 if (routineMatch) {
                     try {
                         const routineData = JSON.parse(routineMatch[1].trim());
