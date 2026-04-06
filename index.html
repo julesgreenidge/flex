@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775459290 -->
+<!-- Version: 1775460396 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -3858,19 +3858,21 @@
             const goals = getJumiGoals();
             const contextTable = buildChatContext();
 
-            const systemPrompt = `You are Jumi, a flexibility and mobility coach with access to this user's full training history.
+            const systemPrompt = `You are Jumi, a flexibility and mobility coach with access to this user's full training history. You also have web search available — use it to find links, videos, tutorials, or any current information when asked.
 
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
 
-Training history summary (exercise | phase | muscle | position | sides | count 12m | 6m | 3m | 1m | 2w | 1w | mins 12m | 6m | 3m | 1m | 2w | 1w | last done):
+Training history (exercise | phase | muscle | position | sides | count 12m | 6m | 3m | 1m | 2w | 1w | mins 12m | 6m | 3m | 1m | 2w | 1w | last done):
 ${contextTable}
 
-Answer questions about their training honestly and specifically. Reference their actual data where relevant.
+Rules:
+- Answer in plain conversational text only. No markdown whatsoever — no bold, no bullet points, no headers, no asterisks, no hyphens as list markers.
+- Use web search whenever the user asks for links, videos, tutorials, or external resources. Always provide real URLs.
+- Reference the user's actual training data where relevant.
+- Be direct and specific. No filler.
 
-If the user asks you to suggest a new exercise not in their library, respond with a JSON block at the end of your message in this exact format:
-<exercise>{"exercise":"name","phase":"phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}  </exercise>
-
-Otherwise respond in plain conversational text. No markdown. Be direct and specific.`;
+If the user asks you to suggest a new exercise not in their library, include a JSON block at the end in this exact format:
+<exercise>{"exercise":"name","phase":"phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}</exercise>`;
 
             try {
                 const messages = [...jumiChatHistory.slice(-10)];
