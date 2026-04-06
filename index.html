@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775483807 -->
+<!-- Version: 1775491430 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1669,7 +1669,7 @@
                     <!-- Jumi card -->
                     <div id="jumiCardWrap" class="qs-card">
                     <div id="jumiCardWrapper" style="display:flex; gap:6px;">
-                        <button id="jumiQuickBtn" onclick="window.openJumiChat && window.openJumiChat();" style="
+                        <button id="jumiQuickBtn" onclick="if(this.classList.contains('card-active')){expandCards();this.classList.remove('card-active');window.closeJumiChat&&window.closeJumiChat();}else{document.querySelectorAll('.card-active').forEach(el=>el.classList.remove('card-active'));this.classList.add('card-active');jumiQuickStart();window.openJumiChat&&window.openJumiChat();var _dd=document.getElementById('selectedDurationDisplay');if(_dd)_dd.style.opacity='1';}" style="
                             display:flex; align-items:center; justify-content:space-between;
                             background:linear-gradient(135deg,#667eea,#764ba2); border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; flex:1; transition:box-shadow 0.15s,transform 0.15s; box-shadow:0 4px 12px rgba(0,0,0,0.18);"
                             onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,0.26)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.18)'">
@@ -1736,10 +1736,11 @@
             <button id="simpleTab" style="display:none;"></button>
             <button id="customTab" style="display:none;"></button>
 
-            <!-- JUMI PANEL -->
-            <!-- JUMI PANEL — stub kept for JS compat -->
-            <div id="jumiPanel" style="display:none;">
-                <div id="jumiExplanation" style="display:none;"><div id="jumiExplanationText" style="display:none;"></div></div>
+            <!-- JUMI PANEL — stub only, chat handles everything -->
+            <div id="jumiPanel" style="display:none !important;">
+                <div id="jumiExplanation" style="display:none;">
+                    <div id="jumiExplanationText" style="display:none;"></div>
+                </div>
             </div>
 
             <!-- SIMPLE MODE CONTROLS -->
@@ -3865,34 +3866,21 @@
 
             const goals = getJumiGoals();
             const contextTable = buildChatContext();
-            const exerciseLibrary = exercises.map(e => e.exercise).join(', ');
-            const currentRoutineSummary = (currentRoutine && currentRoutine.length > 0)
-                ? `The user currently has this ${selectedType || 'simple'} routine displayed on screen (${currentRoutine.length} exercises):\n` +
-                  currentRoutine.map(e => `${e.exercise} | ${e.phase} | ${e.target} | ${Math.round(((e.duration||45)*(e.sides||1)+(e.rest||15))/60*10)/10}min`).join('\n')
-                : 'No routine currently on screen.';
-            const systemPrompt = `You are Jumi, a flexibility and mobility coach. You have web search and can generate routines.
+
+            const systemPrompt = `You are Jumi, a flexibility and mobility coach with access to this user's full training history. You also have web search available — use it to find links, videos, tutorials, or any current information when asked.
 
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
-Session duration: ${selectedTime === 999 ? 'All exercises' : selectedTime + ' minutes'}
-
-Current routine:
-${currentRoutineSummary}
-
-Exercise library (ONLY use these in routines): ${exerciseLibrary}
 
 Training history (exercise | phase | muscle | position | sides | count 12m | 6m | 3m | 1m | 2w | 1w | mins 12m | 6m | 3m | 1m | 2w | 1w | last done):
 ${contextTable}
 
 Rules:
-- Use markdown — bold and italics render correctly.
-- Use web search for links, videos, tutorials. Provide real URLs.
-- Reference training data and current routine where relevant. Be direct. No filler.
-- ONLY use exercises from the exercise library in routines.
+- Answer in plain conversational text only. No markdown whatsoever — no bold, no bullet points, no headers, no asterisks, no hyphens as list markers.
+- Use web search whenever the user asks for links, videos, tutorials, or external resources. Always provide real URLs.
+- Reference the user's actual training data where relevant.
+- Be direct and specific. No filler.
 
-ROUTINE GENERATION: When the user asks you to create, generate, or build a routine, respond with your explanation then a JSON block. Always end with Savasana (120s rest):
-<routine>[{"exercise":"exact name","phase":"exact phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower","duration":45,"rest":15}]</routine>
-
-NEW EXERCISE SUGGESTION: When suggesting an exercise not in their library:
+If the user asks you to suggest a new exercise not in their library, include a JSON block at the end in this exact format:
 <exercise>{"exercise":"name","phase":"phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}</exercise>`;
 
             try {
@@ -3911,25 +3899,11 @@ NEW EXERCISE SUGGESTION: When suggesting an exercise not in their library:
 
                 thinking.remove();
 
-                // Check for routine generation
-                const routineMatch = reply.match(/<routine>([\s\S]*?)<\/routine>/);
+                // Check for exercise suggestion
                 const exMatch = reply.match(/<exercise>([\s\S]*?)<\/exercise>/);
-                const cleanReply = reply
-                    .replace(/<routine>[\s\S]*?<\/routine>/g, '')
-                    .replace(/<exercise>[\s\S]*?<\/exercise>/g, '')
-                    .trim();
+                const cleanReply = reply.replace(/<exercise>[\s\S]*?<\/exercise>/g, '').trim();
 
                 if (cleanReply) appendChatMessage('jumi', cleanReply);
-
-                if (routineMatch) {
-                    try {
-                        const routineData = JSON.parse(routineMatch[1].trim());
-                        window.loadRoutineFromChat(routineData, true);
-                        appendChatAction('▶ Routine loaded — tap to close chat', () => window.closeJumiChat());
-                    } catch(e) {
-                        appendChatMessage('jumi', '(Could not parse routine — please try again.)');
-                    }
-                }
 
                 if (exMatch) {
                     try {
@@ -3969,12 +3943,25 @@ NEW EXERCISE SUGGESTION: When suggesting an exercise not in their library:
             document.getElementById('exApprovalModal').style.display = 'flex';
         }
 
+        window.loadRoutineFromChat = function(routineData, keepOpen) {
+            currentRoutine = routineData;
+            currentJumiRoutine = routineData.map(e => ({...e}));
+            selectedType = 'jumi';
+            if (!keepOpen) window.closeJumiChat();
+            document.getElementById('routineDisplayWrapper').style.display = 'block';
+            document.getElementById('customDisplay').style.display = 'none';
+            document.getElementById('customNavActions').style.display = 'none';
+            displayRoutine();
+            document.getElementById('floatingStartSimple').style.display = 'block';
+            setStarVisible(true);
+            const sub = document.getElementById('jumiQuickSubtitle');
+            if (sub) sub.textContent = 'Routine ready';
+        };
+
         window.quickJumiGenerate = async function() {
-            // Sends a silent generate message to Jumi without user typing
-            const input = document.getElementById('jumiChatInput');
-            const saved = input ? input.value : '';
-            appendChatMessage('user', 'Generate a routine for me based on my history and goals.');
             const container = document.getElementById('jumiChatMessages');
+            if (!container) return;
+            appendChatMessage('user', 'Generate a routine for me based on my history and goals.');
             const thinking = document.createElement('div');
             thinking.style.cssText = 'font-size:13px;color:#86868b;padding:4px 0;';
             thinking.textContent = 'Jumi is building your routine…';
@@ -3984,23 +3971,23 @@ NEW EXERCISE SUGGESTION: When suggesting an exercise not in their library:
             const goals = getJumiGoals();
             const contextTable = buildChatContext();
             const exerciseLibrary = exercises.map(e => e.exercise).join(', ');
+            const durationSettings2 = `Warm-Up: ${appSettings.warmupShortDuration||30}s | Foam Roller: ${appSettings.foamrollerShortDuration||30}s | Mobility: ${appSettings.mobilityShortDuration||45}s | Static Stretching: ${appSettings.staticstretchingShortDuration||45}s | Active Stretch: ${appSettings.activestretchShortDuration||30}s | Deep Stretch: ${appSettings.deepstretchShortDuration||90}s | Splits: ${appSettings.splitsShortDuration||60}s | Cool Down: ${appSettings.cooldownShortDuration||30}s | Rest: ${appSettings.shortHoldRest||15}s`;
             const currentRoutineSummary2 = (currentRoutine && currentRoutine.length > 0)
-                ? `Current routine loaded (${selectedType || 'simple'} mode):\n` +
+                ? `The user currently has this ${selectedType||'simple'} routine on screen (${currentRoutine.length} exercises):\n` +
                   currentRoutine.map(e => `${e.exercise} | ${e.phase} | ${e.target}`).join('\n')
-                : 'No routine currently loaded.';
+                : 'No routine currently on screen.';
+            const targetSecs = selectedTime === 999 ? null : selectedTime * 60;
             const systemPrompt = `You are Jumi, a flexibility and mobility coach. Generate a personalised routine immediately.
 
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
-Session duration: ${selectedTime === 999 ? 'All exercises' : selectedTime + ' minutes'}
+Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' minutes (' + (selectedTime*60) + ' seconds)'}
+Exercise durations (seconds per set): ${durationSettings2}
+CRITICAL: Each exercise total time = duration × sides + rest. Total must be within 30 seconds under ${targetSecs ? targetSecs + 's' : 'no limit'}.
 Exercise library (ONLY use these): ${exerciseLibrary}
+Current routine on screen: ${currentRoutineSummary2}
+Training history: ${contextTable}
 
-Current routine:
-${currentRoutineSummary2}
-
-Training history (exercise | phase | muscle | position | sides | count 12m | 6m | 3m | 1m | 2w | 1w | mins 12m | 6m | 3m | 1m | 2w | 1w | last done):
-${contextTable}
-
-Generate a routine that fits the duration, avoids overworked muscles, and matches goals. Give a brief 1-2 sentence explanation then output the routine JSON. Always end with Savasana (120s):
+Brief 1-2 sentence explanation then JSON. Always end with Savasana (duration:120, rest:0):
 <routine>[{"exercise":"exact name","phase":"exact phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower","duration":45,"rest":15}]</routine>`;
 
             try {
@@ -4017,9 +4004,9 @@ Generate a routine that fits the duration, avoids overworked muscles, and matche
                 if (routineMatch) {
                     try {
                         const routineData = JSON.parse(routineMatch[1].trim());
-                        window.loadRoutineFromChat(routineData, true); // true = don't close chat
+                        window.loadRoutineFromChat(routineData, true);
                         if (cleanReply) appendChatMessage('jumi', cleanReply);
-                        appendChatMessage('jumi', 'Routine loaded — tap Start Routine when ready.');
+                        appendChatMessage('jumi', 'Routine loaded on screen.');
                     } catch(e) {
                         if (cleanReply) appendChatMessage('jumi', cleanReply);
                         appendChatMessage('jumi', '(Could not parse routine — please try again.)');
@@ -4031,20 +4018,6 @@ Generate a routine that fits the duration, avoids overworked muscles, and matche
                 thinking.remove();
                 appendChatMessage('jumi', "Sorry, couldn't connect. Please check your connection.");
             }
-        };
-
-        window.loadRoutineFromChat = function(routineData, keepOpen) {
-            currentRoutine = routineData;
-            selectedType = 'jumi';
-            if (!keepOpen) window.closeJumiChat();
-            document.getElementById('routineDisplayWrapper').style.display = 'block';
-            document.getElementById('customDisplay').style.display = 'none';
-            document.getElementById('customNavActions').style.display = 'none';
-            displayRoutine();
-            document.getElementById('floatingStartSimple').style.display = 'block';
-            setStarVisible(true);
-            const sub = document.getElementById('jumiQuickSubtitle');
-            if (sub) sub.textContent = 'Routine ready';
         };
 
         window.approveExercise = function() {
@@ -6677,20 +6650,27 @@ function regenerateRoutine() {
         function jumiQuickStart() {
             setActiveCard('jumiQuickBtn');
             if (!selectedTime) selectedTime = 35;
-            // Hide all LHS controls, show Jumi panel
+            const _ddj = document.getElementById('selectedDurationDisplay'); if(_ddj) _ddj.style.opacity = '1';
             const sc = document.getElementById('simpleControls');
             if (sc) sc.style.display = 'none';
             const cc = document.getElementById('customControls');
             if (cc) { cc.style.display = 'none'; cc.style.flexDirection = ''; }
             document.getElementById('customNavActions').style.display = 'none';
-            document.getElementById('routineDisplayWrapper').style.display = 'block';
             document.getElementById('customDisplay').style.display = 'none';
             const jp = document.getElementById('jumiPanel');
-            if (jp) jp.style.display = 'block';
-            // Restore prompt from session if exists
-            const savedPrompt = sessionStorage.getItem('jumiPrompt') || '';
-            const input = document.getElementById('jumiPromptInput');
-            if (input && savedPrompt) input.value = savedPrompt;
+            if (jp) jp.style.display = 'none';
+            // Only show RHS if a Jumi routine already exists — otherwise clear it
+            if (currentJumiRoutine && currentJumiRoutine.length > 0) {
+                currentRoutine = currentJumiRoutine;
+                displayRoutine();
+                document.getElementById('routineDisplayWrapper').style.display = 'block';
+                document.getElementById('floatingStartSimple').style.display = 'block';
+                setStarVisible(true);
+            } else {
+                document.getElementById('routineDisplayWrapper').style.display = 'none';
+                document.getElementById('floatingStartSimple').style.display = 'none';
+                setStarVisible(false);
+            }
         }
 
         async function jumiGenerate() {
@@ -10813,28 +10793,6 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
     </div>
 
 
-
-
-    <!-- JUMI CHAT PANEL -->
-    <div id="jumiChatPanel" style="position:fixed; top:0; right:0; width:380px; height:100vh; background:white; box-shadow:-4px 0 24px rgba(0,0,0,0.12); z-index:1000; display:flex; flex-direction:column; transform:translateX(100%); transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);">
-        <!-- Header -->
-        <div style="padding:16px 20px; border-bottom:1px solid #e8e8ed; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
-            <div>
-                <div style="font-size:16px; font-weight:700; color:#1d1d1f;">✦ Jumi</div>
-                <div style="font-size:11px; color:#86868b; margin-top:1px;">Ask me anything about your training</div>
-            </div>
-            <button onclick="closeJumiChat()" style="background:none; border:none; cursor:pointer; padding:4px; color:#86868b; font-size:20px; line-height:1;">✕</button>
-        </div>
-        <!-- Messages -->
-        <div id="jumiChatMessages" style="flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:12px;"></div>
-        <!-- Input -->
-        <div style="padding:12px 16px; border-top:1px solid #e8e8ed; flex-shrink:0;">
-            <div style="display:flex; gap:8px; align-items:flex-end;">
-                <textarea id="jumiChatInput" placeholder="Ask Jumi anything…" rows="1" style="flex:1; border:1.5px solid #e0e0e5; border-radius:12px; padding:10px 14px; font-size:14px; font-family:inherit; resize:none; outline:none; line-height:1.4; max-height:120px; overflow-y:auto;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendJumiChat();}"></textarea>
-                <button onclick="sendJumiChat()" style="background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; border-radius:10px; padding:10px 14px; cursor:pointer; font-size:14px; font-weight:600; flex-shrink:0;">↑</button>
-            </div>
-        </div>
-    </div>
 
 
 
