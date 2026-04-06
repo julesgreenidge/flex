@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775429511 -->
+<!-- Version: 1775459290 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -59,6 +59,7 @@
             padding: 30px 30px;
             overflow-y: auto;
             backdrop-filter: blur(20px);
+            position: relative;
         }
 
         h1 {
@@ -2146,6 +2147,7 @@
 
             <!-- RHS Content Column -->
             <div class="routine-column" style="display: flex; flex-direction: column; padding: 0;">
+
                 <!-- NAV BAR -->
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 1px solid #e5e5e7; background: rgba(255,255,255,0.95); flex-shrink: 0;">
                     <div class="nav-group"></div>
@@ -3720,16 +3722,72 @@
         let jumiChatHistory = [];
         let _pendingExercise = null;
 
+        // Create chat UI via JS — appended directly to body to avoid stacking context issues
+        (function() {
+            // Chat panel
+            const panel = document.createElement('div');
+            panel.id = 'jumiChatPanel';
+            panel.style.cssText = 'position:fixed;top:0;right:0;width:380px;height:100vh;background:white;box-shadow:-4px 0 24px rgba(0,0,0,0.12);z-index:100000;display:flex;flex-direction:column;transform:translateX(100%);transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);';
+            panel.innerHTML = `
+                <div style="padding:16px 20px;border-bottom:1px solid #e8e8ed;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                    <div>
+                        <div style="font-size:16px;font-weight:700;color:#1d1d1f;">✦ Jumi</div>
+                        <div style="font-size:11px;color:#86868b;margin-top:1px;">Ask me anything about your training</div>
+                    </div>
+                    <button onclick="window.closeJumiChat()" style="background:none;border:none;cursor:pointer;padding:4px;color:#86868b;font-size:20px;line-height:1;">✕</button>
+                </div>
+                <div id="jumiChatMessages" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px;"></div>
+                <div style="padding:12px 16px;border-top:1px solid #e8e8ed;flex-shrink:0;">
+                    <div style="display:flex;gap:8px;align-items:flex-end;">
+                        <textarea id="jumiChatInput" placeholder="Ask Jumi anything…" rows="1" style="flex:1;border:1.5px solid #e0e0e5;border-radius:12px;padding:10px 14px;font-size:14px;font-family:inherit;resize:none;outline:none;line-height:1.4;max-height:120px;overflow-y:auto;"></textarea>
+                        <button onclick="window.sendJumiChat()" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;font-size:14px;font-weight:600;flex-shrink:0;">↑</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(panel);
+            // Wire up enter key
+            panel.querySelector('#jumiChatInput').addEventListener('keydown', e => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.sendJumiChat && window.sendJumiChat(); }
+            });
+
+            // Exercise approval modal
+            const modal = document.createElement('div');
+            modal.id = 'exApprovalModal';
+            modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200000;align-items:center;justify-content:center;';
+            modal.innerHTML = `
+                <div style="background:white;border-radius:20px;padding:28px;width:min(560px,92vw);max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                        <h3 style="margin:0;font-size:17px;">Review Exercise</h3>
+                        <button onclick="document.getElementById('exApprovalModal').style.display='none'" style="background:none;border:none;font-size:22px;cursor:pointer;color:#86868b;">✕</button>
+                    </div>
+                    <div id="exApprovalFields" style="display:flex;flex-direction:column;gap:12px;"></div>
+                    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
+                        <button onclick="document.getElementById('exApprovalModal').style.display='none'" style="background:white;border:1.5px solid #d2d2d7;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
+                        <button onclick="window.approveExercise()" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Add to Library</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(modal);
+
+            // Chat button
+            const btn = document.createElement('button');
+            btn.id = 'jumiChatBtn';
+            btn.textContent = '✦';
+            btn.style.cssText = 'position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;cursor:pointer;font-size:20px;box-shadow:0 4px 16px rgba(102,126,234,0.45);z-index:99999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.2s,transform 0.2s,box-shadow 0.2s;';
+            btn.addEventListener('click', () => window.toggleJumiChat && window.toggleJumiChat());
+            btn.addEventListener('mouseover', () => { btn.style.transform='scale(1.08)'; btn.style.boxShadow='0 6px 20px rgba(102,126,234,0.6)'; });
+            btn.addEventListener('mouseout', () => { btn.style.transform='scale(1)'; btn.style.boxShadow='0 4px 16px rgba(102,126,234,0.45)'; });
+            document.body.appendChild(btn);
+        })();
+
         function showJumiChatBtn() {
             const btn = document.getElementById('jumiChatBtn');
-            if (btn) btn.style.display = 'flex';
+            if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
         }
         function hideJumiChatBtn() {
             const btn = document.getElementById('jumiChatBtn');
-            if (btn) btn.style.display = 'none';
+            if (btn) { btn.style.opacity = '0'; btn.style.pointerEvents = 'none'; }
         }
 
-        function toggleJumiChat() {
+        window.toggleJumiChat = function toggleJumiChat() {
             const panel = document.getElementById('jumiChatPanel');
             const isOpen = panel.style.transform === 'translateX(0px)' || panel.style.transform === 'translateX(0)';
             if (isOpen) {
@@ -3739,7 +3797,7 @@
             }
         }
 
-        function openJumiChat() {
+        window.openJumiChat = function openJumiChat() {
             const panel = document.getElementById('jumiChatPanel');
             panel.style.transform = 'translateX(0)';
             if (jumiChatHistory.length === 0) {
@@ -3779,7 +3837,7 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        async function sendJumiChat() {
+        window.sendJumiChat = async function sendJumiChat() {
             const input = document.getElementById('jumiChatInput');
             const text = input.value.trim();
             if (!text) return;
@@ -10039,6 +10097,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
 
             <!-- Right Column: Settings Content -->
             <div class="routine-column" style="display: flex; flex-direction: column; padding: 0;">
+
                 <!-- NAV BAR -->
                 <div id="settingsNavBar" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 1px solid #e5e5e7; background: rgba(255,255,255,0.95); flex-shrink: 0;">
                     <div class="nav-group"></div>
@@ -10662,8 +10721,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
         </div>
     </div>
 
-    <!-- FLOATING CHAT BUTTON -->
-    <button id="jumiChatBtn" onclick="toggleJumiChat()" style="position:fixed; bottom:24px; right:24px; width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; cursor:pointer; font-size:20px; box-shadow:0 4px 16px rgba(102,126,234,0.45); z-index:999; display:none; align-items:center; justify-content:center; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.08)';this.style.boxShadow='0 6px 20px rgba(102,126,234,0.6)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 16px rgba(102,126,234,0.45)'">✦</button>
+
 
     <!-- EXERCISE APPROVAL MODAL -->
     <div id="exApprovalModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
