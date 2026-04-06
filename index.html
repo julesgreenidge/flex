@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775460396 -->
+<!-- Version: 1775460860 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -3810,14 +3810,30 @@
             document.getElementById('jumiChatPanel').style.transform = 'translateX(100%)';
         };
 
+        function markdownToHtml(text) {
+            return text
+                // Bold **text**
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                // Italic *text*
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                // URLs — make clickable (but not already in href)
+                .replace(/(?<![">])(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color:#667eea;text-decoration:underline;word-break:break-all;">$1</a>')
+                // Line breaks
+                .replace(/\n/g, '<br>');
+        }
+
         function appendChatMessage(role, text) {
             const container = document.getElementById('jumiChatMessages');
             const isJumi = role === 'jumi';
             const div = document.createElement('div');
             div.style.cssText = `display:flex; flex-direction:column; align-items:${isJumi?'flex-start':'flex-end'};`;
             const bubble = document.createElement('div');
-            bubble.style.cssText = `max-width:85%; padding:10px 14px; border-radius:${isJumi?'4px 16px 16px 16px':'16px 4px 16px 16px'}; font-size:14px; line-height:1.5; white-space:pre-wrap; background:${isJumi?'#f2f2f7':'linear-gradient(135deg,#667eea,#764ba2)'}; color:${isJumi?'#1d1d1f':'white'};`;
-            bubble.textContent = text;
+            bubble.style.cssText = `max-width:85%; padding:10px 14px; border-radius:${isJumi?'4px 16px 16px 16px':'16px 4px 16px 16px'}; font-size:14px; line-height:1.6; word-wrap:break-word; overflow-wrap:break-word; background:${isJumi?'#f2f2f7':'linear-gradient(135deg,#667eea,#764ba2)'}; color:${isJumi?'#1d1d1f':'white'};`;
+            if (isJumi) {
+                bubble.innerHTML = markdownToHtml(text);
+            } else {
+                bubble.textContent = text;
+            }
             div.appendChild(bubble);
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
