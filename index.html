@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775491430 -->
+<!-- Version: 1775492137 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -3944,6 +3944,28 @@ If the user asks you to suggest a new exercise not in their library, include a J
         }
 
         window.loadRoutineFromChat = function(routineData, keepOpen) {
+            // Apply correct per-phase durations from settings — Jumi's are unreliable
+            applyDurationSettings(routineData);
+
+            // Trim to target duration if needed
+            if (selectedTime !== 999) {
+                const targetSecs = selectedTime * 60;
+                const savasana = routineData.find(e => e.exercise === 'Savasana');
+                const savasanaSecs = savasana ? calculateExerciseTime(savasana) : 0;
+                const rest = routineData.filter(e => e.exercise !== 'Savasana');
+                let total = 0;
+                const trimmed = [];
+                for (const ex of rest) {
+                    const t = calculateExerciseTime(ex);
+                    if (total + t + savasanaSecs <= targetSecs) {
+                        trimmed.push(ex);
+                        total += t;
+                    }
+                }
+                if (savasana) trimmed.push(savasana);
+                routineData = trimmed;
+            }
+
             currentRoutine = routineData;
             currentJumiRoutine = routineData.map(e => ({...e}));
             selectedType = 'jumi';
