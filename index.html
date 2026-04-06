@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.3: Gemini fixes - body overflow-y auto for small screens; start button reset on generate; audio unlock on generate -->
+    <!-- v3.4: Jumi outputs prioritised exercise list only; app handles all timing via buildJumiRoutine; per-exercise hold field drives applyDurationSettings -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -1587,7 +1587,7 @@
             background: white;
         }
     </style>
-<meta name="build-date" content="03 Apr 2026">
+<meta name="build-date" content="06 Apr 2026">
 </head>
 <body>
     <!-- Splash Screen -->
@@ -3870,6 +3870,7 @@
             const systemPrompt = `You are Jumi, a flexibility and mobility coach with access to this user's full training history. You also have web search available — use it to find links, videos, tutorials, or any current information when asked.
 
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
+Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' minutes'}
 
 Training history (exercise | phase | muscle | position | sides | count 12m | 6m | 3m | 1m | 2w | 1w | mins 12m | 6m | 3m | 1m | 2w | 1w | last done):
 ${contextTable}
@@ -3879,6 +3880,10 @@ Rules:
 - Use web search whenever the user asks for links, videos, tutorials, or external resources. Always provide real URLs.
 - Reference the user's actual training data where relevant.
 - Be direct and specific. No filler.
+
+If the user asks you to generate a routine, output a prioritised list — most important first. The app handles all timing. Do NOT include Savasana (the app adds it automatically). Use this exact format:
+<routine>[{"exercise":"exact name","phase":"exact phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower","hold":"short"}]</routine>
+hold must be "short" or "long". Output enough exercises to comfortably fill the target duration.
 
 If the user asks you to suggest a new exercise not in their library, include a JSON block at the end in this exact format:
 <exercise>{"exercise":"name","phase":"phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}</exercise>`;
@@ -3960,28 +3965,60 @@ If the user asks you to suggest a new exercise not in their library, include a J
             document.getElementById('exApprovalModal').style.display = 'flex';
         }
 
-        window.loadRoutineFromChat = function(routineData, keepOpen) {
-            // Apply correct per-phase durations from settings — Jumi's are unreliable
-            applyDurationSettings(routineData);
+        function buildJumiRoutine(priorityList) {
+            // Apply app timing settings to Jumi's exercise list (uses per-exercise hold field)
+            applyDurationSettings(priorityList);
 
-            // Trim to target duration if needed
-            if (selectedTime !== 999) {
-                const targetSecs = selectedTime * 60;
-                const savasana = routineData.find(e => e.exercise === 'Savasana');
-                const savasanaSecs = savasana ? calculateExerciseTime(savasana) : 0;
-                const rest = routineData.filter(e => e.exercise !== 'Savasana');
-                let total = 0;
-                const trimmed = [];
-                for (const ex of rest) {
-                    const t = calculateExerciseTime(ex);
-                    if (total + t + savasanaSecs <= targetSecs) {
-                        trimmed.push(ex);
-                        total += t;
-                    }
-                }
-                if (savasana) trimmed.push(savasana);
-                routineData = trimmed;
+            // Savasana is always appended by the app — 120s fixed
+            const savasana = exercises.find(e => e.exercise === 'Savasana');
+            const savasanaSecs = savasana ? calculateExerciseTime(savasana) : 120;
+
+            // No time limit — return full list plus Savasana
+            if (selectedTime === 999) {
+                const result = [...priorityList];
+                if (savasana) result.push({...savasana});
+                return result;
             }
+
+            const targetSecs = selectedTime * 60;
+            const budget = targetSecs - savasanaSecs;
+            const result = [];
+            let total = 0;
+
+            // First pass — work through priority list in order
+            for (const ex of priorityList) {
+                const t = calculateExerciseTime(ex);
+                if (total + t <= budget) {
+                    result.push({...ex});
+                    total += t;
+                }
+            }
+
+            // Padding pass — loop back from start if time remains
+            if (result.length > 0 && total < budget) {
+                let i = 0;
+                let loops = 0;
+                while (total < budget && loops < priorityList.length) {
+                    const ex = priorityList[i % priorityList.length];
+                    const t = calculateExerciseTime(ex);
+                    if (total + t <= budget) {
+                        result.push({...ex});
+                        total += t;
+                        loops = 0;
+                    } else {
+                        loops++;
+                    }
+                    i++;
+                }
+            }
+
+            if (savasana) result.push({...savasana});
+            return result;
+        }
+
+        window.loadRoutineFromChat = function(routineData, keepOpen) {
+            // Build routine from Jumi's priority list — app handles all timing
+            routineData = buildJumiRoutine(routineData);
 
             currentRoutine = routineData;
             currentJumiRoutine = routineData.map(e => ({...e}));
@@ -4019,15 +4056,15 @@ If the user asks you to suggest a new exercise not in their library, include a J
             const systemPrompt = `You are Jumi, a flexibility and mobility coach. Generate a personalised routine immediately.
 
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
-Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' minutes (' + (selectedTime*60) + ' seconds)'}
-Exercise durations (seconds per set): ${durationSettings2}
-CRITICAL: Each exercise total time = duration × sides + rest. Total must be within 30 seconds under ${targetSecs ? targetSecs + 's' : 'no limit'}.
-Exercise library (ONLY use these): ${exerciseLibrary}
+Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' minutes'}
+Exercise library (ONLY use these exact names): ${exerciseLibrary}
 Current routine on screen: ${currentRoutineSummary2}
 Training history: ${contextTable}
 
-Brief 1-2 sentence explanation then JSON. Always end with Savasana (duration:120, rest:0):
-<routine>[{"exercise":"exact name","phase":"exact phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower","duration":45,"rest":15}]</routine>`;
+Output a prioritised list of exercises — most important first. The app handles all timing. Do NOT include Savasana (the app adds it automatically).
+Brief 1-2 sentence explanation then JSON:
+<routine>[{"exercise":"exact name","phase":"exact phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower","hold":"short"}]</routine>
+hold must be "short" or "long". Output enough exercises to comfortably fill the target duration.`;
 
             try {
                 const response = await fetch('/.netlify/functions/coach', {
@@ -6765,10 +6802,14 @@ function regenerateRoutine() {
                 const longKey  = keys[1] + 'LongDuration';
                 const shortVal = appSettings[shortKey];
                 const longVal  = appSettings[longKey];
-                if (longSession && longVal != null) {
+                // Per-exercise hold (Jumi routines); fall back to global longSession (simple routines)
+                const isLong = ex.hold != null ? ex.hold === 'long' : longSession;
+                if (isLong && longVal != null) {
                     ex.duration = longVal;
-                } else if (!longSession && shortVal != null) {
+                    ex.rest = appSettings.longHoldRest;
+                } else if (!isLong && shortVal != null) {
                     ex.duration = shortVal;
+                    ex.rest = appSettings.shortHoldRest;
                 }
             });
         }
