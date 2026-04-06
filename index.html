@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775483495 -->
+<!-- Version: 1775483807 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -3867,9 +3867,9 @@
             const contextTable = buildChatContext();
             const exerciseLibrary = exercises.map(e => e.exercise).join(', ');
             const currentRoutineSummary = (currentRoutine && currentRoutine.length > 0)
-                ? `Current routine loaded (${selectedType || 'simple'} mode):\n` +
+                ? `The user currently has this ${selectedType || 'simple'} routine displayed on screen (${currentRoutine.length} exercises):\n` +
                   currentRoutine.map(e => `${e.exercise} | ${e.phase} | ${e.target} | ${Math.round(((e.duration||45)*(e.sides||1)+(e.rest||15))/60*10)/10}min`).join('\n')
-                : 'No routine currently loaded.';
+                : 'No routine currently on screen.';
             const systemPrompt = `You are Jumi, a flexibility and mobility coach. You have web search and can generate routines.
 
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
@@ -3924,7 +3924,8 @@ NEW EXERCISE SUGGESTION: When suggesting an exercise not in their library:
                 if (routineMatch) {
                     try {
                         const routineData = JSON.parse(routineMatch[1].trim());
-                        appendChatAction('▶ Load this routine →', () => loadRoutineFromChat(routineData));
+                        window.loadRoutineFromChat(routineData, true);
+                        appendChatAction('▶ Routine loaded — tap to close chat', () => window.closeJumiChat());
                     } catch(e) {
                         appendChatMessage('jumi', '(Could not parse routine — please try again.)');
                     }
@@ -4013,12 +4014,18 @@ Generate a routine that fits the duration, avoids overworked muscles, and matche
                 thinking.remove();
                 const routineMatch = reply.match(/<routine>([\s\S]*?)<\/routine>/);
                 const cleanReply = reply.replace(/<routine>[\s\S]*?<\/routine>/g, '').trim();
-                if (cleanReply) appendChatMessage('jumi', cleanReply);
                 if (routineMatch) {
                     try {
                         const routineData = JSON.parse(routineMatch[1].trim());
-                        appendChatAction('▶ Load this routine →', () => loadRoutineFromChat(routineData));
-                    } catch(e) { appendChatMessage('jumi', '(Could not parse routine — please try again.)'); }
+                        window.loadRoutineFromChat(routineData, true); // true = don't close chat
+                        if (cleanReply) appendChatMessage('jumi', cleanReply);
+                        appendChatMessage('jumi', 'Routine loaded — tap Start Routine when ready.');
+                    } catch(e) {
+                        if (cleanReply) appendChatMessage('jumi', cleanReply);
+                        appendChatMessage('jumi', '(Could not parse routine — please try again.)');
+                    }
+                } else if (cleanReply) {
+                    appendChatMessage('jumi', cleanReply);
                 }
             } catch(err) {
                 thinking.remove();
@@ -4026,10 +4033,10 @@ Generate a routine that fits the duration, avoids overworked muscles, and matche
             }
         };
 
-        window.loadRoutineFromChat = function(routineData) {
+        window.loadRoutineFromChat = function(routineData, keepOpen) {
             currentRoutine = routineData;
             selectedType = 'jumi';
-            window.closeJumiChat();
+            if (!keepOpen) window.closeJumiChat();
             document.getElementById('routineDisplayWrapper').style.display = 'block';
             document.getElementById('customDisplay').style.display = 'none';
             document.getElementById('customNavActions').style.display = 'none';
