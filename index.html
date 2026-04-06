@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.4: Jumi outputs prioritised exercise list only; app handles all timing via buildJumiRoutine; per-exercise hold field drives applyDurationSettings -->
+    <!-- v3.9: Fix applyDurationSettings overwriting ex.rest for simple routines — now only sets rest when ex.hold is explicitly present (Jumi exercises only) -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3881,9 +3881,9 @@ Rules:
 - Reference the user's actual training data where relevant.
 - Be direct and specific. No filler.
 
-If the user asks you to generate a routine, output a prioritised list — most important first. The app handles all timing. Do NOT include Savasana (the app adds it automatically). Use this exact format:
-<routine>[{"exercise":"exact name","phase":"exact phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower","hold":"short"}]</routine>
-hold must be "short" or "long". Output enough exercises to comfortably fill the target duration.
+If the user asks you to generate a routine, output exercises grouped by phase — most important first within each phase. The app handles all timing and structure. Do NOT include Savasana (the app adds it automatically). Provide roughly double the expected count per phase so the app has plenty to choose from. Use this exact format:
+<routine>{"Warm-Up":[{"exercise":"exact name","target":"muscle","position":"position","sides":1,"bodyPart":"lower","hold":"short"}],"Static Stretching":[...],"Deep Stretch":[...]}</routine>
+Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits, Cool Down. Only include phases relevant to the user's goals. hold must be "short" or "long".
 
 If the user asks you to suggest a new exercise not in their library, include a JSON block at the end in this exact format:
 <exercise>{"exercise":"name","phase":"phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}</exercise>`;
@@ -3919,8 +3919,9 @@ If the user asks you to suggest a new exercise not in their library, include a J
 
                 if (routineMatch) {
                     try {
-                        const routineData = JSON.parse(routineMatch[1].trim());
-                        window.loadRoutineFromChat(routineData, true);
+                        const jumiPhaseData = JSON.parse(routineMatch[1].trim());
+                        await buildJumiRoutine(jumiPhaseData);
+                        window.loadRoutineFromChat(true);
                         appendChatAction('▶ Routine loaded — tap to close chat', () => window.closeJumiChat());
                     } catch(e) {
                         appendChatMessage('jumi', '(Could not parse routine — please try again.)');
@@ -3965,63 +3966,25 @@ If the user asks you to suggest a new exercise not in their library, include a J
             document.getElementById('exApprovalModal').style.display = 'flex';
         }
 
-        function buildJumiRoutine(priorityList) {
-            // Apply app timing settings to Jumi's exercise list (uses per-exercise hold field)
-            applyDurationSettings(priorityList);
+        async function buildJumiRoutine(jumiPhaseData) {
+            // jumiPhaseData: { "Warm-Up": [{exercise, phase, hold, ...}], "Static Stretching": [...], ... }
+            // Apply per-exercise hold-based duration settings to all candidates
+            const allCandidates = Object.values(jumiPhaseData).flat();
+            applyDurationSettings(allCandidates);
 
-            // Savasana is always appended by the app — 120s fixed
-            const savasana = exercises.find(e => e.exercise === 'Savasana');
-            const savasanaSecs = savasana ? calculateExerciseTime(savasana) : 120;
-
-            // No time limit — return full list plus Savasana
-            if (selectedTime === 999) {
-                const result = [...priorityList];
-                if (savasana) result.push({...savasana});
-                return result;
+            // Rebuild phase pools with duration-applied candidates
+            const jumiPools = {};
+            for (const [phase, candidates] of Object.entries(jumiPhaseData)) {
+                jumiPools[phase] = candidates; // already mutated by applyDurationSettings
             }
 
-            const targetSecs = selectedTime * 60;
-            const budget = targetSecs - savasanaSecs;
-            const result = [];
-            let total = 0;
-
-            // First pass — work through priority list in order
-            for (const ex of priorityList) {
-                const t = calculateExerciseTime(ex);
-                if (total + t <= budget) {
-                    result.push({...ex});
-                    total += t;
-                }
-            }
-
-            // Padding pass — loop back from start if time remains
-            if (result.length > 0 && total < budget) {
-                let i = 0;
-                let loops = 0;
-                while (total < budget && loops < priorityList.length) {
-                    const ex = priorityList[i % priorityList.length];
-                    const t = calculateExerciseTime(ex);
-                    if (total + t <= budget) {
-                        result.push({...ex});
-                        total += t;
-                        loops = 0;
-                    } else {
-                        loops++;
-                    }
-                    i++;
-                }
-            }
-
-            if (savasana) result.push({...savasana});
-            return result;
+            // Run the full generator with Jumi's pools overriding random selection
+            await generateRoutine(jumiPools);
         }
 
-        window.loadRoutineFromChat = function(routineData, keepOpen) {
-            // Build routine from Jumi's priority list — app handles all timing
-            routineData = buildJumiRoutine(routineData);
-
-            currentRoutine = routineData;
-            currentJumiRoutine = routineData.map(e => ({...e}));
+        window.loadRoutineFromChat = function(keepOpen) {
+            // currentRoutine already set by buildJumiRoutine → generateRoutine
+            currentJumiRoutine = currentRoutine.map(e => ({...e}));
             selectedType = 'jumi';
             if (!keepOpen) window.closeJumiChat();
             document.getElementById('routineDisplayWrapper').style.display = 'block';
@@ -4061,10 +4024,10 @@ Exercise library (ONLY use these exact names): ${exerciseLibrary}
 Current routine on screen: ${currentRoutineSummary2}
 Training history: ${contextTable}
 
-Output a prioritised list of exercises — most important first. The app handles all timing. Do NOT include Savasana (the app adds it automatically).
+Output a prioritised list of exercises grouped by phase — most important first within each phase. The app handles all timing and structure. Do NOT include Savasana (the app adds it automatically). Provide enough candidates per phase to give the app plenty to work with (aim for roughly double the expected count per phase).
 Brief 1-2 sentence explanation then JSON:
-<routine>[{"exercise":"exact name","phase":"exact phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower","hold":"short"}]</routine>
-hold must be "short" or "long". Output enough exercises to comfortably fill the target duration.`;
+<routine>{"Warm-Up":[{"exercise":"exact name","target":"muscle","position":"position","sides":1,"bodyPart":"lower","hold":"short"}],"Static Stretching":[...],"Deep Stretch":[...]}</routine>
+Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits, Cool Down. Only include phases relevant to the user's goals. hold must be "short" or "long".`;
 
             try {
                 const response = await fetch('/.netlify/functions/coach', {
@@ -4080,9 +4043,10 @@ hold must be "short" or "long". Output enough exercises to comfortably fill the 
                 const cleanReply = cleanedReply2.replace(/<routine>[\s\S]*?<\/routine>/g, '').trim();
                 if (routineMatch) {
                     try {
-                        const routineData = JSON.parse(routineMatch[1].trim());
-                        window.loadRoutineFromChat(routineData, true);
+                        const jumiPhaseData = JSON.parse(routineMatch[1].trim());
                         if (cleanReply) appendChatMessage('jumi', cleanReply);
+                        await buildJumiRoutine(jumiPhaseData);
+                        window.loadRoutineFromChat(true);
                         appendChatMessage('jumi', 'Routine loaded on screen.');
                     } catch(e) {
                         if (cleanReply) appendChatMessage('jumi', cleanReply);
@@ -5678,7 +5642,7 @@ hold must be "short" or "long". Output enough exercises to comfortably fill the 
         }
 
         // ===== ROUTINE GENERATION =====
-        async function generateRoutine() {
+        async function generateRoutine(jumiPools) {
             // Hide start button to prevent starting outdated routine if user re-generates
             document.getElementById('floatingStartSimple').style.display = 'none';
             
@@ -6033,22 +5997,36 @@ hold must be "short" or "long". Output enough exercises to comfortably fill the 
 
                 // Select exercises for each phase
                 for (let phase of phases) {
-                    // Active Stretch and Deep Stretch use their promoted pools; other phases use exercises array.
-                    // Static Stretching excludes any exercises already reserved for Active/Deep Stretch.
-                    // This ensures no exercise name appears in multiple phases.
                     let allPhaseExercises;
-                    if (phase === "Active Stretch") {
-                        allPhaseExercises = activeStretchPool.filter(e => !usedExerciseNames.has(e.exercise));
-                    } else if (phase === "Deep Stretch") {
-                        allPhaseExercises = deepStretchPool.filter(e => !usedExerciseNames.has(e.exercise));
-                    } else if (phase === "Static Stretching") {
-                        allPhaseExercises = exercisesForGen.filter(e => 
-                            e.phase === "Static Stretching" && 
-                            !activeStretchReserved.has(e.exercise) && 
-                            !deepStretchReserved.has(e.exercise)
-                        );
+                    const usingJumiPool = jumiPools && jumiPools[phase] && jumiPools[phase].length > 0;
+
+                    if (usingJumiPool) {
+                        // Jumi mode: use priority-ordered candidates, filtered against already-used names
+                        allPhaseExercises = jumiPools[phase]
+                            .filter(e => !usedExerciseNames.has(e.exercise))
+                            .map(e => {
+                                // Match against exercisesForGen to get correct duration-applied copy
+                                const source = exercisesForGen.find(s => s.exercise === e.exercise);
+                                return source ? {...source, hold: e.hold} : {...e};
+                            });
                     } else {
-                        allPhaseExercises = exercisesForGen.filter(e => e.phase === phase);
+                        // Normal mode: use standard pools
+                        // Active Stretch and Deep Stretch use their promoted pools; other phases use exercises array.
+                        // Static Stretching excludes any exercises already reserved for Active/Deep Stretch.
+                        // This ensures no exercise name appears in multiple phases.
+                        if (phase === "Active Stretch") {
+                            allPhaseExercises = activeStretchPool.filter(e => !usedExerciseNames.has(e.exercise));
+                        } else if (phase === "Deep Stretch") {
+                            allPhaseExercises = deepStretchPool.filter(e => !usedExerciseNames.has(e.exercise));
+                        } else if (phase === "Static Stretching") {
+                            allPhaseExercises = exercisesForGen.filter(e => 
+                                e.phase === "Static Stretching" && 
+                                !activeStretchReserved.has(e.exercise) && 
+                                !deepStretchReserved.has(e.exercise)
+                            );
+                        } else {
+                            allPhaseExercises = exercisesForGen.filter(e => e.phase === phase);
+                        }
                     }
                     
                     const seenInPool = new Set();
@@ -6057,40 +6035,41 @@ hold must be "short" or "long". Output enough exercises to comfortably fill the 
                         seenInPool.add(e.exercise);
                         return true;
                     });
-                    
-                    // Apply focus - sort focused exercises to front of unique pool
+
+                    // Apply focus and body part filtering only for non-Jumi phases
+                    // (Jumi already decided priority and body parts)
                     let focusExercises = [];
-                    if (selectedFocus && !isAllExercises) {
-                        // Separate focus exercises from others
-                        focusExercises = allPhaseExercises.filter(e => e.target === selectedFocus);
-                        let otherExercises = allPhaseExercises.filter(e => e.target !== selectedFocus);
+                    if (!usingJumiPool) {
+                        // Apply focus - sort focused exercises to front of unique pool
+                        if (selectedFocus && !isAllExercises) {
+                            // Separate focus exercises from others
+                            focusExercises = allPhaseExercises.filter(e => e.target === selectedFocus);
+                            let otherExercises = allPhaseExercises.filter(e => e.target !== selectedFocus);
+                            
+                            // Randomize within each group
+                            focusExercises = weightedShuffle(focusExercises);
+                            otherExercises = weightedShuffle(otherExercises);
+                            
+                            // Put focus exercises first
+                            allPhaseExercises = [...focusExercises, ...otherExercises];
+                        }
                         
-                        // Randomize within each group
-                        focusExercises = weightedShuffle(focusExercises);
-                        otherExercises = weightedShuffle(otherExercises);
-                        
-                        // Put focus exercises first
-                        allPhaseExercises = [...focusExercises, ...otherExercises];
-                    }
-                    
-                    // Filter by routine type based on bodyPart (case-insensitive)
-                    if (selectedType === 'upper') {
-                        // Upper Body: only include upper + full exercises
-                        allPhaseExercises = allPhaseExercises.filter(e => {
-                            const bp = (e.bodyPart || '').toLowerCase();
-                            return bp === 'upper' || bp === 'full';
-                        });
-                        allPhaseExercises = weightedShuffle(allPhaseExercises);
-                    } else if (selectedType === 'lower') {
-                        // Lower Body: only include lower + full exercises
-                        allPhaseExercises = allPhaseExercises.filter(e => {
-                            const bp = (e.bodyPart || '').toLowerCase();
-                            return bp === 'lower' || bp === 'full';
-                        });
-                        allPhaseExercises = weightedShuffle(allPhaseExercises);
-                    } else {
-                        // Full Body: include all exercises
-                        allPhaseExercises = weightedShuffle(allPhaseExercises);
+                        // Filter by routine type based on bodyPart (case-insensitive)
+                        if (selectedType === 'upper') {
+                            allPhaseExercises = allPhaseExercises.filter(e => {
+                                const bp = (e.bodyPart || '').toLowerCase();
+                                return bp === 'upper' || bp === 'full';
+                            });
+                            allPhaseExercises = weightedShuffle(allPhaseExercises);
+                        } else if (selectedType === 'lower') {
+                            allPhaseExercises = allPhaseExercises.filter(e => {
+                                const bp = (e.bodyPart || '').toLowerCase();
+                                return bp === 'lower' || bp === 'full';
+                            });
+                            allPhaseExercises = weightedShuffle(allPhaseExercises);
+                        } else {
+                            allPhaseExercises = weightedShuffle(allPhaseExercises);
+                        }
                     }
                     
                     // Safety check: if no exercises after filtering, skip this phase
@@ -6386,8 +6365,9 @@ hold must be "short" or "long". Output enough exercises to comfortably fill the 
                 const maxSecs = targetSecs;
                 
                 
-                // AGGRESSIVE TRIMMING: Try multiple exercise types
+                // AGGRESSIVE TRIMMING: remove exercises until at or under target
                 let trimAttempts = 0;
+                let didTrim = false;
                 while (currentTotal > maxSecs && trimAttempts < 30) {
                     // Priority 1: Trim Static Stretches
                     const staticToRemove = bestRoutine.filter(ex => 
@@ -6403,20 +6383,27 @@ hold must be "short" or "long". Output enough exercises to comfortably fill the 
                         const removedTime = calculateExerciseTime(toRemove);
                         bestRoutine.splice(removeIndex, 1);
                         currentTotal -= removedTime;
+                        didTrim = true;
                     } else if (deepToRemove.length > 2) {
                         const toRemove = deepToRemove[deepToRemove.length - 1];
                         const removeIndex = bestRoutine.indexOf(toRemove);
                         const removedTime = calculateExerciseTime(toRemove);
                         bestRoutine.splice(removeIndex, 1);
                         currentTotal -= removedTime;
+                        didTrim = true;
                     } else {
                         break;
                     }
                     trimAttempts++;
                 }
                 
-                // If we're significantly under, try adding more exercises
-                if (currentTotal < minSecs) {
+                // If we trimmed, accept the result — don't pad after trimming as it causes oscillation.
+                // The 400-attempt loop already found the best fit; trim is a last resort for conversion overhead.
+                if (didTrim) {
+                    // nothing — accept currentTotal as-is
+                }
+                // If we're significantly under and didn't need to trim, try adding more exercises
+                else if (currentTotal < minSecs) {
                     const shortage = minSecs - currentTotal;
                     
                     let addAttempts = 0;
@@ -6502,7 +6489,8 @@ hold must be "short" or "long". Output enough exercises to comfortably fill the 
                             if (currentTotal >= minSecs || addAttempts >= maxAddAttempts) break;
                             
                             const exTime = calculateExerciseTime(ex);
-                            if (currentTotal + exTime <= maxSecs + 90) {
+                            // Never overshoot maxSecs — post-trim is a last resort, not the plan
+                            if (currentTotal + exTime <= maxSecs) {
                                 repeatExercisesToAdd.push({...ex, _balancingRepeat: true});
                                 currentTotal += exTime;
                                 addAttempts++;
@@ -6556,21 +6544,26 @@ hold must be "short" or "long". Output enough exercises to comfortably fill the 
                         bestRoutine.splice(idx, 0, ex);
                     }
 
-                    // Second trim pass: if adding overshot, trim back down
+                    // Post-trim: if adding overshot (shouldn't happen now), trim back down
+                    // Trim order: Static Stretching → Active Stretch → Cool Down → Deep Stretch (keep minimums)
                     let postTotal = bestRoutine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0);
-                    let postTrimAttempts = 0;
-                    while (postTotal > maxSecs && postTrimAttempts < 10) {
-                        const staticToTrim = bestRoutine.filter(ex => ex.phase === 'Static Stretching' && ex.exercise !== 'Savasana');
-                        if (staticToTrim.length > 0) {
-                            const toRemove = staticToTrim[staticToTrim.length - 1];
+                    const trimOrder = [
+                        e => e.phase === 'Static Stretching' && e.exercise !== 'Savasana',
+                        e => e.phase === 'Active Stretch',
+                        e => e.phase === 'Cool Down' && e.exercise !== 'Savasana',
+                        e => e.phase === 'Deep Stretch',
+                    ];
+                    for (const filter of trimOrder) {
+                        while (postTotal > maxSecs) {
+                            const candidates = bestRoutine.filter(filter);
+                            if (candidates.length === 0) break;
+                            const toRemove = candidates[candidates.length - 1];
                             bestRoutine.splice(bestRoutine.indexOf(toRemove), 1);
                             postTotal -= calculateExerciseTime(toRemove);
-                        } else break;
-                        postTrimAttempts++;
+                        }
+                        if (postTotal <= maxSecs) break;
                     }
-                }
-                
-                const finalTotal = bestRoutine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0);
+                } // end else-if padding block
                 
                 // Count static stretches used
                 const staticCount = bestRoutine.filter(ex => ex.phase === 'Static Stretching').length;
@@ -6806,10 +6799,10 @@ function regenerateRoutine() {
                 const isLong = ex.hold != null ? ex.hold === 'long' : longSession;
                 if (isLong && longVal != null) {
                     ex.duration = longVal;
-                    ex.rest = appSettings.longHoldRest;
+                    if (ex.hold != null) ex.rest = appSettings.longHoldRest;
                 } else if (!isLong && shortVal != null) {
                     ex.duration = shortVal;
-                    ex.rest = appSettings.shortHoldRest;
+                    if (ex.hold != null) ex.rest = appSettings.shortHoldRest;
                 }
             });
         }
