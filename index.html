@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.24: Fix Active/Deep Stretch in Jumi routines — pre-reserve candidates from Jumi Static pool before attempt loop so they're available for promotion and not consumed by Static phase -->
+    <!-- v3.25: Duration picker blank fix; Jumi button text; greeting; star label; edit btn; sound guard; sides prompt; action btn alignment -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3731,7 +3731,7 @@
                     </div>
                     <button onclick="window.quickJumiGenerate()" style="display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;margin-bottom:12px;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.88'" onmouseout="this.style.opacity='1'">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="white" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                        Quick routine
+                        Jumi Routine
                     </button>
                 </div>
                 <div id="jumiChatMessages" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px;"></div>
@@ -3799,7 +3799,7 @@
             const panel = document.getElementById('jumiChatPanel');
             panel.style.transform = 'translateX(0)';
             if (jumiChatHistory.length === 0) {
-                appendChatMessage('jumi', "Hi! I'm Jumi. Ask me anything about your training \u2014 progress, what to focus on, exercise advice, or anything else.");
+                appendChatMessage('jumi', "Hi! I'm Jumi. Tap the button above to generate a routine, or ask me anything about your training — progress, what to focus on, exercise advice, or anything else.");
             }
             setTimeout(() => document.getElementById('jumiChatInput').focus(), 350);
         }
@@ -3841,10 +3841,10 @@
         function appendChatAction(label, onclick) {
             const container = document.getElementById('jumiChatMessages');
             const div = document.createElement('div');
-            div.style.cssText = 'display:flex; justify-content:flex-start; margin-top:-4px;';
+            div.style.cssText = 'display:flex; justify-content:flex-start; margin-top:4px;';
             const btn = document.createElement('button');
             btn.textContent = label;
-            btn.style.cssText = 'background:white; border:1.5px solid #667eea; color:#667eea; border-radius:20px; padding:6px 14px; font-size:13px; font-weight:600; cursor:pointer;';
+            btn.style.cssText = 'background:white; border:1.5px solid #667eea; color:#667eea; border-radius:20px; padding:6px 14px; font-size:13px; font-weight:600; cursor:pointer; text-align:left;';
             btn.onclick = onclick;
             div.appendChild(btn);
             container.appendChild(div);
@@ -3893,7 +3893,7 @@ hold at the routine level must be "short" or "long". Choose based on the user's 
 
 CRITICAL: If the user asks you to suggest or recommend any exercises not already in their library, you MUST include one <exercise> block per recommended exercise at the end of your response — no exceptions. Use this exact format for EVERY recommended exercise:
 <exercise>{"exercise":"name","phase":"phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}</exercise>
-BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foam Roller, Mobility, Static Stretching, Splits, Cool Down, Final Rest. Do not omit the <exercise> blocks even if you have already described the exercises in text.`;
+BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foam Roller, Mobility, Static Stretching, Splits, Cool Down, Final Rest. sides must be 1 for bilateral exercises (e.g. Cat-Cow, Bridge) and 2 for unilateral exercises done on each side separately (e.g. Hip Flexor Stretch, Pigeon Pose). Do not omit the <exercise> blocks even if you have already described the exercises in text.`;
 
             try {
                 const messages = [...jumiChatHistory.slice(-10)];
@@ -4018,6 +4018,11 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                 jumiPools[phase] = Array.isArray(candidates) ? candidates : [];
             }
 
+            console.log('[Jumi] Phases received:', Object.keys(jumiPools).join(', '));
+            Object.entries(jumiPools).forEach(([phase, arr]) => {
+                console.log(`[Jumi] ${phase}: ${arr.length} exercises — ${arr.slice(0,3).map(e=>e.exercise).join(', ')}`);
+            });
+
             // Jumi decides body parts — set type to full to pass validation if not already set
             if (!selectedType) selectedType = 'full';
 
@@ -4069,6 +4074,7 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
             document.getElementById('customNavActions').style.display = 'none';
             displayRoutine();
             document.getElementById('floatingStartSimple').style.display = 'block';
+            document.getElementById('floatingEditBtn').style.display = 'flex';
             setStarVisible(true);
             const sub = document.getElementById('jumiQuickSubtitle');
             if (sub) sub.textContent = 'Routine ready';
@@ -4327,17 +4333,15 @@ hold at the routine level must be "short" or "long". Choose based on the user's 
                 window.showDurationPicker = function() {
                     const picker = document.getElementById('durationPickerScreen');
                     const main = document.getElementById('mainUI');
-                    // Reset stagger
-                    const logo = document.getElementById('pickerLogo');
-                    const q = document.getElementById('pickerQuestion');
-                    const btns = Array.from(document.querySelectorAll('#durationPickerOptions > *'));
-                    if (logo) { logo.style.transition = 'none'; logo.style.opacity = '0'; logo.style.transform = 'translateY(-10px)'; }
-                    if (q) { q.style.transition = 'none'; q.style.opacity = '0'; }
-                    btns.forEach(b => { b.style.transition = 'none'; b.style.opacity = '0'; b.style.transform = 'translateY(12px)'; });
-
+                    // Reset button opacity/transform in case previous stagger left them hidden
+                    Array.from(document.querySelectorAll('#durationPickerOptions > *')).forEach(b => {
+                        b.style.transition = '';
+                        b.style.opacity = '1';
+                        b.style.transform = '';
+                    });
                     picker.style.display = 'flex';
-                    picker.style.transform = 'translateY(-20px)';
                     picker.style.opacity = '0';
+                    picker.style.transform = 'translateY(-20px)';
                     main.style.opacity = '0';
                     main.style.pointerEvents = 'none';
                     requestAnimationFrame(() => {
@@ -6784,8 +6788,8 @@ hold at the routine level must be "short" or "long". Choose based on the user's 
                 console.error(`⚠️ ROUTINE OUT OF TOLERANCE! Off by ${Math.abs(diff)}s (should be ±45s)`);
             }
             
-            // Initialize audio on first user interaction for mobile compatibility
-            initAudio();
+            // Initialize audio on first user interaction for mobile compatibility (once only)
+            if (!window._audioInited) { window._audioInited = true; initAudio(); }
             
             // Apply custom durations from settings to the generated routine
             applyDurationSettings(currentRoutine);
@@ -6817,7 +6821,7 @@ hold at the routine level must be "short" or "long". Choose based on the user's 
             const last = history[history.length - 1];
             const parts = [];
             if (last.duration) parts.push(last.duration + 'm');
-            const typeLabel = last.type === 'full' ? 'Full Body' : last.type === 'upper' ? 'Upper' : last.type === 'lower' ? 'Lower' : last.type;
+            const typeLabel = last.type === 'full' ? 'Full Body' : last.type === 'upper' ? 'Upper' : last.type === 'lower' ? 'Lower' : last.type === 'jumi' ? 'Jumi' : last.type;
             if (last.type && last.type !== 'starred') parts.push(typeLabel);
             parts.push((last.hold === 'long') ? 'Long Hold' : 'Short Hold');
             if (last.focus && last.focus !== 'None') parts.push(last.focus);
@@ -9260,7 +9264,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
             }
 
             // Store for dynamic suggestion updates
-            window._starModalType = selectedType === 'custom' ? 'Custom Routine' : (selectedType ? selectedType.charAt(0).toUpperCase() + selectedType.slice(1) + ' Body' : '');
+            window._starModalType = selectedType === 'custom' ? 'Custom Routine' : selectedType === 'jumi' ? 'Jumi' : (selectedType ? selectedType.charAt(0).toUpperCase() + selectedType.slice(1) + ' Body' : '');
             window._starModalMins = actualMinutes;
 
             // For custom mode reset hold before building suggestion
