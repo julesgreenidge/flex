@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.10: Strengthen Jumi prompt to always wrap routine JSON in routine tags, never output raw JSON -->
+    <!-- v3.11: Fix Jumi routine generation failing validation — set selectedType and selectedHold defaults in buildJumiRoutine -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3978,6 +3978,10 @@ If the user asks you to suggest a new exercise not in their library, include a J
             for (const [phase, candidates] of Object.entries(jumiPhaseData)) {
                 jumiPools[phase] = candidates; // already mutated by applyDurationSettings
             }
+
+            // Jumi decides body parts and hold per exercise — set globals to pass validation
+            if (!selectedType) selectedType = 'full';
+            if (!selectedHold) { selectedHold = 'short'; longSession = false; }
 
             // Run the full generator with Jumi's pools overriding random selection
             await generateRoutine(jumiPools);
