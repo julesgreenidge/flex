@@ -6190,6 +6190,7 @@ Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stre
                     }
                     
                     routine.push(...phaseExercises);
+                    if (jumiPools) console.log(`[Jumi] After ${phase}: total=${totalTime}s reserved=${reservedTime}s projected=${totalTime+reservedTime}s max=${maxSeconds}s count=${phaseExercises.length}`);
                 }
 
                 
@@ -6277,6 +6278,7 @@ Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stre
                 } else {
                     console.warn('Savasana NOT added - savasana object is null');
                 }
+                if (jumiPools) console.log(`[Jumi] FINAL total=${totalTime}s (${(totalTime/60).toFixed(1)}min) max=${maxSeconds}s (${maxSeconds/60}min)`);
                 
                 // AGGRESSIVE FALLBACK: If we're over time, trim exercises to fit
                 if (!isAllExercises && totalTime > maxSeconds) {
