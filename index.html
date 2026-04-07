@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.29: Add exercise library to sendJumiChat system prompt so Jumi doesn't recommend exercises already in the library -->
+    <!-- v3.31: Fix edit btn disappearing custom→Jumi; fix double star in custom nav; fix customNavActions persisting when switching to favourites -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3876,6 +3876,10 @@
             const goals = getJumiGoals();
             const contextTable = buildChatContext();
             const exerciseLibraryList = exercises.map(e => `${e.exercise} (${e.phase})`).join(', ');
+            const currentRoutineSummary = (currentRoutine && currentRoutine.length > 0)
+                ? `The user currently has this ${selectedType || 'simple'} routine on screen (${currentRoutine.length} exercises):\n` +
+                  currentRoutine.map(e => `${e.exercise} | ${e.phase} | ${e.target} | ${e.sides} side(s) | ${e.duration}s hold`).join('\n')
+                : 'No routine currently on screen.';
 
             const systemPrompt = `You are Jumi, a flexibility and mobility coach with access to this user's full training history. You also have web search available — use it to find links, videos, tutorials, or any current information when asked.
 
@@ -3884,6 +3888,8 @@ Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' min
 
 Exercise library (${exercises.length} exercises already in the user's library — do NOT recommend these):
 ${exerciseLibraryList}
+
+Current routine on screen: ${currentRoutineSummary}
 
 Training history (exercise | phase | muscle | position | sides | count 12m | 6m | 3m | 1m | 2w | 1w | mins 12m | 6m | 3m | 1m | 2w | 1w | last done):
 ${contextTable}
@@ -6922,10 +6928,12 @@ function regenerateRoutine() {
                 displayRoutine();
                 document.getElementById('routineDisplayWrapper').style.display = 'block';
                 document.getElementById('floatingStartSimple').style.display = 'block';
+                document.getElementById('floatingEditBtn').style.display = 'flex';
                 setStarVisible(true);
             } else {
                 document.getElementById('routineDisplayWrapper').style.display = 'none';
                 document.getElementById('floatingStartSimple').style.display = 'none';
+                document.getElementById('floatingEditBtn').style.display = 'none';
                 setStarVisible(false);
             }
         }
@@ -9353,7 +9361,9 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
         
         function setStarVisible(visible) {
             const nav = document.getElementById('floatingStarBtn');
-            if (nav) nav.style.display = visible ? 'flex' : 'none';
+            // Custom mode has its own star button in customNavActions — don't show the floating one
+            const customNavOpen = document.getElementById('customNavActions').style.display === 'flex';
+            if (nav) nav.style.display = (visible && !customNavOpen) ? 'flex' : 'none';
         }
 
         window.splitsForced = false;
@@ -9420,6 +9430,9 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
         
         function openStarredList() {
             collapseCards('starredBtn');
+            document.getElementById('customNavActions').style.display = 'none';
+            document.getElementById('floatingEditBtn').style.display = 'none';
+            document.getElementById('floatingStarBtn').style.display = 'none';
             const starredRoutines = JSON.parse(localStorage.getItem('starredRoutines') || '[]');
             starredRoutines.sort((a, b) => new Date(b.dateCreated) - new Date(a.dateCreated));
 
