@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.15: Robust Jumi routine parsing — tryParseJumiRoutine handles both tagged and raw JSON output from Haiku -->
+    <!-- v3.16: Exercise queue for multi-exercise review; URL links in modal; phase options fix; bodyPart capitalised; loadRoutineFromChat switches to Jumi card; targeted JSON strip in cleanReply; exercise recommendation URLs via web search -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3891,8 +3891,8 @@ CRITICAL: Output the JSON inside <routine></routine> tags. Never output raw JSON
 <routine>{"Warm-Up":[{"exercise":"exact name","target":"muscle","position":"position","sides":1,"bodyPart":"lower","hold":"short"}],"Static Stretching":[...],"Deep Stretch":[...]}</routine>
 Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits, Cool Down. Only include phases relevant to the user's goals. hold must be "short" or "long".
 
-If the user asks you to suggest a new exercise not in their library, include a JSON block at the end in this exact format:
-<exercise>{"exercise":"name","phase":"phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}</exercise>`;
+If the user asks you to suggest or recommend exercises not in their library, always use web search to find a real YouTube or authoritative URL demonstrating each exercise, then include one <exercise> block per exercise at the end. Use this exact format (repeat for each exercise):
+<exercise>{"exercise":"name","phase":"phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower","url":"https://..."}</exercise>`;
 
             try {
                 const messages = [...jumiChatHistory.slice(-10)];
@@ -3920,7 +3920,11 @@ If the user asks you to suggest a new exercise not in their library, include a J
                 const cleanReply = cleanedReply
                     .replace(/<routine>[\s\S]*?<\/routine>/g, '')
                     .replace(/<exercise>[\s\S]*?<\/exercise>/g, '')
-                    .replace(/\{[\s\S]*\}/g, '')
+                    .replace(/\{[\s\S]*?\}(?=\s*$|\s*[^,\w])/g, (match) => {
+                        // Only strip if it looks like our phase-map JSON (has known phase keys)
+                        const knownPhases = ['Warm-Up','Foam Roller','Static Stretching','Mobility','Deep Stretch','Active Stretch'];
+                        return jumiPhaseData && knownPhases.some(p => match.includes(p)) ? '' : match;
+                    })
                     .trim();
 
                 if (cleanReply) appendChatMessage('jumi', cleanReply);
@@ -3935,11 +3939,17 @@ If the user asks you to suggest a new exercise not in their library, include a J
                     }
                 }
 
-                if (exMatch) {
-                    try {
-                        _pendingExercise = JSON.parse(exMatch[1].trim());
-                        appendChatAction('Review & add to library →', openExApproval);
-                    } catch(e) {}
+                // Parse ALL <exercise> blocks into queue
+                const allExMatches = [...cleanedReply.matchAll(/<exercise>([\s\S]*?)<\/exercise>/g)];
+                if (allExMatches.length > 0) {
+                    const parsed = [];
+                    for (const m of allExMatches) {
+                        try { parsed.push(JSON.parse(m[1].trim())); } catch(e) {}
+                    }
+                    if (parsed.length > 0) {
+                        _pendingExercises = parsed;
+                        appendChatAction(`Review & add ${parsed.length > 1 ? parsed.length + ' exercises' : 'exercise'} to library →`, openExApproval);
+                    }
                 }
             } catch(err) {
                 thinking.remove();
@@ -3947,13 +3957,16 @@ If the user asks you to suggest a new exercise not in their library, include a J
             }
         }
 
+        let _pendingExercises = []; // queue of exercises to review
+
         function openExApproval() {
-            if (!_pendingExercise) return;
-            const ex = _pendingExercise;
-            const phaseOptions = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
+            if (!_pendingExercises.length) return;
+            const ex = _pendingExercises[0];
+            // Active Stretch and Deep Stretch are promoted from Static at runtime — not separate library phases
+            const phaseOptions = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Splits','Cool Down','Final Rest'];
             const fields = [
                 {id:'apName', label:'Name', val: ex.exercise || ''},
-                {id:'apPhase', label:'Phase', val: ex.phase || 'Static Stretching', type:'select', options: phaseOptions},
+                {id:'apPhase', label:'Phase', val: phaseOptions.includes(ex.phase) ? ex.phase : 'Static Stretching', type:'select', options: phaseOptions},
                 {id:'apTarget', label:'Target Muscle', val: ex.target || ''},
                 {id:'apPosition', label:'Position', val: ex.position || ''},
                 {id:'apSides', label:'Sides', val: ex.sides || 2, type:'select', options:[1,2]},
@@ -3964,12 +3977,22 @@ If the user asks you to suggest a new exercise not in their library, include a J
                 if (f.type === 'select') {
                     return `<label style="font-size:13px; font-weight:600;">${f.label}
                         <select id="${f.id}" style="display:block; width:100%; margin-top:4px; border:1.5px solid #d2d2d7; border-radius:8px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;">
-                            ${f.options.map(o => `<option value="${o}" ${String(o)===String(f.val)?'selected':''}>${o}</option>`).join('')}
+                            ${f.options.map(o => {
+                                const display = f.id === 'apBodyPart' ? o.charAt(0).toUpperCase() + o.slice(1) : o;
+                                return `<option value="${o}" ${String(o)===String(f.val)?'selected':''}>${display}</option>`;
+                            }).join('')}
                         </select></label>`;
                 }
                 return `<label style="font-size:13px; font-weight:600;">${f.label}
                     <input id="${f.id}" value="${f.val}" style="display:block; width:100%; margin-top:4px; border:1.5px solid #d2d2d7; border-radius:8px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;"/></label>`;
             }).join('');
+            // Show URL link if present
+            if (ex.url) {
+                container.innerHTML += `<div style="margin-top:4px;"><a href="${ex.url}" target="_blank" rel="noopener" style="font-size:13px; color:#667eea; text-decoration:none;">▶ Watch exercise demo</a></div>`;
+            }
+            // Show queue count if multiple pending
+            const queueInfo = document.getElementById('apQueueInfo');
+            if (queueInfo) queueInfo.textContent = _pendingExercises.length > 1 ? `Exercise 1 of ${_pendingExercises.length}` : '';
             document.getElementById('exApprovalModal').style.display = 'flex';
         }
 
@@ -4026,6 +4049,8 @@ If the user asks you to suggest a new exercise not in their library, include a J
             currentJumiRoutine = currentRoutine.map(e => ({...e}));
             selectedType = 'jumi';
             if (!keepOpen) window.closeJumiChat();
+            // Switch to Jumi card regardless of which screen we're on
+            setActiveCard('jumiQuickBtn');
             document.getElementById('routineDisplayWrapper').style.display = 'block';
             document.getElementById('customDisplay').style.display = 'none';
             document.getElementById('customNavActions').style.display = 'none';
@@ -4082,7 +4107,10 @@ Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stre
                 const jumiPhaseData2 = tryParseJumiRoutine(cleanedReply2);
                 const cleanReply = cleanedReply2
                     .replace(/<routine>[\s\S]*?<\/routine>/g, '')
-                    .replace(/\{[\s\S]*\}/g, '')
+                    .replace(/\{[\s\S]*?\}(?=\s*$|\s*[^,\w])/g, (match) => {
+                        const knownPhases = ['Warm-Up','Foam Roller','Static Stretching','Mobility','Deep Stretch','Active Stretch'];
+                        return jumiPhaseData2 && knownPhases.some(p => match.includes(p)) ? '' : match;
+                    })
                     .trim();
                 if (jumiPhaseData2) {
                     try {
@@ -4122,9 +4150,14 @@ Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stre
             localStorage.setItem('flexibilityRoutineExercises', JSON.stringify(exercises));
             // Invalidate context cache
             localStorage.removeItem('jumiContextCache');
-            document.getElementById('exApprovalModal').style.display = 'none';
-            _pendingExercise = null;
+            _pendingExercises.shift(); // remove approved exercise from queue
             appendChatMessage('jumi', `"${ex.exercise}" has been added to your exercise library.`);
+            if (_pendingExercises.length > 0) {
+                // Open next exercise in queue
+                openExApproval();
+            } else {
+                document.getElementById('exApprovalModal').style.display = 'none';
+            }
         };
 
         function setupEventListeners() {
@@ -10926,12 +10959,15 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
     <div id="exApprovalModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
         <div style="background:white; border-radius:20px; padding:28px; width:min(560px,92vw); max-height:85vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <h3 style="margin:0; font-size:17px;">Review Exercise</h3>
-                <button onclick="document.getElementById('exApprovalModal').style.display='none'" style="background:none; border:none; font-size:22px; cursor:pointer; color:#86868b;">✕</button>
+                <div>
+                    <h3 style="margin:0; font-size:17px;">Review Exercise</h3>
+                    <div id="apQueueInfo" style="font-size:12px; color:#86868b; margin-top:2px;"></div>
+                </div>
+                <button onclick="document.getElementById('exApprovalModal').style.display='none'; _pendingExercises=[];" style="background:none; border:none; font-size:22px; cursor:pointer; color:#86868b;">✕</button>
             </div>
             <div id="exApprovalFields" style="display:flex; flex-direction:column; gap:12px;"></div>
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-                <button onclick="document.getElementById('exApprovalModal').style.display='none'" style="background:white; border:1.5px solid #d2d2d7; padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer;">Cancel</button>
+                <button onclick="document.getElementById('exApprovalModal').style.display='none'; _pendingExercises=[];" style="background:white; border:1.5px solid #d2d2d7; padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer;">Cancel</button>
                 <button onclick="approveExercise()" style="background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer;">Add to Library</button>
             </div>
         </div>
