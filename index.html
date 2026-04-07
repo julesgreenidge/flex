@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.23: One Review button per exercise; Active/Deep Stretch promoted from Jumi's unused Static candidates -->
+    <!-- v3.24: Fix Active/Deep Stretch in Jumi routines — pre-reserve candidates from Jumi Static pool before attempt loop so they're available for promotion and not consumed by Static phase -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -5919,7 +5919,29 @@ hold at the routine level must be "short" or "long". Choose based on the user's 
             const deepStretchPool = allStaticShuffled
                 .filter(e => deepStretchReserved.has(e.exercise))
                 .map(e => ({...e, phase: "Deep Stretch", duration: longSession ? 120 : 90}));
-            
+
+            // For Jumi routines: pre-build Active/Deep promotion pools from Jumi's Static candidates
+            // and trim the Static pool so those exercises aren't double-used
+            let jumiActivePool = null;
+            let jumiDeepPool = null;
+            if (jumiPools && jumiPools['Static Stretching'] && !jumiPools['Active Stretch'] && !jumiPools['Deep Stretch']) {
+                const jumiStatic = jumiPools['Static Stretching'].map(e => {
+                    const source = exercisesForGen.find(s => s.exercise === e.exercise);
+                    return source ? {...source} : {...e};
+                });
+                // Reserve last N for Deep, preceding N for Active (based on config mins)
+                const needDeep = minDeepStretches || 2;
+                const needActive = minActiveStretches || 3;
+                const total = jumiStatic.length;
+                jumiDeepPool = jumiStatic.slice(Math.max(0, total - needDeep))
+                    .map(e => ({...e, phase: 'Deep Stretch', duration: longSession ? 120 : 90}));
+                jumiActivePool = jumiStatic.slice(Math.max(0, total - needDeep - needActive), Math.max(0, total - needDeep))
+                    .map(e => ({...e, phase: 'Active Stretch', duration: longSession ? 75 : 45}));
+                // Remove reserved exercises from the Jumi Static pool so they don't appear in Static phase
+                const jumiReservedNames = new Set([...jumiActivePool, ...jumiDeepPool].map(e => e.exercise));
+                jumiPools['Static Stretching'] = jumiPools['Static Stretching'].filter(e => !jumiReservedNames.has(e.exercise));
+            }
+
             let bestRoutine = null;
             let bestTimeDiff = Infinity;
             let repeatsWereNeeded = false; // Track if we had to use repeats
@@ -6116,21 +6138,20 @@ hold at the routine level must be "short" or "long". Choose based on the user's 
                         allPhaseExercises = jumiPools[phase]
                             .filter(e => !usedExerciseNames.has(e.exercise))
                             .map(e => {
-                                // Match against exercisesForGen to get correct duration-applied copy
                                 const source = exercisesForGen.find(s => s.exercise === e.exercise);
                                 return source ? {...source} : {...e};
                             });
-                    } else if (jumiPools && (phase === 'Active Stretch' || phase === 'Deep Stretch') && jumiPools['Static Stretching']) {
-                        // Jumi provided Static but no explicit Active/Deep pool — promote unused Jumi Static candidates
-                        const promoteDuration = phase === 'Active Stretch'
-                            ? (longSession ? 75 : 45)
-                            : (longSession ? 120 : 90);
-                        allPhaseExercises = jumiPools['Static Stretching']
-                            .filter(e => !usedExerciseNames.has(e.exercise))
-                            .map(e => {
-                                const source = exercisesForGen.find(s => s.exercise === e.exercise);
-                                return source ? {...source, phase, duration: promoteDuration} : {...e, phase, duration: promoteDuration};
-                            });
+                    } else if (jumiPools && (phase === 'Active Stretch' || phase === 'Deep Stretch') && jumiActivePool && jumiDeepPool) {
+                        // Jumi provided Static but no explicit Active/Deep — use pre-built promotion pools
+                        allPhaseExercises = (phase === 'Active Stretch' ? jumiActivePool : jumiDeepPool)
+                            .filter(e => !usedExerciseNames.has(e.exercise));
+                    } else if (jumiPools && phase === 'Static Stretching' && !jumiPools['Static Stretching']) {
+                        // No Jumi Static pool — fall through to normal
+                        allPhaseExercises = exercisesForGen.filter(e =>
+                            e.phase === 'Static Stretching' &&
+                            !activeStretchReserved.has(e.exercise) &&
+                            !deepStretchReserved.has(e.exercise)
+                        );
                     } else {
                         // Normal mode: use standard pools
                         // Active Stretch and Deep Stretch use their promoted pools; other phases use exercises array.
