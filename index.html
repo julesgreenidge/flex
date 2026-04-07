@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.12: Fix Jumi routine duration overshoot — reservedTime now calculated from actual Jumi pool durations rather than longSession assumption -->
+    <!-- v3.14: Fix weightedShuffle inversion — recent exercises were being prioritised not penalised -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3021,6 +3021,11 @@
             playOnce(ctx.currentTime);
             playOnce(ctx.currentTime + gap);
             playOnce(ctx.currentTime + gap * 2);
+            // Release media session after bong finishes so podcast app regains media key control
+            const totalMs = Math.ceil((gap * 2 + 4) * 1000);
+            setTimeout(() => {
+                try { if (navigator.mediaSession) navigator.mediaSession.playbackState = 'none'; } catch(e) {}
+            }, totalMs);
         }
 
 
@@ -5968,20 +5973,19 @@ Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stre
                 const activeStretchDuration = longSession ? 75 : 45;
                 const deepStretchDuration = longSession ? 120 : 90;
 
-                // For Jumi routines, estimate from actual pool durations if available
-                let estimatedActiveStretchTime, estimatedDeepStretchTime;
-                if (jumiPools && jumiPools['Active Stretch'] && jumiPools['Active Stretch'].length > 0) {
-                    const sample = jumiPools['Active Stretch'][0];
-                    estimatedActiveStretchTime = isAllExercises ? 0 : (minActiveStretches * (sample.duration + (sample.rest || 15)) * (sample.sides || 1));
-                } else {
-                    estimatedActiveStretchTime = isAllExercises ? 0 : (minActiveStretches * (activeStretchDuration + 15));
-                }
-                if (jumiPools && jumiPools['Deep Stretch'] && jumiPools['Deep Stretch'].length > 0) {
-                    const sample = jumiPools['Deep Stretch'][0];
-                    estimatedDeepStretchTime = isAllExercises ? 0 : (minDeepStretches * (sample.duration + (sample.rest || 15)) * (sample.sides || 1));
-                } else {
-                    estimatedDeepStretchTime = isAllExercises ? 0 : (minDeepStretches * (deepStretchDuration + 15));
-                }
+                // Estimate Active/Deep Stretch time from actual pool if available, else use standard estimate
+                const activePool = jumiPools && jumiPools['Active Stretch'];
+                const deepPool = jumiPools && jumiPools['Deep Stretch'];
+                const activeSample = activePool && activePool.length > 0 ? activePool[0] : null;
+                const deepSample = deepPool && deepPool.length > 0 ? deepPool[0] : null;
+                const activeSampleTime = activeSample && activeSample.duration != null
+                    ? (activeSample.duration + (activeSample.rest || 15)) * (activeSample.sides || 1)
+                    : (activeStretchDuration + 15);
+                const deepSampleTime = deepSample && deepSample.duration != null
+                    ? (deepSample.duration + (deepSample.rest || 15)) * (deepSample.sides || 1)
+                    : (deepStretchDuration + 15);
+                const estimatedActiveStretchTime = isAllExercises ? 0 : (minActiveStretches * activeSampleTime);
+                const estimatedDeepStretchTime = isAllExercises ? 0 : (minDeepStretches * deepSampleTime);
 
                 const reservedTime = savasanaTime + estimatedCoolDownTime + estimatedActiveStretchTime + estimatedDeepStretchTime;
 
@@ -6006,7 +6010,7 @@ Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stre
                 }
                 function weightedShuffle(arr) {
                     return arr
-                        .map(e => ({ e, sort: Math.random() / (recencyWeights[e.exercise] || 1.0) }))
+                        .map(e => ({ e, sort: Math.random() * (recencyWeights[e.exercise] || 1.0) }))
                         .sort((a, b) => b.sort - a.sort)
                         .map(x => x.e);
                 }
@@ -7270,17 +7274,16 @@ function regenerateRoutine() {
             const phaseColor = phaseColors[exercise.phase] || '#667eea';
 
             // Update timer panel background gradient for current phase
-            // Light = gradient start, Dark = gradient end — softened for strong phases
             const phaseDark = {
                 'Warm-Up': '#6d28d9', 'Foam Roller': '#6b1e38', 'Mobility': '#064e3b',
-                'Static Stretching': '#3730a3', 'Active Stretch': '#854d0e',
-                'Deep Stretch': '#7c2d12', 'Splits': '#86198f',
+                'Static Stretching': '#3730a3', 'Active Stretch': '#7c2d12',
+                'Deep Stretch': '#92400e', 'Splits': '#86198f',
                 'Cool Down': '#9d174d', 'Final Rest': '#0f0f2e'
             };
             const phaseLight = {
                 'Warm-Up': '#a78bfa', 'Foam Roller': '#be5a7c', 'Mobility': '#34d399',
-                'Static Stretching': '#818cf8', 'Active Stretch': '#eab308',
-                'Deep Stretch': '#ea580c', 'Splits': '#e879f9',
+                'Static Stretching': '#818cf8', 'Active Stretch': '#f97316',
+                'Deep Stretch': '#fbbf24', 'Splits': '#e879f9',
                 'Cool Down': '#f472b6', 'Final Rest': '#6366f1'
             };
             const phaseColorDark = phaseDark[exercise.phase] || '#4c1d95';
