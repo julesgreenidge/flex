@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.9: Fix applyDurationSettings overwriting ex.rest for simple routines — now only sets rest when ex.hold is explicitly present (Jumi exercises only) -->
+    <!-- v3.10: Strengthen Jumi prompt to always wrap routine JSON in routine tags, never output raw JSON -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3881,7 +3881,8 @@ Rules:
 - Reference the user's actual training data where relevant.
 - Be direct and specific. No filler.
 
-If the user asks you to generate a routine, output exercises grouped by phase — most important first within each phase. The app handles all timing and structure. Do NOT include Savasana (the app adds it automatically). Provide roughly double the expected count per phase so the app has plenty to choose from. Use this exact format:
+If the user asks you to generate a routine, you MUST wrap the JSON in <routine> tags exactly as shown below — no exceptions, no raw JSON, no markdown. The app handles all timing and structure. Do NOT include Savasana (the app adds it). Provide roughly double the expected exercise count per phase.
+CRITICAL: Output the JSON inside <routine></routine> tags. Never output raw JSON in your text response.
 <routine>{"Warm-Up":[{"exercise":"exact name","target":"muscle","position":"position","sides":1,"bodyPart":"lower","hold":"short"}],"Static Stretching":[...],"Deep Stretch":[...]}</routine>
 Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits, Cool Down. Only include phases relevant to the user's goals. hold must be "short" or "long".
 
@@ -4024,10 +4025,11 @@ Exercise library (ONLY use these exact names): ${exerciseLibrary}
 Current routine on screen: ${currentRoutineSummary2}
 Training history: ${contextTable}
 
-Output a prioritised list of exercises grouped by phase — most important first within each phase. The app handles all timing and structure. Do NOT include Savasana (the app adds it automatically). Provide enough candidates per phase to give the app plenty to work with (aim for roughly double the expected count per phase).
-Brief 1-2 sentence explanation then JSON:
+You MUST wrap the routine JSON in <routine> tags exactly as shown — no raw JSON, no markdown. The app handles all timing. Do NOT include Savasana. Provide roughly double the expected count per phase.
+CRITICAL: Output JSON inside <routine></routine> tags. Never output raw JSON in your text response.
+Brief 1-2 sentence explanation then:
 <routine>{"Warm-Up":[{"exercise":"exact name","target":"muscle","position":"position","sides":1,"bodyPart":"lower","hold":"short"}],"Static Stretching":[...],"Deep Stretch":[...]}</routine>
-Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits, Cool Down. Only include phases relevant to the user's goals. hold must be "short" or "long".`;
+Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits, Cool Down. Only include phases relevant to goals. hold must be "short" or "long".`;
 
             try {
                 const response = await fetch('/.netlify/functions/coach', {
