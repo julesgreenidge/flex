@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.11: Fix Jumi routine generation failing validation — set selectedType and selectedHold defaults in buildJumiRoutine -->
+    <!-- v3.12: Fix Jumi routine duration overshoot — reservedTime now calculated from actual Jumi pool durations rather than longSession assumption -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -5962,17 +5962,27 @@ Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stre
                 
                 const savasanaTime = savasana ? calculateExerciseTime(savasana) : 0;
                 
-                // Reserve time: Savasana + Cool Down + Active Stretch + Deep Stretch + Splits minimum.
-                // Active Stretch: 45s (or 75s if longSession) + 15s rest
-                // Deep Stretch: 90s (or 120s if longSession) + 15s rest
-                // Splits (Front Splits, 2 sides): 90s x 2 + 30s rest x 2 = 240s
+                // Reserve time: Savasana + Cool Down + Active Stretch + Deep Stretch minimum.
                 const minCoolDownExercises = isLongRoutine ? 2 : 1;
                 const estimatedCoolDownTime = isAllExercises ? 0 : (minCoolDownExercises * 60);
                 const activeStretchDuration = longSession ? 75 : 45;
                 const deepStretchDuration = longSession ? 120 : 90;
-                const estimatedActiveStretchTime = isAllExercises ? 0 : (minActiveStretches * (activeStretchDuration + 15));
-                const estimatedDeepStretchTime = isAllExercises ? 0 : (minDeepStretches * (deepStretchDuration + 15));
-                const estimatedSplitsTime = 0; // Handled by effectiveMin=1 guarantee
+
+                // For Jumi routines, estimate from actual pool durations if available
+                let estimatedActiveStretchTime, estimatedDeepStretchTime;
+                if (jumiPools && jumiPools['Active Stretch'] && jumiPools['Active Stretch'].length > 0) {
+                    const sample = jumiPools['Active Stretch'][0];
+                    estimatedActiveStretchTime = isAllExercises ? 0 : (minActiveStretches * (sample.duration + (sample.rest || 15)) * (sample.sides || 1));
+                } else {
+                    estimatedActiveStretchTime = isAllExercises ? 0 : (minActiveStretches * (activeStretchDuration + 15));
+                }
+                if (jumiPools && jumiPools['Deep Stretch'] && jumiPools['Deep Stretch'].length > 0) {
+                    const sample = jumiPools['Deep Stretch'][0];
+                    estimatedDeepStretchTime = isAllExercises ? 0 : (minDeepStretches * (sample.duration + (sample.rest || 15)) * (sample.sides || 1));
+                } else {
+                    estimatedDeepStretchTime = isAllExercises ? 0 : (minDeepStretches * (deepStretchDuration + 15));
+                }
+
                 const reservedTime = savasanaTime + estimatedCoolDownTime + estimatedActiveStretchTime + estimatedDeepStretchTime;
 
                 // Recency weighting: penalise recently seen exercises to encourage variety
