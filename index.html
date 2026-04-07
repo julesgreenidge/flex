@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.25: Duration picker blank fix; Jumi button text; greeting; star label; edit btn; sound guard; sides prompt; action btn alignment -->
+    <!-- v3.27: Allow Jumi to output Active/Deep Stretch freely — usingJumiPool fix ensures correct phase/duration regardless -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3888,8 +3888,8 @@ Rules:
 
 If the user asks you to generate a routine, you MUST wrap the JSON in <routine> tags exactly as shown below — no exceptions, no raw JSON, no markdown. The app handles all timing and structure. Do NOT include Savasana (the app adds it). Provide roughly double the expected exercise count per phase.
 CRITICAL: Output the JSON inside <routine></routine> tags. Never output raw JSON in your text response.
-<routine>{"hold":"short","Warm-Up":[{"exercise":"exact name","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}],"Static Stretching":[...],"Deep Stretch":[...]}</routine>
-hold at the routine level must be "short" or "long". Choose based on the user's goals and history — long hold for flexibility gains or recovery, short hold for active warmup or time-constrained sessions. Before the JSON, briefly explain your hold choice in 1 sentence.
+<routine>{"hold":"short","Warm-Up":[{"exercise":"exact name","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}],"Foam Roller":[...],"Mobility":[...],"Static Stretching":[...],"Cool Down":[...]}</routine>
+hold at the routine level must be "short" or "long". Choose based on the user's goals and history — long hold for flexibility gains or recovery, short hold for active warmup or time-constrained sessions. Before the JSON, briefly explain your hold choice in 1 sentence. Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits, Cool Down. Only include phases relevant to the user’s goals.
 
 CRITICAL: If the user asks you to suggest or recommend any exercises not already in their library, you MUST include one <exercise> block per recommended exercise at the end of your response — no exceptions. Use this exact format for EVERY recommended exercise:
 <exercise>{"exercise":"name","phase":"phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}</exercise>
@@ -4110,8 +4110,9 @@ Training history: ${contextTable}
 You MUST wrap the routine JSON in <routine> tags exactly as shown — no raw JSON, no markdown. The app handles all timing. Do NOT include Savasana. Provide roughly double the expected count per phase.
 CRITICAL: Output JSON inside <routine></routine> tags. Never output raw JSON in your text response.
 Brief 1-2 sentence explanation then:
-<routine>{"hold":"short","Warm-Up":[{"exercise":"exact name","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}],"Static Stretching":[...],"Deep Stretch":[...]}</routine>
-hold at the routine level must be "short" or "long". Choose based on the user's goals and history — long hold for flexibility gains or recovery, short hold for active warmup or time-constrained sessions. Before the JSON, briefly explain your hold choice in 1 sentence.`;
+<routine>{"hold":"short","Warm-Up":[{"exercise":"exact name","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}],"Foam Roller":[...],"Mobility":[...],"Static Stretching":[...],"Cool Down":[...]}</routine>
+hold at the routine level must be "short" or "long". Choose based on the user's goals and history — long hold for flexibility gains or recovery, short hold for active warmup or time-constrained sessions. Before the JSON, briefly explain your hold choice in 1 sentence.
+Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down. Do NOT include Active Stretch or Deep Stretch — the app promotes Static exercises to those phases automatically.`;
 
             try {
                 const response = await fetch('/.netlify/functions/coach', {
@@ -4333,6 +4334,7 @@ hold at the routine level must be "short" or "long". Choose based on the user's 
                 window.showDurationPicker = function() {
                     const picker = document.getElementById('durationPickerScreen');
                     const main = document.getElementById('mainUI');
+                    hideJumiChatBtn();
                     // Reset button opacity/transform in case previous stagger left them hidden
                     Array.from(document.querySelectorAll('#durationPickerOptions > *')).forEach(b => {
                         b.style.transition = '';
@@ -5925,25 +5927,36 @@ hold at the routine level must be "short" or "long". Choose based on the user's 
                 .map(e => ({...e, phase: "Deep Stretch", duration: longSession ? 120 : 90}));
 
             // For Jumi routines: pre-build Active/Deep promotion pools from Jumi's Static candidates
-            // and trim the Static pool so those exercises aren't double-used
+            // for any phase Jumi didn't explicitly provide
             let jumiActivePool = null;
             let jumiDeepPool = null;
-            if (jumiPools && jumiPools['Static Stretching'] && !jumiPools['Active Stretch'] && !jumiPools['Deep Stretch']) {
+            if (jumiPools && jumiPools['Static Stretching']) {
                 const jumiStatic = jumiPools['Static Stretching'].map(e => {
                     const source = exercisesForGen.find(s => s.exercise === e.exercise);
                     return source ? {...source} : {...e};
                 });
-                // Reserve last N for Deep, preceding N for Active (based on config mins)
                 const needDeep = minDeepStretches || 2;
                 const needActive = minActiveStretches || 3;
                 const total = jumiStatic.length;
-                jumiDeepPool = jumiStatic.slice(Math.max(0, total - needDeep))
-                    .map(e => ({...e, phase: 'Deep Stretch', duration: longSession ? 120 : 90}));
-                jumiActivePool = jumiStatic.slice(Math.max(0, total - needDeep - needActive), Math.max(0, total - needDeep))
-                    .map(e => ({...e, phase: 'Active Stretch', duration: longSession ? 75 : 45}));
-                // Remove reserved exercises from the Jumi Static pool so they don't appear in Static phase
-                const jumiReservedNames = new Set([...jumiActivePool, ...jumiDeepPool].map(e => e.exercise));
-                jumiPools['Static Stretching'] = jumiPools['Static Stretching'].filter(e => !jumiReservedNames.has(e.exercise));
+
+                if (!jumiPools['Deep Stretch']) {
+                    jumiDeepPool = jumiStatic.slice(Math.max(0, total - needDeep))
+                        .map(e => ({...e, phase: 'Deep Stretch', duration: longSession ? 120 : 90}));
+                }
+                if (!jumiPools['Active Stretch']) {
+                    const deepCount = jumiDeepPool ? jumiDeepPool.length : 0;
+                    jumiActivePool = jumiStatic.slice(Math.max(0, total - deepCount - needActive), Math.max(0, total - deepCount))
+                        .map(e => ({...e, phase: 'Active Stretch', duration: longSession ? 75 : 45}));
+                }
+
+                // Remove pre-reserved exercises from Jumi Static pool so they don't appear in Static phase
+                const jumiReservedNames = new Set([
+                    ...(jumiDeepPool || []),
+                    ...(jumiActivePool || [])
+                ].map(e => e.exercise));
+                if (jumiReservedNames.size > 0) {
+                    jumiPools['Static Stretching'] = jumiPools['Static Stretching'].filter(e => !jumiReservedNames.has(e.exercise));
+                }
             }
 
             let bestRoutine = null;
@@ -6139,11 +6152,20 @@ hold at the routine level must be "short" or "long". Choose based on the user's 
 
                     if (usingJumiPool) {
                         // Jumi mode: use priority-ordered candidates, filtered against already-used names
+                        const promoteDuration =
+                            phase === 'Active Stretch' ? (longSession ? 75 : 45) :
+                            phase === 'Deep Stretch'   ? (longSession ? 120 : 90) : null;
                         allPhaseExercises = jumiPools[phase]
                             .filter(e => !usedExerciseNames.has(e.exercise))
                             .map(e => {
                                 const source = exercisesForGen.find(s => s.exercise === e.exercise);
-                                return source ? {...source} : {...e};
+                                const base = source ? {...source} : {...e};
+                                // Always override phase and duration for promoted phases
+                                if (promoteDuration !== null) {
+                                    base.phase = phase;
+                                    base.duration = promoteDuration;
+                                }
+                                return base;
                             });
                     } else if (jumiPools && (phase === 'Active Stretch' || phase === 'Deep Stretch') && jumiActivePool && jumiDeepPool) {
                         // Jumi provided Static but no explicit Active/Deep — use pre-built promotion pools
