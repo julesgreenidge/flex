@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.18: Fix Jumi 44min — regenerateRoutine now uses quickJumiGenerate; loadRoutineFromChat switches card without triggering jumiQuickStart -->
+    <!-- v3.21: Fix syntax error — missing closing backtick on quickJumiGenerate system prompt -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3888,8 +3888,8 @@ Rules:
 
 If the user asks you to generate a routine, you MUST wrap the JSON in <routine> tags exactly as shown below — no exceptions, no raw JSON, no markdown. The app handles all timing and structure. Do NOT include Savasana (the app adds it). Provide roughly double the expected exercise count per phase.
 CRITICAL: Output the JSON inside <routine></routine> tags. Never output raw JSON in your text response.
-<routine>{"Warm-Up":[{"exercise":"exact name","target":"muscle","position":"position","sides":1,"bodyPart":"lower","hold":"short"}],"Static Stretching":[...],"Deep Stretch":[...]}</routine>
-Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits, Cool Down. Only include phases relevant to the user's goals. hold must be "short" or "long".
+<routine>{"hold":"short","Warm-Up":[{"exercise":"exact name","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}],"Static Stretching":[...],"Deep Stretch":[...]}</routine>
+hold at the routine level must be "short" or "long". Choose based on the user's goals and history — long hold for flexibility gains or recovery, short hold for active warmup or time-constrained sessions. Before the JSON, briefly explain your hold choice in 1 sentence.
 
 CRITICAL: If the user asks you to suggest or recommend any exercises not already in their library, you MUST include one <exercise> block per recommended exercise at the end of your response — no exceptions. Also use web search to find a real YouTube or instructional URL for each. Use this exact format for EVERY recommended exercise:
 <exercise>{"exercise":"name","phase":"phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower","url":"https://..."}</exercise>
@@ -3912,7 +3912,7 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                 thinking.remove();
 
                 // Strip any markdown code fences from the full reply before parsing
-                const cleanedReply = reply.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+                const cleanedReply = reply.replace(/\x60{3}json\n?/g, '').replace(/\x60{3}\n?/g, '');
 
                 // Check for routine and exercise blocks
                 const jumiPhaseData = tryParseJumiRoutine(cleanedReply);
@@ -4002,20 +4002,21 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
         }
 
         async function buildJumiRoutine(jumiPhaseData) {
-            // jumiPhaseData: { "Warm-Up": [{exercise, phase, hold, ...}], "Static Stretching": [...], ... }
-            // Apply per-exercise hold-based duration settings to all candidates
-            const allCandidates = Object.values(jumiPhaseData).flat();
-            applyDurationSettings(allCandidates);
+            // jumiPhaseData: { "hold": "short"|"long", "Warm-Up": [...], "Static Stretching": [...], ... }
+            // Apply routine-level hold to set longSession before generating
+            const hold = jumiPhaseData.hold || 'short';
+            selectedHold = hold;
+            longSession = (hold === 'long');
 
-            // Rebuild phase pools with duration-applied candidates
+            // Extract phase pools (exclude the top-level hold key)
             const jumiPools = {};
             for (const [phase, candidates] of Object.entries(jumiPhaseData)) {
-                jumiPools[phase] = candidates; // already mutated by applyDurationSettings
+                if (phase === 'hold') continue;
+                jumiPools[phase] = Array.isArray(candidates) ? candidates : [];
             }
 
-            // Jumi decides body parts and hold per exercise — set globals to pass validation
+            // Jumi decides body parts — set type to full to pass validation if not already set
             if (!selectedType) selectedType = 'full';
-            if (!selectedHold) { selectedHold = 'short'; longSession = false; }
 
             // Run the full generator with Jumi's pools overriding random selection
             await generateRoutine(jumiPools);
@@ -4037,10 +4038,11 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                 if (lastBrace > braceIdx) {
                     try {
                         const candidate = JSON.parse(text.slice(braceIdx, lastBrace + 1));
-                        // Validate it looks like a phase map (object with array values)
+                        // Validate it looks like a phase map (object with phase array values, plus optional hold string)
                         const knownPhases = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down'];
                         const keys = Object.keys(candidate);
-                        if (keys.length > 0 && keys.some(k => knownPhases.includes(k)) && keys.every(k => Array.isArray(candidate[k]))) {
+                        const phaseKeys = keys.filter(k => k !== 'hold');
+                        if (phaseKeys.length > 0 && phaseKeys.some(k => knownPhases.includes(k)) && phaseKeys.every(k => Array.isArray(candidate[k]))) {
                             return candidate;
                         }
                     } catch(e) {}
@@ -4099,8 +4101,8 @@ Training history: ${contextTable}
 You MUST wrap the routine JSON in <routine> tags exactly as shown — no raw JSON, no markdown. The app handles all timing. Do NOT include Savasana. Provide roughly double the expected count per phase.
 CRITICAL: Output JSON inside <routine></routine> tags. Never output raw JSON in your text response.
 Brief 1-2 sentence explanation then:
-<routine>{"Warm-Up":[{"exercise":"exact name","target":"muscle","position":"position","sides":1,"bodyPart":"lower","hold":"short"}],"Static Stretching":[...],"Deep Stretch":[...]}</routine>
-Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits, Cool Down. Only include phases relevant to goals. hold must be "short" or "long".`;
+<routine>{"hold":"short","Warm-Up":[{"exercise":"exact name","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}],"Static Stretching":[...],"Deep Stretch":[...]}</routine>
+hold at the routine level must be "short" or "long". Choose based on the user's goals and history — long hold for flexibility gains or recovery, short hold for active warmup or time-constrained sessions. Before the JSON, briefly explain your hold choice in 1 sentence.`;
 
             try {
                 const response = await fetch('/.netlify/functions/coach', {
@@ -4111,7 +4113,7 @@ Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stre
                 const data = await response.json();
                 const reply = (data.reply || '').trim();
                 thinking.remove();
-                const cleanedReply2 = reply.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+                const cleanedReply2 = reply.replace(/\x60{3}json\n?/g, '').replace(/\x60{3}\n?/g, '');
                 const jumiPhaseData2 = tryParseJumiRoutine(cleanedReply2);
                 const hadRoutineTag2 = /<routine>[\s\S]*?<\/routine>/.test(cleanedReply2);
 
@@ -6215,6 +6217,14 @@ Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stre
                     
                     // shuffled = already sorted/ordered above, spread once for Pass 1
                     const shuffled = [...allPhaseExercises];
+
+                    // When processing a phase whose time was already included in reservedTime,
+                    // subtract it to avoid double-counting (Active/Deep/CoolDown were pre-reserved)
+                    const phaseReserved =
+                        phase === 'Active Stretch' ? estimatedActiveStretchTime :
+                        phase === 'Deep Stretch'   ? estimatedDeepStretchTime :
+                        phase === 'Cool Down'       ? estimatedCoolDownTime : 0;
+                    const effectiveReserved = Math.max(0, reservedTime - phaseReserved);
                     
                     for (const ex of shuffled) {
                         if (phaseCount >= phaseConf.max) break;
@@ -6227,7 +6237,7 @@ Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stre
                         }
                         
                         const exTime = calculateExerciseTime(modifiedEx);
-                        const projectedTotal = totalTime + exTime + reservedTime;
+                        const projectedTotal = totalTime + exTime + effectiveReserved;
                         // Splits: bypass the reservedTime budget check (it double-counts already-spent budget)
                         // but only include it with 50% probability to keep it optional/random
                         if (phase === 'Splits') {
@@ -6257,7 +6267,7 @@ Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stre
                             if (uniqueSnapshot.length === 0) break;
                             const sourceEx = uniqueSnapshot[dupIndex % uniqueSnapshot.length];
                             const exTime = calculateExerciseTime(sourceEx);
-                            const projectedTotal = totalTime + exTime + reservedTime;
+                            const projectedTotal = totalTime + exTime + effectiveReserved;
                             if (!isAllExercises && projectedTotal > maxSeconds && phaseCount >= effectiveMin) {
                                 dupIndex++;
                                 continue;
@@ -6893,14 +6903,12 @@ function regenerateRoutine() {
                 const longKey  = keys[1] + 'LongDuration';
                 const shortVal = appSettings[shortKey];
                 const longVal  = appSettings[longKey];
-                // Per-exercise hold (Jumi routines); fall back to global longSession (simple routines)
-                const isLong = ex.hold != null ? ex.hold === 'long' : longSession;
+                // Use global longSession (set from Jumi's routine-level hold, or user's hold toggle)
+                const isLong = longSession;
                 if (isLong && longVal != null) {
                     ex.duration = longVal;
-                    if (ex.hold != null) ex.rest = appSettings.longHoldRest;
                 } else if (!isLong && shortVal != null) {
                     ex.duration = shortVal;
-                    if (ex.hold != null) ex.rest = appSettings.shortHoldRest;
                 }
             });
         }
