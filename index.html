@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.22: Deep Stretch pool built from Jumi's Static candidates; exercise queue counter fixed; URLs shown in chat as Google search links; URL removed from modal; exercise prompt simplified -->
+    <!-- v3.23: One Review button per exercise; Active/Deep Stretch promoted from Jumi's unused Static candidates -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3944,23 +3944,21 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                     }
                 }
 
-                // Parse ALL <exercise> blocks into queue
+                // Parse ALL <exercise> blocks — one Review button per exercise
                 const allExMatches = [...cleanedReply.matchAll(/<exercise>([\s\S]*?)<\/exercise>/g)];
                 if (allExMatches.length > 0) {
-                    const parsed = [];
                     for (const m of allExMatches) {
                         try {
                             const exData = JSON.parse(m[1].trim());
-                            parsed.push(exData);
-                            // Show URL as a chat link (Google search fallback if URL missing/dead)
-                            const searchUrl = exData.url || `https://www.google.com/search?q=${encodeURIComponent(exData.exercise + ' stretch exercise how to')}`;
-                            appendChatMessage('jumi', `▶ <a href="${searchUrl}" target="_blank" rel="noopener" style="color:#667eea;">${exData.exercise} — watch demo</a>`);
+                            const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(exData.exercise + ' stretch exercise how to')}`;
+                            appendChatMessage('jumi', `<a href="${searchUrl}" target="_blank" rel="noopener" style="color:#667eea;">▶ ${exData.exercise} — watch demo</a>`);
+                            const captured = exData;
+                            appendChatAction(`Add "${exData.exercise}" to library →`, () => {
+                                _pendingExercises = [captured];
+                                _pendingExercisesTotal = 1;
+                                openExApproval();
+                            });
                         } catch(e) {}
-                    }
-                    if (parsed.length > 0) {
-                        _pendingExercises = parsed;
-                        _pendingExercisesTotal = parsed.length;
-                        appendChatAction(`Review & add ${parsed.length > 1 ? parsed.length + ' exercises' : 'exercise'} to library →`, openExApproval);
                     }
                 }
             } catch(err) {
@@ -6120,7 +6118,18 @@ hold at the routine level must be "short" or "long". Choose based on the user's 
                             .map(e => {
                                 // Match against exercisesForGen to get correct duration-applied copy
                                 const source = exercisesForGen.find(s => s.exercise === e.exercise);
-                                return source ? {...source, hold: e.hold} : {...e};
+                                return source ? {...source} : {...e};
+                            });
+                    } else if (jumiPools && (phase === 'Active Stretch' || phase === 'Deep Stretch') && jumiPools['Static Stretching']) {
+                        // Jumi provided Static but no explicit Active/Deep pool — promote unused Jumi Static candidates
+                        const promoteDuration = phase === 'Active Stretch'
+                            ? (longSession ? 75 : 45)
+                            : (longSession ? 120 : 90);
+                        allPhaseExercises = jumiPools['Static Stretching']
+                            .filter(e => !usedExerciseNames.has(e.exercise))
+                            .map(e => {
+                                const source = exercisesForGen.find(s => s.exercise === e.exercise);
+                                return source ? {...source, phase, duration: promoteDuration} : {...e, phase, duration: promoteDuration};
                             });
                     } else {
                         // Normal mode: use standard pools
