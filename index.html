@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.27: Allow Jumi to output Active/Deep Stretch freely — usingJumiPool fix ensures correct phase/duration regardless -->
+    <!-- v3.29: Add exercise library to sendJumiChat system prompt so Jumi doesn't recommend exercises already in the library -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3265,16 +3265,20 @@
                 return;
             }
             
-            [beep, longBeep, bong].forEach(a => {
-                a.volume = 0;
-                a.muted = true;
-                a.play().then(() => {
-                    a.pause();
-                    a.currentTime = 0;
-                    a.muted = false;
-                    a.volume = 0.7;
-                }).catch((e) => console.warn("Audio init failed:", e));
-            });
+            // Audio element unlock (mobile only — desktop browsers don't need this and it causes audible clicks)
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            if (isMobile) {
+                [beep, longBeep, bong].forEach(a => {
+                    a.volume = 0;
+                    a.muted = true;
+                    a.play().then(() => {
+                        a.pause();
+                        a.currentTime = 0;
+                        a.muted = false;
+                        a.volume = 0.7;
+                    }).catch((e) => console.warn("Audio init failed:", e));
+                });
+            }
             
             console.log("Audio initialized with muted unlock");
         }
@@ -3871,11 +3875,15 @@
 
             const goals = getJumiGoals();
             const contextTable = buildChatContext();
+            const exerciseLibraryList = exercises.map(e => `${e.exercise} (${e.phase})`).join(', ');
 
             const systemPrompt = `You are Jumi, a flexibility and mobility coach with access to this user's full training history. You also have web search available — use it to find links, videos, tutorials, or any current information when asked.
 
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
 Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' minutes'}
+
+Exercise library (${exercises.length} exercises already in the user's library — do NOT recommend these):
+${exerciseLibraryList}
 
 Training history (exercise | phase | muscle | position | sides | count 12m | 6m | 3m | 1m | 2w | 1w | mins 12m | 6m | 3m | 1m | 2w | 1w | last done):
 ${contextTable}
