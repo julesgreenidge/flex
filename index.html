@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.21: Fix syntax error — missing closing backtick on quickJumiGenerate system prompt -->
+    <!-- v3.22: Deep Stretch pool built from Jumi's Static candidates; exercise queue counter fixed; URLs shown in chat as Google search links; URL removed from modal; exercise prompt simplified -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3891,8 +3891,8 @@ CRITICAL: Output the JSON inside <routine></routine> tags. Never output raw JSON
 <routine>{"hold":"short","Warm-Up":[{"exercise":"exact name","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}],"Static Stretching":[...],"Deep Stretch":[...]}</routine>
 hold at the routine level must be "short" or "long". Choose based on the user's goals and history — long hold for flexibility gains or recovery, short hold for active warmup or time-constrained sessions. Before the JSON, briefly explain your hold choice in 1 sentence.
 
-CRITICAL: If the user asks you to suggest or recommend any exercises not already in their library, you MUST include one <exercise> block per recommended exercise at the end of your response — no exceptions. Also use web search to find a real YouTube or instructional URL for each. Use this exact format for EVERY recommended exercise:
-<exercise>{"exercise":"name","phase":"phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower","url":"https://..."}</exercise>
+CRITICAL: If the user asks you to suggest or recommend any exercises not already in their library, you MUST include one <exercise> block per recommended exercise at the end of your response — no exceptions. Use this exact format for EVERY recommended exercise:
+<exercise>{"exercise":"name","phase":"phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}</exercise>
 BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foam Roller, Mobility, Static Stretching, Splits, Cool Down, Final Rest. Do not omit the <exercise> blocks even if you have already described the exercises in text.`;
 
             try {
@@ -3949,10 +3949,17 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                 if (allExMatches.length > 0) {
                     const parsed = [];
                     for (const m of allExMatches) {
-                        try { parsed.push(JSON.parse(m[1].trim())); } catch(e) {}
+                        try {
+                            const exData = JSON.parse(m[1].trim());
+                            parsed.push(exData);
+                            // Show URL as a chat link (Google search fallback if URL missing/dead)
+                            const searchUrl = exData.url || `https://www.google.com/search?q=${encodeURIComponent(exData.exercise + ' stretch exercise how to')}`;
+                            appendChatMessage('jumi', `▶ <a href="${searchUrl}" target="_blank" rel="noopener" style="color:#667eea;">${exData.exercise} — watch demo</a>`);
+                        } catch(e) {}
                     }
                     if (parsed.length > 0) {
                         _pendingExercises = parsed;
+                        _pendingExercisesTotal = parsed.length;
                         appendChatAction(`Review & add ${parsed.length > 1 ? parsed.length + ' exercises' : 'exercise'} to library →`, openExApproval);
                     }
                 }
@@ -3963,6 +3970,7 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
         }
 
         let _pendingExercises = []; // queue of exercises to review
+        let _pendingExercisesTotal = 0; // original total for counter
 
         function openExApproval() {
             if (!_pendingExercises.length) return;
@@ -3991,13 +3999,10 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                 return `<label style="font-size:13px; font-weight:600;">${f.label}
                     <input id="${f.id}" value="${f.val}" style="display:block; width:100%; margin-top:4px; border:1.5px solid #d2d2d7; border-radius:8px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;"/></label>`;
             }).join('');
-            // Show URL link if present
-            if (ex.url) {
-                container.innerHTML += `<div style="margin-top:4px;"><a href="${ex.url}" target="_blank" rel="noopener" style="font-size:13px; color:#667eea; text-decoration:none;">▶ Watch exercise demo</a></div>`;
-            }
-            // Show queue count if multiple pending
+            // Show queue count
             const queueInfo = document.getElementById('apQueueInfo');
-            if (queueInfo) queueInfo.textContent = _pendingExercises.length > 1 ? `Exercise 1 of ${_pendingExercises.length}` : '';
+            const current = _pendingExercisesTotal - _pendingExercises.length + 1;
+            if (queueInfo) queueInfo.textContent = _pendingExercisesTotal > 1 ? `Exercise ${current} of ${_pendingExercisesTotal}` : '';
             document.getElementById('exApprovalModal').style.display = 'flex';
         }
 
@@ -5857,15 +5862,25 @@ hold at the routine level must be "short" or "long". Choose based on the user's 
             }
             
             // BUILD POOLS ONCE - before retry loop
+            // For Jumi routines: promote from Jumi's own Static candidates so the same exercises appear in Deep Stretch
+            // For simple routines: use the full exercisesForGen pool
+            const jumiStaticCandidates = jumiPools && jumiPools['Static Stretching']
+                ? jumiPools['Static Stretching'].map(e => {
+                    const source = exercisesForGen.find(s => s.exercise === e.exercise);
+                    return source ? {...source} : {...e};
+                  })
+                : null;
+
             // Filter and shuffle Static Stretching exercises for Active/Deep Stretch reservation
-            const allStaticShuffled = exercisesForGen
+            const allStaticShuffled = (jumiStaticCandidates || exercisesForGen
                 .filter(e => e.phase === "Static Stretching" && e.exercise !== 'Savasana')
                 .filter(e => {
                     const bp = (e.bodyPart || '').toLowerCase();
                     if (selectedType === 'upper') return bp === 'upper' || bp === 'full';
                     if (selectedType === 'lower') return bp === 'lower' || bp === 'full';
                     return true; // full body includes all
-                })
+                }))
+                .slice()
                 .sort(() => Math.random() - 0.5);
             
             // Use actual config max values
