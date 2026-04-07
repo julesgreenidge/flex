@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.14: Fix weightedShuffle inversion — recent exercises were being prioritised not penalised -->
+    <!-- v3.15: Robust Jumi routine parsing — tryParseJumiRoutine handles both tagged and raw JSON output from Haiku -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3913,24 +3913,25 @@ If the user asks you to suggest a new exercise not in their library, include a J
                 // Strip any markdown code fences from the full reply before parsing
                 const cleanedReply = reply.replace(/```json\n?/g, '').replace(/```\n?/g, '');
 
-                // Check for routine generation
-                const routineMatch = cleanedReply.match(/<routine>([\s\S]*?)<\/routine>/);
+                // Check for routine and exercise blocks
                 const exMatch = cleanedReply.match(/<exercise>([\s\S]*?)<\/exercise>/);
+                const jumiPhaseData = tryParseJumiRoutine(cleanedReply);
+
                 const cleanReply = cleanedReply
                     .replace(/<routine>[\s\S]*?<\/routine>/g, '')
                     .replace(/<exercise>[\s\S]*?<\/exercise>/g, '')
+                    .replace(/\{[\s\S]*\}/g, '')
                     .trim();
 
                 if (cleanReply) appendChatMessage('jumi', cleanReply);
 
-                if (routineMatch) {
+                if (jumiPhaseData) {
                     try {
-                        const jumiPhaseData = JSON.parse(routineMatch[1].trim());
                         await buildJumiRoutine(jumiPhaseData);
                         window.loadRoutineFromChat(true);
                         appendChatAction('▶ Routine loaded — tap to close chat', () => window.closeJumiChat());
                     } catch(e) {
-                        appendChatMessage('jumi', '(Could not parse routine — please try again.)');
+                        appendChatMessage('jumi', '(Could not build routine — please try again.)');
                     }
                 }
 
@@ -3992,6 +3993,34 @@ If the user asks you to suggest a new exercise not in their library, include a J
             await generateRoutine(jumiPools);
         }
 
+        // Try to extract phase-grouped routine JSON from Jumi's reply.
+        // Handles both <routine>{...}</routine> tags and raw JSON fallback.
+        function tryParseJumiRoutine(text) {
+            // 1. Try tagged format first
+            const tagMatch = text.match(/<routine>([\s\S]*?)<\/routine>/);
+            if (tagMatch) {
+                try { return JSON.parse(tagMatch[1].trim()); } catch(e) {}
+            }
+            // 2. Fallback: find first { that opens a phase-keyed object
+            const braceIdx = text.indexOf('{');
+            if (braceIdx !== -1) {
+                // Try parsing from first { to last }
+                const lastBrace = text.lastIndexOf('}');
+                if (lastBrace > braceIdx) {
+                    try {
+                        const candidate = JSON.parse(text.slice(braceIdx, lastBrace + 1));
+                        // Validate it looks like a phase map (object with array values)
+                        const knownPhases = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down'];
+                        const keys = Object.keys(candidate);
+                        if (keys.length > 0 && keys.some(k => knownPhases.includes(k)) && keys.every(k => Array.isArray(candidate[k]))) {
+                            return candidate;
+                        }
+                    } catch(e) {}
+                }
+            }
+            return null;
+        }
+
         window.loadRoutineFromChat = function(keepOpen) {
             // currentRoutine already set by buildJumiRoutine → generateRoutine
             currentJumiRoutine = currentRoutine.map(e => ({...e}));
@@ -4050,18 +4079,20 @@ Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stre
                 const reply = (data.reply || '').trim();
                 thinking.remove();
                 const cleanedReply2 = reply.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-                const routineMatch = cleanedReply2.match(/<routine>([\s\S]*?)<\/routine>/);
-                const cleanReply = cleanedReply2.replace(/<routine>[\s\S]*?<\/routine>/g, '').trim();
-                if (routineMatch) {
+                const jumiPhaseData2 = tryParseJumiRoutine(cleanedReply2);
+                const cleanReply = cleanedReply2
+                    .replace(/<routine>[\s\S]*?<\/routine>/g, '')
+                    .replace(/\{[\s\S]*\}/g, '')
+                    .trim();
+                if (jumiPhaseData2) {
                     try {
-                        const jumiPhaseData = JSON.parse(routineMatch[1].trim());
                         if (cleanReply) appendChatMessage('jumi', cleanReply);
-                        await buildJumiRoutine(jumiPhaseData);
+                        await buildJumiRoutine(jumiPhaseData2);
                         window.loadRoutineFromChat(true);
                         appendChatMessage('jumi', 'Routine loaded on screen.');
                     } catch(e) {
                         if (cleanReply) appendChatMessage('jumi', cleanReply);
-                        appendChatMessage('jumi', '(Could not parse routine — please try again.)');
+                        appendChatMessage('jumi', '(Could not build routine — please try again.)');
                     }
                 } else if (cleanReply) {
                     appendChatMessage('jumi', cleanReply);
