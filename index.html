@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.33: Export/import now includes exercises, appSettings, jumiGoals, globalDuration; import reloads page to apply settings -->
+    <!-- v3.37: Remove quickStartDuration from settings — duration now driven by global duration picker only -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -325,14 +325,6 @@
             -webkit-text-fill-color: transparent;
         }
 
-        .card-active .card-nav-chevron { display: none !important; }
-        .card-active .card-expand-chevron { display: block !important; }
-        .qs-card {
-            overflow: hidden;
-            transition: height 0.32s cubic-bezier(0.4,0,0.2,1), opacity 0.28s cubic-bezier(0.4,0,0.2,1);
-            will-change: height, opacity;
-            min-height: 0;
-        }
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -1646,87 +1638,48 @@
                 <input type="number" id="globalCustomDuration" class="custom-duration-input" placeholder="Enter minutes (minimum 20)" min="20" max="120" step="5">
             </div>
 
-            <!-- QUICK START -->
-            <div id="quickStartSection" style="margin-bottom: 12px;">
-                <div id="cardsContainer" style="display:flex; flex-direction:column; gap:10px;">
-                    <!-- Quick card -->
-                    <div id="qsCardWrap" class="qs-card">
-                    <button id="trueQuickStartBtn" onclick="if(this.classList.contains('card-active')){expandCards();this.classList.remove('card-active');}else{trueQuickStart();this.classList.add('card-active');}" style="
-                        display:flex; align-items:center; justify-content:space-between;
-                        background:#f97316; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:box-shadow 0.15s,transform 0.15s; box-shadow:0 4px 12px rgba(249,115,22,0.35);"
-                        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,0.26)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.18)'">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <span id="qsIcon" style="font-size:14px; color:white;">▶</span>
-                            <div>
-                                <div style="font-size:14px; font-weight:600; color:white; line-height:1.2;">Quick Start</div>
-                                <div id="qsSubtitle" style="font-size:11px; color:rgba(255,255,255,0.75);">Full body · short hold</div>
-                            </div>
+            <!-- MODE GRID -->
+            <div id="quickStartSection" style="margin-bottom:12px;">
+                <div id="cardsContainer" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+
+                    <!-- Quick Start -->
+                    <button id="trueQuickStartBtn" onclick="trueQuickStart()" style="display:flex; align-items:center; gap:10px; background:#f97316; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:opacity 0.15s; box-shadow:0 4px 12px rgba(249,115,22,0.3);">
+                        <span style="font-size:14px; color:white; flex-shrink:0;">&#9658;</span>
+                        <div>
+                            <div style="font-size:14px; font-weight:600; color:white; line-height:1.2;">Quick Start</div>
+                            <div id="qsSubtitle" style="font-size:11px; color:rgba(255,255,255,0.75);">Full body &middot; short hold</div>
                         </div>
-                        <svg class="card-expand-chevron" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-                        <svg class="card-nav-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
-                    </div>
-                    <!-- Jumi card -->
-                    <div id="jumiCardWrap" class="qs-card">
-                    <div id="jumiCardWrapper" style="display:flex; gap:6px;">
-                        <button id="jumiQuickBtn" onclick="if(this.classList.contains('card-active')){expandCards();this.classList.remove('card-active');window.closeJumiChat&&window.closeJumiChat();}else{document.querySelectorAll('.card-active').forEach(el=>el.classList.remove('card-active'));this.classList.add('card-active');jumiQuickStart();window.openJumiChat&&window.openJumiChat();var _dd=document.getElementById('selectedDurationDisplay');if(_dd)_dd.style.opacity='1';}" style="
-                            display:flex; align-items:center; justify-content:space-between;
-                            background:linear-gradient(135deg,#667eea,#764ba2); border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; flex:1; transition:box-shadow 0.15s,transform 0.15s; box-shadow:0 4px 12px rgba(0,0,0,0.18);"
-                            onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,0.26)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.18)'">
-                            <div style="display:flex; align-items:center; gap:10px;">
-                                <span id="jumiQuickIcon" style="font-size:14px; color:white;">✦</span>
-                                <div>
-                                    <div style="font-size:14px; font-weight:600; color:white; line-height:1.2;">Jumi</div>
-                                    <div id="jumiQuickSubtitle" style="font-size:11px; color:rgba(255,255,255,0.75);">AI picks your routine</div>
-                                </div>
-                            </div>
-                            <svg class="card-expand-chevron" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-                            <svg class="card-nav-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-                        </button>
-                    </div>
-                    </div>
-                    <!-- Custom card -->
-                    <div id="customCardWrap" class="qs-card">
-                    <button id="customCardBtn" onclick="if(this.classList.contains('card-active')){expandCards();this.classList.remove('card-active');}else{document.getElementById('customTab').click();this.classList.add('card-active');}" style="
-                        display:flex; align-items:center; justify-content:space-between;
-                        background:#3a3a3c; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:box-shadow 0.15s,transform 0.15s; box-shadow:0 4px 12px rgba(0,0,0,0.18);"
-                        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,0.26)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.18)'">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                            <div>
-                                <div style="font-size:14px; font-weight:600; color:white; line-height:1.2;">Custom</div>
-                                <div style="font-size:11px; color:rgba(255,255,255,0.6);">I'll choose my exercises</div>
-                            </div>
+
+                    <!-- Jumi -->
+                    <button id="jumiQuickBtn" onclick="jumiCardClick()" style="display:flex; align-items:center; gap:10px; background:linear-gradient(135deg,#667eea,#764ba2); border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:opacity 0.15s; box-shadow:0 4px 12px rgba(102,126,234,0.3);">
+                        <span style="font-size:14px; color:white; flex-shrink:0;">&#10022;</span>
+                        <div>
+                            <div style="font-size:14px; font-weight:600; color:white; line-height:1.2;">Jumi</div>
+                            <div id="jumiQuickSubtitle" style="font-size:11px; color:rgba(255,255,255,0.75);">AI picks your routine</div>
                         </div>
-                        <svg class="card-expand-chevron" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-                        <svg class="card-nav-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
-                    </div>
+
+                    <!-- Custom -->
+                    <button id="customCardBtn" onclick="document.getElementById('customTab').click()" style="display:flex; align-items:center; gap:10px; background:#3a3a3c; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:opacity 0.15s; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        <div>
+                            <div style="font-size:14px; font-weight:600; color:white; line-height:1.2;">Custom</div>
+                            <div style="font-size:11px; color:rgba(255,255,255,0.6);">I'll choose exercises</div>
+                        </div>
+                    </button>
+
                     <!-- Favourites -->
-                    <div id="favsCardWrap" class="qs-card">
-                    <button id="starredBtn" onclick="if(this.classList.contains('card-active')){expandCards();this.classList.remove('card-active');}else{openStarredList();this.classList.add('card-active');}" style="
-                        display:flex; align-items:center; justify-content:space-between;
-                        background:#e5e5ea; border:none; border-radius:12px; padding:10px 14px;
-                        cursor:pointer; text-align:left; width:100%; transition:box-shadow 0.15s,transform 0.15s;
-                        box-shadow:0 4px 12px rgba(0,0,0,0.18);"
-                        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,0.26)'" 
-                        onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.18)'">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3a3a3c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                            </svg>
-                            <div>
-                                <div style="font-size:14px; font-weight:600; color:#1d1d1f; line-height:1.2;">Favourites</div>
-                                <div style="font-size:11px; color:#86868b;">Your saved routines</div>
-                            </div>
+                    <button id="starredBtn" onclick="openStarredList()" style="display:flex; align-items:center; gap:10px; background:#e5e5ea; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:opacity 0.15s; box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3a3a3c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                        <div>
+                            <div style="font-size:14px; font-weight:600; color:#1d1d1f; line-height:1.2;">Favourites</div>
+                            <div style="font-size:11px; color:#86868b;">Saved routines</div>
                         </div>
-                        <svg class="card-expand-chevron" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3a3a3c" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-                        <svg class="card-nav-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#86868b" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
-                    </div>
+
                 </div>
             </div>
-            
             <!-- Separator -->
             <div style="display:flex; align-items:center; gap:10px; margin: 16px 0;">
                 <div style="flex:1; height:1px; background:#e5e5e7;"></div>
@@ -2261,7 +2214,6 @@
                 setRadioValue('finalBongSound', appSettings.finalBongSound);
                 setRadioValue('splitsFrequency', String(appSettings.splitsFrequency ?? 0.1));
                 setRadioValue('quickStartType', appSettings.quickStartType || 'full');
-                setRadioValue('quickStartDuration', String(appSettings.quickStartDuration || 35));
                 setRadioValue('quickStartHold', appSettings.quickStartHold || 'short');
             });
 
@@ -2544,7 +2496,6 @@
                     finalBongSound: getRadioValue('finalBongSound') || 'bowl',
                     splitsFrequency: parseFloat(getRadioValue('splitsFrequency') ?? '0.1'),
                     quickStartType: getRadioValue('quickStartType') || 'full',
-                    quickStartDuration: parseInt(getRadioValue('quickStartDuration') || '35'),
                     quickStartHold: getRadioValue('quickStartHold') || 'short'
                 };
                 
@@ -3169,7 +3120,6 @@
             finalBongSound: 'bowl',
             splitsFrequency: 0.1,
             quickStartType: 'full',
-            quickStartDuration: 35,
             quickStartHold: 'short'
         };
 
@@ -3639,81 +3589,21 @@
         }
 
         // Card natural heights — measured once on first interaction
-        let _cardHeights = null;
-
-        function _getCardWrappers() {
-            return ['qsCardWrap','jumiCardWrap','customCardWrap','favsCardWrap']
-                .map(id => document.getElementById(id)).filter(Boolean);
-        }
-
-        function _measureCards() {
-            if (_cardHeights) return;
-            _cardHeights = {};
-            let maxH = 0;
-            _getCardWrappers().forEach(wrap => {
-                const h = wrap.getBoundingClientRect().height;
-                _cardHeights[wrap.id] = h;
-                if (h > maxH) maxH = h;
-            });
-            // All collapsed cards animate to 0 from their own height, not shared height
-            // But store max for reference
-            _cardHeights._max = maxH;
-        }
-
-        function collapseCards(activeId) {
-            _measureCards();
-            const wrappers = _getCardWrappers();
-            const activeWrapId = {
-                'trueQuickStartBtn': 'qsCardWrap',
-                'jumiQuickBtn': 'jumiCardWrap',
-                'customCardBtn': 'customCardWrap',
-                'starredBtn': 'favsCardWrap'
-            }[activeId];
-
-            wrappers.forEach(wrap => {
-                const isActive = wrap.id === activeWrapId;
-                wrap.style.height = _cardHeights[wrap.id] + 'px';
-                wrap.style.opacity = isActive ? '1' : '0';
-                wrap.style.height = isActive ? _cardHeights[wrap.id] + 'px' : '0';
-                wrap.style.pointerEvents = isActive ? '' : 'none';
-            });
-
-            // Chevrons
-            setTimeout(() => {
-                document.querySelectorAll('.card-expand-chevron').forEach(c => c.style.display = 'none');
-                document.querySelectorAll('.card-nav-chevron').forEach(c => c.style.display = 'none');
-                const activeEl = document.getElementById(activeId);
-                if (activeEl) {
-                    const exp = activeEl.querySelector('.card-expand-chevron');
-                    if (exp) exp.style.display = 'block';
-                }
-                const cont = document.getElementById('cardsContainer');
-                if (cont) cont.style.gap = '0';
-            }, 320);
-        }
-
-        function expandCards() {
-            _measureCards();
-            const wrappers = _getCardWrappers();
-            wrappers.forEach(wrap => {
-                wrap.style.height = _cardHeights[wrap.id] + 'px';
-                wrap.style.opacity = '1';
-                wrap.style.pointerEvents = '';
-            });
-            setTimeout(() => {
-                document.querySelectorAll('.card-expand-chevron').forEach(c => c.style.display = 'none');
-                document.querySelectorAll('.card-nav-chevron').forEach(c => c.style.display = 'inline');
-                const cont = document.getElementById('cardsContainer');
-                if (cont) cont.style.gap = '10px';
-            }, 320);
-        }
-
+        // Mode button active state — dims unselected buttons
         function setActiveCard(activeId) {
-            if (activeId) {
-                collapseCards(activeId);
-            } else {
-                expandCards();
-            }
+            const btnIds = ['trueQuickStartBtn', 'jumiQuickBtn', 'customCardBtn', 'starredBtn'];
+            btnIds.forEach(id => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                btn.style.opacity = (activeId === null || id === activeId) ? '1' : '0.45';
+            });
+        }
+
+        function jumiCardClick() {
+            jumiQuickStart();
+            window.openJumiChat && window.openJumiChat();
+            const _dd = document.getElementById('selectedDurationDisplay');
+            if (_dd) _dd.style.opacity = '1';
         }
 
 
@@ -3806,10 +3696,23 @@
                 appendChatMessage('jumi', "Hi! I'm Jumi. Tap the button above to generate a routine, or ask me anything about your training — progress, what to focus on, exercise advice, or anything else.");
             }
             setTimeout(() => document.getElementById('jumiChatInput').focus(), 350);
+            // Close when clicking outside the panel — after a tick so this open click doesn't immediately close it
+            setTimeout(() => {
+                document.addEventListener('mousedown', _jumiOutsideClick);
+            }, 0);
+        }
+
+        function _jumiOutsideClick(e) {
+            const panel = document.getElementById('jumiChatPanel');
+            const btn = document.getElementById('jumiChatBtn');
+            if (panel && !panel.contains(e.target) && (!btn || !btn.contains(e.target))) {
+                window.closeJumiChat();
+            }
         }
 
         window.closeJumiChat = function() {
             document.getElementById('jumiChatPanel').style.transform = 'translateX(100%)';
+            document.removeEventListener('mousedown', _jumiOutsideClick);
         };
 
         function markdownToHtml(text) {
@@ -4078,11 +3981,8 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
             currentJumiRoutine = currentRoutine.map(e => ({...e}));
             selectedType = 'jumi';
             if (!keepOpen) window.closeJumiChat();
-            // Switch to Jumi card visually without triggering jumiQuickStart onclick
-            document.querySelectorAll('.card-active').forEach(el => el.classList.remove('card-active'));
-            const jumiBtn = document.getElementById('jumiQuickBtn');
-            if (jumiBtn) jumiBtn.classList.add('card-active');
-            collapseCards('jumiQuickBtn');
+            // Switch to Jumi card visually
+            setActiveCard('jumiQuickBtn');
             document.getElementById('routineDisplayWrapper').style.display = 'block';
             document.getElementById('customDisplay').style.display = 'none';
             document.getElementById('customNavActions').style.display = 'none';
@@ -4494,7 +4394,7 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
                     document.getElementById('routineDisplayWrapper').style.display = 'block';
                     document.getElementById('customDisplay').style.display = 'none';
                     document.getElementById('customNavActions').style.display = 'none';
-                    expandCards();
+                    setActiveCard(null);
                     document.querySelectorAll('.card-active').forEach(el => el.classList.remove('card-active'));
                     this.classList.remove('selected');
                     return;
@@ -6865,8 +6765,6 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
         }
 
         async function trueQuickStart() {
-            document.querySelectorAll('.card-active').forEach(el => el.classList.remove('card-active'));
-            document.getElementById('trueQuickStartBtn').classList.add('card-active');
             setActiveCard('trueQuickStartBtn');
             // Don't clear currentJumiRoutine — user may return to Jumi tab
             sessionStorage.removeItem('jumiPrompt');
@@ -9441,7 +9339,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
         };
         
         function openStarredList() {
-            collapseCards('starredBtn');
+            setActiveCard('starredBtn');
             document.getElementById('customNavActions').style.display = 'none';
             document.getElementById('floatingEditBtn').style.display = 'none';
             document.getElementById('floatingStarBtn').style.display = 'none';
@@ -10514,21 +10412,6 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
                             </label>
                             <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px;">
                                 <input type="radio" name="quickStartType" value="lower" style="accent-color:#667eea;"> Lower Body
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="section" style="margin-bottom:24px;">
-                        <div class="section-title" style="margin-bottom:8px;">Duration (minutes)</div>
-                        <div style="display:flex; flex-direction:column; gap:8px;">
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px;">
-                                <input type="radio" name="quickStartDuration" value="25" style="accent-color:#667eea;"> 25 minutes
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px;">
-                                <input type="radio" name="quickStartDuration" value="35" style="accent-color:#667eea;"> 35 minutes
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px;">
-                                <input type="radio" name="quickStartDuration" value="45" style="accent-color:#667eea;"> 45 minutes
                             </label>
                         </div>
                     </div>
