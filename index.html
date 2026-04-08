@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.31: Fix edit btn disappearing custom→Jumi; fix double star in custom nav; fix customNavActions persisting when switching to favourites -->
+    <!-- v3.33: Export/import now includes exercises, appSettings, jumiGoals, globalDuration; import reloads page to apply settings -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3889,7 +3889,7 @@ Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' min
 Exercise library (${exercises.length} exercises already in the user's library — do NOT recommend these):
 ${exerciseLibraryList}
 
-Current routine on screen: ${currentRoutineSummary}
+Current routine on screen (IMPORTANT — this is live data, trust it even if you previously said you couldn't see a routine): ${currentRoutineSummary}
 
 Training history (exercise | phase | muscle | position | sides | count 12m | 6m | 3m | 1m | 2w | 1w | mins 12m | 6m | 3m | 1m | 2w | 1w | last done):
 ${contextTable}
@@ -9096,10 +9096,14 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
 
         window.exportData = function() {
             const data = {
-                version: "2.0",
+                version: "2.1",
                 exportDate: new Date().toISOString(),
                 starredRoutines: JSON.parse(localStorage.getItem('starredRoutines') || '[]'),
-                routineHistory: JSON.parse(localStorage.getItem('routineHistory') || '[]')
+                routineHistory: JSON.parse(localStorage.getItem('routineHistory') || '[]'),
+                exercises: JSON.parse(localStorage.getItem('flexibilityRoutineExercises') || 'null'),
+                appSettings: JSON.parse(localStorage.getItem('appSettings') || 'null'),
+                jumiGoals: JSON.parse(localStorage.getItem('jumiGoals') || 'null'),
+                globalDuration: localStorage.getItem('globalDuration') || null
             };
             
             const dataStr = JSON.stringify(data, null, 2);
@@ -9121,7 +9125,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
                 const status = document.getElementById('backupStatus');
                 if (status) {
                     status.style.color = '#34c759';
-                    status.textContent = `✅ Backup downloaded — ${data.starredRoutines.length} favourite${data.starredRoutines.length !== 1 ? 's' : ''}, ${data.routineHistory.length} sessions`;
+                    status.textContent = `✅ Backup downloaded — ${data.starredRoutines.length} favourite${data.starredRoutines.length !== 1 ? 's' : ''}, ${data.routineHistory.length} sessions, ${data.exercises ? data.exercises.length + ' exercises' : 'default exercises'}`;
                     setTimeout(() => { if (status) status.textContent = ''; }, 4000);
                 }
             };
@@ -9145,28 +9149,36 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
                         return;
                     }
                     
-                    // Ask for confirmation
-                    const confirmMsg = `This will restore:\n\n` +
-                                     `• ${data.starredRoutines.length} starred routines\n` +
-                                     `• ${data.routineHistory.length} history entries\n\n` +
-                                     `This will REPLACE your current data. Continue?`;
+                    // Build confirmation message
+                    const lines = [
+                        `• ${data.starredRoutines.length} starred routine${data.starredRoutines.length !== 1 ? 's' : ''}`,
+                        `• ${data.routineHistory.length} history entries`,
+                    ];
+                    if (data.exercises) lines.push(`• ${data.exercises.length} exercises`);
+                    if (data.appSettings) lines.push(`• App settings`);
+                    if (data.jumiGoals) lines.push(`• Jumi goals`);
+                    
+                    const confirmMsg = `This will restore:\n\n${lines.join('\n')}\n\nThis will REPLACE your current data. Continue?`;
                     
                     if (!await customConfirm(confirmMsg)) {
-                        input.value = ''; // Reset file input
+                        input.value = '';
                         return;
                     }
                     
-                    // Restore data
+                    // Restore all data
                     localStorage.setItem('starredRoutines', JSON.stringify(data.starredRoutines));
                     localStorage.setItem('routineHistory', JSON.stringify(data.routineHistory));
+                    if (data.exercises) localStorage.setItem('flexibilityRoutineExercises', JSON.stringify(data.exercises));
+                    if (data.appSettings) localStorage.setItem('appSettings', JSON.stringify(data.appSettings));
+                    if (data.jumiGoals) localStorage.setItem('jumiGoals', JSON.stringify(data.jumiGoals));
+                    if (data.globalDuration) localStorage.setItem('globalDuration', data.globalDuration);
                     
-                    await customAlert('Backup restored successfully!');
-                    renderStatsSection(); // Refresh stats view
-                    input.value = ''; // Reset file input
+                    await customAlert('Backup restored successfully! The page will reload to apply all settings.');
+                    location.reload();
                     
                 } catch (error) {
                     await customAlert('Error reading backup file: ' + error.message);
-                    input.value = ''; // Reset file input
+                    input.value = '';
                 }
             };
             reader.readAsText(file);
