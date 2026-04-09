@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.37: Remove quickStartDuration from settings — duration now driven by global duration picker only -->
+    <!-- v3.42: Fix shadowing bug — rename estimate variables so they don't overwrite activeStretchPool/deepStretchPool -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -1661,7 +1661,7 @@
                     </button>
 
                     <!-- Custom -->
-                    <button id="customCardBtn" onclick="document.getElementById('customTab').click()" style="display:flex; align-items:center; gap:10px; background:#3a3a3c; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:opacity 0.15s; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+                    <button id="customCardBtn" onclick="document.getElementById('customTab').click()" style="display:flex; align-items:center; gap:10px; background:#2f7fc1; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:opacity 0.15s; box-shadow:0 4px 12px rgba(47,127,193,0.35);">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         <div>
                             <div style="font-size:14px; font-weight:600; color:white; line-height:1.2;">Custom</div>
@@ -1670,11 +1670,11 @@
                     </button>
 
                     <!-- Favourites -->
-                    <button id="starredBtn" onclick="openStarredList()" style="display:flex; align-items:center; gap:10px; background:#e5e5ea; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:opacity 0.15s; box-shadow:0 4px 12px rgba(0,0,0,0.1);">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3a3a3c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    <button id="starredBtn" onclick="openStarredList()" style="display:flex; align-items:center; gap:10px; background:#0a8a6e; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:opacity 0.15s; box-shadow:0 4px 12px rgba(10,138,110,0.35);">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                         <div>
-                            <div style="font-size:14px; font-weight:600; color:#1d1d1f; line-height:1.2;">Favourites</div>
-                            <div style="font-size:11px; color:#86868b;">Saved routines</div>
+                            <div style="font-size:14px; font-weight:600; color:white; line-height:1.2;">Favourites</div>
+                            <div style="font-size:11px; color:rgba(255,255,255,0.75);">Saved routines</div>
                         </div>
                     </button>
 
@@ -5697,6 +5697,7 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
             const targetMinutes = selectedTime;
             const isAllExercises = targetMinutes === 999;
             const targetSeconds = isAllExercises ? 999999 : targetMinutes * 60;
+            // Long hold exercises are 75s vs 45s — coarser granularity needs wider tolerance window
             const minSeconds = isAllExercises ? 0 : targetSeconds - 30;
             const maxSeconds = isAllExercises ? 999999 : targetSeconds;
             const isLongRoutine = targetMinutes > 30 && !isAllExercises;
@@ -5804,6 +5805,8 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
             // Use actual config max values
             // For "All" mode, don't reserve - let Static Stretching phase use all exercises
             // Active/Deep will be their own separate phases with their own promotion logic
+            // For long hold, Active/Deep exercises take significantly longer (75s vs 45s, 120s vs 90s)
+            // so reduce counts to avoid over-reserving budget from earlier phases
             const maxActiveStretches = isAllExercises ? 0 : stretchConfig["Active Stretch"].max;
             const maxDeepStretches = isAllExercises ? 0 : stretchConfig["Deep Stretch"].max;
             const minActiveStretches = isAllExercises ? 0 : stretchConfig["Active Stretch"].min;
@@ -5888,63 +5891,63 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
                 const isShortRoutine = targetMinutes < 30 && !isAllExercises;
                 const phaseConfig = {
                     25: {
-                        "Warm-Up": { min: 2, max: 2 },
-                        "Foam Roller": { min: 2, max: 2 },
-                        "Mobility": { min: 2, max: 2 },
+                        "Warm-Up": { min: 2, max: 3 },
+                        "Foam Roller": { min: 2, max: 3 },
+                        "Mobility": { min: 2, max: 3 },
                         "Static Stretching": { min: 4, max: 8 },
                         "Active Stretch": { min: 1, max: 2 },
                         "Deep Stretch": { min: 1, max: 1 }, // Reduced from 2 due to longer holds (90s)
                         "Splits": { min: 0, max: 1 }
                     },
                     30: {
-                        "Warm-Up": { min: 2, max: 2 },
-                        "Foam Roller": { min: 2, max: 2 },
-                        "Mobility": { min: 2, max: 2 },
+                        "Warm-Up": { min: 2, max: 3 },
+                        "Foam Roller": { min: 2, max: 3 },
+                        "Mobility": { min: 2, max: 3 },
                         "Static Stretching": { min: 4, max: 10 },
                         "Active Stretch": { min: 3, max: 3 },
                         "Deep Stretch": { min: 2, max: 2 }, // Reduced from 3 due to longer holds (90s)
                         "Splits": { min: 0, max: 1 }
                     },
                     35: {
-                        "Warm-Up": { min: 3, max: 3 },
-                        "Foam Roller": { min: 3, max: 3 },
-                        "Mobility": { min: 3, max: 3 },
+                        "Warm-Up": { min: 2, max: 3 },
+                        "Foam Roller": { min: 2, max: 3 },
+                        "Mobility": { min: 2, max: 3 },
                         "Static Stretching": { min: 5, max: 11 },
                         "Active Stretch": { min: 3, max: 4 },
                         "Deep Stretch": { min: 2, max: 3 }, // Reduced from 4 due to longer holds (90s)
                         "Splits": { min: 0, max: 1 }
                     },
                     40: {
-                        "Warm-Up": { min: 3, max: 3 },
-                        "Foam Roller": { min: 3, max: 3 },
-                        "Mobility": { min: 3, max: 3 },
+                        "Warm-Up": { min: 2, max: 3 },
+                        "Foam Roller": { min: 2, max: 3 },
+                        "Mobility": { min: 2, max: 3 },
                         "Static Stretching": { min: 5, max: 13 },
                         "Active Stretch": { min: 3, max: 5 },
                         "Deep Stretch": { min: 2, max: 4 }, // Reduced from 5 due to longer holds (90s)
                         "Splits": { min: 0, max: 1 }
                     },
                     45: {
-                        "Warm-Up": { min: 3, max: 3 },
-                        "Foam Roller": { min: 3, max: 3 },
-                        "Mobility": { min: 3, max: 3 },
+                        "Warm-Up": { min: 2, max: 3 },
+                        "Foam Roller": { min: 2, max: 3 },
+                        "Mobility": { min: 2, max: 3 },
                         "Static Stretching": { min: 7, max: 15 },
                         "Active Stretch": { min: 3, max: 6 },
                         "Deep Stretch": { min: 2, max: 4 }, // Reduced from 6 due to longer holds (90s)
                         "Splits": { min: 0, max: 1 }
                     },
                     50: {
-                        "Warm-Up": { min: 3, max: 3 },
-                        "Foam Roller": { min: 3, max: 3 },
-                        "Mobility": { min: 3, max: 3 },
+                        "Warm-Up": { min: 2, max: 3 },
+                        "Foam Roller": { min: 2, max: 3 },
+                        "Mobility": { min: 2, max: 3 },
                         "Static Stretching": { min: 9, max: 17 },
                         "Active Stretch": { min: 3, max: 7 },
                         "Deep Stretch": { min: 3, max: 5 }, // Reduced from 7 due to longer holds (90s)
                         "Splits": { min: 0, max: 1 }
                     },
                     60: {
-                        "Warm-Up": { min: 3, max: 3 },
-                        "Foam Roller": { min: 3, max: 3 },
-                        "Mobility": { min: 3, max: 3 },
+                        "Warm-Up": { min: 2, max: 3 },
+                        "Foam Roller": { min: 2, max: 3 },
+                        "Mobility": { min: 2, max: 3 },
                         "Static Stretching": { min: 11, max: 21 },
                         "Active Stretch": { min: 3, max: 8 },
                         "Deep Stretch": { min: 3, max: 6 }, // Reduced from 8 due to longer holds (90s)
@@ -5999,6 +6002,7 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
                         };
                     });
                 }
+
                 
                 const phases = ["Warm-Up", "Foam Roller", "Mobility", "Static Stretching", "Active Stretch", "Deep Stretch", "Splits"];
                 
@@ -6017,17 +6021,14 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
                 const activeStretchDuration = longSession ? 75 : 45;
                 const deepStretchDuration = longSession ? 120 : 90;
 
-                // Estimate Active/Deep Stretch time from actual pool if available, else use standard estimate
-                const activePool = jumiPools && jumiPools['Active Stretch'];
-                const deepPool = jumiPools && jumiPools['Deep Stretch'];
-                const activeSample = activePool && activePool.length > 0 ? activePool[0] : null;
-                const deepSample = deepPool && deepPool.length > 0 ? deepPool[0] : null;
-                const activeSampleTime = activeSample && activeSample.duration != null
-                    ? (activeSample.duration + (activeSample.rest || 15)) * (activeSample.sides || 1)
-                    : (activeStretchDuration + 15);
-                const deepSampleTime = deepSample && deepSample.duration != null
-                    ? (deepSample.duration + (deepSample.rest || 15)) * (deepSample.sides || 1)
-                    : (deepStretchDuration + 15);
+                // Estimate Active/Deep Stretch time using average sides from actual Static pool
+                const staticPoolForEstimate = exercisesForGen.filter(e => e.phase === 'Static Stretching' && e.exercise !== 'Savasana');
+                const avgActiveSides = staticPoolForEstimate.length > 0
+                    ? staticPoolForEstimate.reduce((sum, e) => sum + (e.sides || 1), 0) / staticPoolForEstimate.length
+                    : 1.5;
+                const avgDeepSides = avgActiveSides; // same pool
+                const activeSampleTime = (activeStretchDuration + 15) * avgActiveSides;
+                const deepSampleTime = (deepStretchDuration + 15) * avgDeepSides;
                 const estimatedActiveStretchTime = isAllExercises ? 0 : (minActiveStretches * activeSampleTime);
                 const estimatedDeepStretchTime = isAllExercises ? 0 : (minDeepStretches * deepSampleTime);
 
@@ -6186,11 +6187,6 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
                         if (phaseFocusExercises.length > 0) {
                             const guaranteedEx = {...phaseFocusExercises[0]};
                             
-                            // Apply longSession duration modifier for Static Stretching
-                            if (phase === "Static Stretching" && longSession) {
-                                guaranteedEx.duration = 75;
-                            }
-                            
                             phaseExercises.push(guaranteedEx);
                             addedNames.add(guaranteedEx.exercise);
                             totalTime += calculateExerciseTime(guaranteedEx);
@@ -6215,11 +6211,7 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
                         if (phaseCount >= phaseConf.max) break;
                         if (addedNames.has(ex.exercise)) continue; // Skip - already added this exercise
                         
-                        // Apply longSession duration modifier for Static Stretching
                         const modifiedEx = {...ex};
-                        if (phase === "Static Stretching" && longSession) {
-                            modifiedEx.duration = 75;
-                        }
                         
                         const exTime = calculateExerciseTime(modifiedEx);
                         const projectedTotal = totalTime + exTime + effectiveReserved;
@@ -6359,29 +6351,20 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
                 if (!isAllExercises && totalTime > maxSeconds) {
                     // First try removing extra cool downs
                     const coolDownInRoutine = routine.filter(ex => ex.phase === "Cool Down" && ex.exercise !== "Savasana");
-                    
                     while (totalTime > maxSeconds && coolDownInRoutine.length > minCoolDownExercises) {
                         const toRemove = coolDownInRoutine.pop();
                         const removeIndex = routine.indexOf(toRemove);
-                        if (removeIndex !== -1) {
-                            routine.splice(removeIndex, 1);
-                            totalTime -= calculateExerciseTime(toRemove);
-                        }
+                        if (removeIndex !== -1) { routine.splice(removeIndex, 1); totalTime -= calculateExerciseTime(toRemove); }
                     }
-                    
                     // If still over, remove Deep Stretch exercises beyond minimum
                     if (totalTime > maxSeconds) {
                         const deepStretchInRoutine = routine.filter(ex => ex.phase === "Deep Stretch");
                         while (totalTime > maxSeconds && deepStretchInRoutine.length > minDeepStretches) {
                             const toRemove = deepStretchInRoutine.pop();
                             const removeIndex = routine.indexOf(toRemove);
-                            if (removeIndex !== -1) {
-                                routine.splice(removeIndex, 1);
-                                totalTime -= calculateExerciseTime(toRemove);
-                            }
+                            if (removeIndex !== -1) { routine.splice(removeIndex, 1); totalTime -= calculateExerciseTime(toRemove); }
                         }
                     }
-                    
                     // If STILL over, remove Static Stretching exercises beyond minimum
                     if (totalTime > maxSeconds) {
                         const staticInRoutine = routine.filter(ex => ex.phase === "Static Stretching");
@@ -6389,10 +6372,7 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
                         while (totalTime > maxSeconds && staticInRoutine.length > staticMin) {
                             const toRemove = staticInRoutine.pop();
                             const removeIndex = routine.indexOf(toRemove);
-                            if (removeIndex !== -1) {
-                                routine.splice(removeIndex, 1);
-                                totalTime -= calculateExerciseTime(toRemove);
-                            }
+                            if (removeIndex !== -1) { routine.splice(removeIndex, 1); totalTime -= calculateExerciseTime(toRemove); }
                         }
                     }
                 }
@@ -6412,7 +6392,6 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
             }
             
             currentRoutine = bestRoutine;
-            
 
             // Deep Stretch is now generated as its own phase - no conversion needed
             
@@ -6707,7 +6686,6 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
             const diff = totalTime - targetSeconds;
             const withinTolerance = diff >= -30 && diff <= 0;
             
-            
             // ASSERTION per ChatGPT feedback
             if (!isAllExercises) {
                 console.assert(
@@ -6779,7 +6757,8 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
 
             if (!selectedTime) selectedTime = 35;
             selectedType = appSettings.quickStartType || 'full';
-            selectedHold = appSettings.quickStartHold || 'short';
+            // Use current UI hold selection if set, otherwise fall back to appSettings default
+            if (!selectedHold) selectedHold = appSettings.quickStartHold || 'short';
             longSession = selectedHold === 'long';
             selectedFocus = '';
 
