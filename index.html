@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.70: applyModeColours targets all .routine-info elements — fixes orange summary when editing a favourite -->
+    <!-- v3.72: Jumi system prompts — ABSOLUTE RULE for routine tags added at top; tryParseJumiRoutine more robust -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3899,7 +3899,7 @@
                   currentRoutine.map(e => `${e.exercise} | ${e.phase} | ${e.target} | ${e.sides} side(s) | ${e.duration}s hold`).join('\n')
                 : 'No routine currently on screen.';
 
-            const systemPrompt = `You are Jumi, a flexibility and mobility coach with access to this user's full training history. You also have web search available — use it to find links, videos, tutorials, or any current information when asked.
+            const systemPrompt = `You are Jumi, a flexibility and mobility coach with access to this user's full training history. You also have web search available — use it to find links, videos, tutorials, or any current information when asked.\nABSOLUTE RULE — ROUTINE OUTPUT FORMAT: Any time you output a routine — whether asked or not — you MUST wrap the JSON in <routine></routine> tags. Raw JSON outside these tags will break the app. No exceptions.\n<routine>{\"hold\":\"short\",\"Warm-Up\":[{\"exercise\":\"name\",\"target\":\"muscle\",\"position\":\"position\",\"sides\":1,\"bodyPart\":\"lower\"}]}</routine>\n
 
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
 Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' minutes'}
@@ -4065,28 +4065,29 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
         // Try to extract phase-grouped routine JSON from Jumi's reply.
         // Handles both <routine>{...}</routine> tags and raw JSON fallback.
         function tryParseJumiRoutine(text) {
+            const knownPhases = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down'];
+            function isValidRoutine(obj) {
+                const keys = Object.keys(obj);
+                const phaseKeys = keys.filter(k => k !== 'hold');
+                return phaseKeys.length > 0 && phaseKeys.some(k => knownPhases.includes(k)) && phaseKeys.every(k => Array.isArray(obj[k]));
+            }
             // 1. Try tagged format first
             const tagMatch = text.match(/<routine>([\s\S]*?)<\/routine>/);
             if (tagMatch) {
-                try { return JSON.parse(tagMatch[1].trim()); } catch(e) {}
+                try { const r = JSON.parse(tagMatch[1].trim()); if (isValidRoutine(r)) return r; } catch(e) {}
             }
-            // 2. Fallback: find first { that opens a phase-keyed object
-            const braceIdx = text.indexOf('{');
-            if (braceIdx !== -1) {
-                // Try parsing from first { to last }
-                const lastBrace = text.lastIndexOf('}');
-                if (lastBrace > braceIdx) {
+            // 2. Fallback: scan all { positions, try from each to every } position
+            let braceIdx = text.indexOf('{');
+            while (braceIdx !== -1) {
+                let closeIdx = text.lastIndexOf('}');
+                while (closeIdx > braceIdx) {
                     try {
-                        const candidate = JSON.parse(text.slice(braceIdx, lastBrace + 1));
-                        // Validate it looks like a phase map (object with phase array values, plus optional hold string)
-                        const knownPhases = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down'];
-                        const keys = Object.keys(candidate);
-                        const phaseKeys = keys.filter(k => k !== 'hold');
-                        if (phaseKeys.length > 0 && phaseKeys.some(k => knownPhases.includes(k)) && phaseKeys.every(k => Array.isArray(candidate[k]))) {
-                            return candidate;
-                        }
+                        const candidate = JSON.parse(text.slice(braceIdx, closeIdx + 1));
+                        if (isValidRoutine(candidate)) return candidate;
                     } catch(e) {}
+                    closeIdx = text.lastIndexOf('}', closeIdx - 1);
                 }
+                braceIdx = text.indexOf('{', braceIdx + 1);
             }
             return null;
         }
@@ -4121,7 +4122,7 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                   currentRoutine.map(e => `${e.exercise} | ${e.phase} | ${e.target}`).join('\n')
                 : 'No routine currently on screen.';
             const targetSecs = selectedTime === 999 ? null : selectedTime * 60;
-            const systemPrompt = `You are Jumi, a flexibility and mobility coach. Generate a personalised routine immediately.
+            const systemPrompt = `You are Jumi, a flexibility and mobility coach. Generate a personalised routine immediately.\nABSOLUTE RULE — ROUTINE OUTPUT FORMAT: Any time you output a routine — whether asked or not — you MUST wrap the JSON in <routine></routine> tags. Raw JSON outside these tags will break the app. No exceptions.\n<routine>{\"hold\":\"short\",\"Warm-Up\":[{\"exercise\":\"name\",\"target\":\"muscle\",\"position\":\"position\",\"sides\":1,\"bodyPart\":\"lower\"}]}</routine>\n
 
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
 Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' minutes'}
