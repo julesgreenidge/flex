@@ -6,14 +6,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.82: Fix phase placement message in all three locations — shows Static/Active/Deep as valid options -->
+    <!-- v3.83: 10 changes — empty state text, Jumi icon size, flex. logo doubled, Refresh/Start spacing, Jumi auto-close, favourite rename, Ask Jumi callout, Types removed from History, FR/AS colours swapped, new Jumi goals -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
-            --phase-foamroller: #9b2c52;
+            --phase-foamroller: #c2410c;
             --phase-mobility: #059669;
             --phase-staticstretching: #4338ca;
-            --phase-activestretch: #c2410c;
+            --phase-activestretch: #9b2c52;
             --phase-deepstretch: #ca8a04;
             --phase-splits: #d946ef;
             --phase-cooldown: #db2777;
@@ -177,9 +177,9 @@
 
         .btn.selected,
         .btn.active {
-            background: #f97316;
+            background: #be5a7c;
             color: white;
-            border-color: #f97316;
+            border-color: #be5a7c;
         }
         
         /* Keep Stats button white (don't highlight it) */
@@ -682,10 +682,10 @@
         .current-exercise-box.phase-finalrest { background: var(--phase-finalrest); color: white; }
 
         .next-exercise-box.phase-warmup { border-color: #7c3aed !important; }
-        .next-exercise-box.phase-foamroller { border-color: #9b2c52 !important; }
+        .next-exercise-box.phase-foamroller { border-color: #c2410c !important; }
         .next-exercise-box.phase-mobility { border-color: var(--phase-mobility) !important; }
         .next-exercise-box.phase-staticstretching { border-color: #4338ca !important; }
-        .next-exercise-box.phase-activestretch { border-color: #c2410c !important; }
+        .next-exercise-box.phase-activestretch { border-color: #9b2c52 !important; }
         .next-exercise-box.phase-deepstretch { border-color: #ca8a04 !important; }
         .next-exercise-box.phase-splits { border-color: var(--phase-splits) !important; }
         .next-exercise-box.phase-cooldown { border-color: #db2777 !important; }
@@ -771,10 +771,10 @@
 
         /* Phase-specific colors for current exercise */
         .exercise-list-card.current.phase-warmup { background: var(--phase-warmup); border-color: #7c3aed; }
-        .exercise-list-card.current.phase-foamroller { background: var(--phase-foamroller); border-color: #9b2c52; }
+        .exercise-list-card.current.phase-foamroller { background: var(--phase-foamroller); border-color: #c2410c; }
         .exercise-list-card.current.phase-mobility { background: var(--phase-mobility); border-color: #059669; }
         .exercise-list-card.current.phase-staticstretching { background: var(--phase-staticstretching); border-color: #4338ca; }
-        .exercise-list-card.current.phase-activestretch { background: var(--phase-activestretch); border-color: #c2410c; }
+        .exercise-list-card.current.phase-activestretch { background: var(--phase-activestretch); border-color: #9b2c52; }
         .exercise-list-card.current.phase-deepstretch { background: var(--phase-deepstretch); border-color: #ca8a04; }
         .exercise-list-card.current.phase-splits { background: var(--phase-splits); border-color: #d946ef; }
         .exercise-list-card.current.phase-cooldown { background: var(--phase-cooldown); border-color: #db2777; color: white; }
@@ -1606,7 +1606,7 @@
             <!-- MAIN UI — hidden until duration selected -->
             <div id="mainUI" style="opacity:0; pointer-events:none; transition:opacity 0.4s ease;">
                 <div style="margin-bottom:28px; display:flex; align-items:center; justify-content:space-between;">
-                    <h1 style="margin:0; font-size:20px; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">flex.</h1>
+                    <h1 style="margin:0; font-size:40px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1;">flex.</h1>
                     <button onclick="showDurationPicker()" style="display:flex; align-items:center; gap:6px; background:linear-gradient(135deg,#667eea,#764ba2); border:none; border-radius:20px; padding:6px 14px; cursor:pointer; transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
                         <span id="selectedDurationDisplay" style="font-size:15px; font-weight:700; color:white; letter-spacing:-0.3px;"></span>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -1631,7 +1631,7 @@
                 <div id="cardsContainer" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
 
                     <!-- Quick Start -->
-                    <button id="trueQuickStartBtn" onclick="trueQuickStart()" style="display:flex; align-items:center; gap:10px; background:#f97316; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:opacity 0.15s; box-shadow:0 4px 12px rgba(249,115,22,0.3);">
+                    <button id="trueQuickStartBtn" onclick="trueQuickStart()" style="display:flex; align-items:center; gap:10px; background:#be5a7c; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:opacity 0.15s; box-shadow:0 4px 12px rgba(249,115,22,0.3);">
                         <span style="font-size:14px; color:white; flex-shrink:0;">&#9658;</span>
                         <div>
                             <div style="font-size:14px; font-weight:600; color:white; line-height:1.2;">Quick Start</div>
@@ -1641,7 +1641,7 @@
 
                     <!-- Jumi -->
                     <button id="jumiQuickBtn" onclick="jumiCardClick()" style="display:flex; align-items:center; gap:10px; background:linear-gradient(135deg,#667eea,#764ba2); border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:opacity 0.15s; box-shadow:0 4px 12px rgba(102,126,234,0.3);">
-                        <span style="font-size:14px; color:white; flex-shrink:0;">&#10022;</span>
+                        <span id="jumiQuickIcon" style="font-size:18px; color:white; flex-shrink:0; line-height:1;">&#10022;</span>
                         <div>
                             <div style="font-size:14px; font-weight:600; color:white; line-height:1.2;">Jumi</div>
                             <div id="jumiQuickSubtitle" style="font-size:11px; color:rgba(255,255,255,0.75);">AI picks your routine</div>
@@ -1767,7 +1767,7 @@
 
 
                 <button onclick="generateRoutine()" id="simpleRefreshBtn" class="generate-btn" style="width:100%; margin-top:14px; background:#3a3a3c; color:white; border:none; box-shadow:none; display:flex; align-items:center; justify-content:center; gap:8px; font-size:14px;">↺ Refresh</button>
-                <div id="lhsStartSimple" style="display:none; margin-top:10px;">
+                <div id="lhsStartSimple" style="display:none; margin-top:24px;">
                     <button onclick="startRoutine()" style="width:100%; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:14px; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 4px 16px rgba(52,199,89,0.35);">▶ Start Routine</button>
                 </div>
             </div>
@@ -1895,7 +1895,7 @@
             <!-- SIMPLE MODE DISPLAY -->
             <div id="routineDisplay">
                 <div class="routine-empty">
-                    <div class="routine-empty-text">Generate a routine to get started</div>
+                    <div class="routine-empty-text">Select a routine option to get started</div>
                 </div>
             </div>
             <!-- Floating Start button -->
@@ -2438,7 +2438,7 @@
                 activateSettingsTab('settingsGoalsBtn', 'settingsGoalsContent');
                 // Load saved goals
                 const saved = JSON.parse(localStorage.getItem('jumiGoals') || '{}');
-                ['splits','hips','hamstrings','backpain','posture','recovery','maintenance'].forEach(id => {
+                ['maintenance','relaxation','posture','recovery','mobility','flexibility','alignment','frontsplits','sidesplits'].forEach(id => {
                     const el = document.getElementById('goal_' + id);
                     if (el) el.checked = saved[id] || false;
                 });
@@ -2448,7 +2448,7 @@
 
             window.saveGoals = function() {
                 const goals = {};
-                ['splits','hips','hamstrings','backpain','posture','recovery','maintenance'].forEach(id => {
+                ['maintenance','relaxation','posture','recovery','mobility','flexibility','alignment','frontsplits','sidesplits'].forEach(id => {
                     const el = document.getElementById('goal_' + id);
                     if (el) goals[id] = el.checked;
                 });
@@ -3437,6 +3437,49 @@
             await showModal('', message, [{ text: 'OK', primary: true }]);
         }
 
+        async function customPrompt(label, defaultValue = '') {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('customModal');
+                const modalTitle = document.getElementById('modalTitle');
+                const modalMessage = document.getElementById('modalMessage');
+                const modalButtons = document.getElementById('modalButtons');
+                modalTitle.textContent = label;
+                modalMessage.innerHTML = `<input id="customPromptInput" type="text" value="${defaultValue.replace(/"/g, '&quot;')}" style="width:100%; padding:10px 12px; border:1.5px solid #d2d2d7; border-radius:10px; font-size:15px; font-family:inherit; box-sizing:border-box; margin-top:4px;">`;
+                modalButtons.innerHTML = '';
+                const ok = document.createElement('button');
+                ok.textContent = 'Save';
+                ok.className = 'btn';
+                ok.style.cssText = 'padding:10px 20px; font-size:14px; min-width:80px; background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none;';
+                const cancel = document.createElement('button');
+                cancel.textContent = 'Cancel';
+                cancel.className = 'btn';
+                cancel.style.cssText = 'padding:10px 20px; font-size:14px; min-width:80px;';
+                ok.onclick = () => {
+                    const val = document.getElementById('customPromptInput').value;
+                    modal.style.display = 'none';
+                    document.removeEventListener('keydown', keyHandler);
+                    resolve(val);
+                };
+                cancel.onclick = () => {
+                    modal.style.display = 'none';
+                    document.removeEventListener('keydown', keyHandler);
+                    resolve(null);
+                };
+                modalButtons.appendChild(ok);
+                modalButtons.appendChild(cancel);
+                modal.style.display = 'flex';
+                setTimeout(() => {
+                    const input = document.getElementById('customPromptInput');
+                    if (input) { input.focus(); input.select(); }
+                }, 50);
+                const keyHandler = (e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); ok.click(); }
+                    else if (e.key === 'Escape') { cancel.click(); }
+                };
+                document.addEventListener('keydown', keyHandler);
+            });
+        }
+
         function showKeyboardHUD(buttonId) {
             // Flash the actual button with the home button's hover effect
             const button = document.getElementById(buttonId);
@@ -3786,8 +3829,8 @@
             // Chat button
             const btn = document.createElement('button');
             btn.id = 'jumiChatBtn';
-            btn.textContent = '✦';
-            btn.style.cssText = 'position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;cursor:pointer;font-size:20px;box-shadow:0 4px 16px rgba(102,126,234,0.45);z-index:99999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.2s,transform 0.2s,box-shadow 0.2s;';
+            btn.innerHTML = '✦ <span style="font-size:13px;font-weight:600;margin-left:4px;">Ask Jumi</span>';
+            btn.style.cssText = 'position:fixed;bottom:24px;right:24px;height:44px;padding:0 18px;border-radius:22px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;cursor:pointer;font-size:18px;box-shadow:0 4px 16px rgba(102,126,234,0.45);z-index:99999;display:flex;align-items:center;justify-content:center;gap:2px;opacity:0;pointer-events:none;transition:opacity 0.2s,transform 0.2s,box-shadow 0.2s;white-space:nowrap;';
             btn.addEventListener('click', () => window.toggleJumiChat && window.toggleJumiChat());
             btn.addEventListener('mouseover', () => { btn.style.transform='scale(1.08)'; btn.style.boxShadow='0 6px 20px rgba(102,126,234,0.6)'; });
             btn.addEventListener('mouseout', () => { btn.style.transform='scale(1)'; btn.style.boxShadow='0 4px 16px rgba(102,126,234,0.45)'; });
@@ -3978,8 +4021,7 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                 if (jumiPhaseData) {
                     try {
                         await buildJumiRoutine(jumiPhaseData);
-                        window.loadRoutineFromChat(true);
-                        appendChatAction('▶ Routine loaded — tap to close chat', () => window.closeJumiChat());
+                        window.loadRoutineFromChat(false);
                     } catch(e) {
                         appendChatMessage('jumi', '(Could not build routine — please try again.)');
                     }
@@ -4172,8 +4214,7 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
                     try {
                         if (cleanReply) appendChatMessage('jumi', cleanReply);
                         await buildJumiRoutine(jumiPhaseData2);
-                        window.loadRoutineFromChat(true);
-                        appendChatMessage('jumi', 'Routine loaded on screen.');
+                        window.loadRoutineFromChat(false);
                     } catch(e) {
                         if (cleanReply) appendChatMessage('jumi', cleanReply);
                         appendChatMessage('jumi', '(Could not build routine — please try again.)');
@@ -4270,10 +4311,10 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
             
             const phaseColorMap = {
                 'Warm-Up': '#7c3aed',
-                'Foam Roller': '#9b2c52',
+                'Foam Roller': '#c2410c',
                 'Mobility': '#059669',
                 'Static Stretching': '#4338ca',
-                'Active Stretch': '#c2410c',
+                'Active Stretch': '#9b2c52',
                 'Deep Stretch': '#ca8a04',
                 'Splits': '#d946ef',
                 'Cool Down': '#db2777',
@@ -7138,8 +7179,8 @@ function regenerateRoutine() {
 
             const currentEx = currentRoutine[currentExerciseIndex];
             const phaseColors = {
-                'Warm-Up': '#7c3aed', 'Foam Roller': '#9b2c52', 'Mobility': '#059669',
-                'Static Stretching': '#4338ca', 'Active Stretch': '#c2410c',
+                'Warm-Up': '#7c3aed', 'Foam Roller': '#c2410c', 'Mobility': '#059669',
+                'Static Stretching': '#4338ca', 'Active Stretch': '#9b2c52',
                 'Deep Stretch': '#ca8a04', 'Splits': '#d946ef',
                 'Cool Down': '#db2777', 'Final Rest': '#1e1b4b'
             };
@@ -7296,8 +7337,8 @@ function regenerateRoutine() {
 
             // LHS panel phase tint
             const phaseColors = {
-                'Warm-Up': '#7c3aed', 'Foam Roller': '#9b2c52', 'Mobility': '#059669',
-                'Static Stretching': '#4338ca', 'Active Stretch': '#c2410c',
+                'Warm-Up': '#7c3aed', 'Foam Roller': '#c2410c', 'Mobility': '#059669',
+                'Static Stretching': '#4338ca', 'Active Stretch': '#9b2c52',
                 'Deep Stretch': '#ca8a04', 'Splits': '#d946ef',
                 'Cool Down': '#db2777', 'Final Rest': '#1e1b4b'
             };
@@ -7305,14 +7346,14 @@ function regenerateRoutine() {
 
             // Update timer panel background gradient for current phase
             const phaseDark = {
-                'Warm-Up': '#6d28d9', 'Foam Roller': '#6b1e38', 'Mobility': '#064e3b',
-                'Static Stretching': '#3730a3', 'Active Stretch': '#7c2d12',
+                'Warm-Up': '#6d28d9', 'Foam Roller': '#7c2d12', 'Mobility': '#064e3b',
+                'Static Stretching': '#3730a3', 'Active Stretch': '#6b1e38',
                 'Deep Stretch': '#92400e', 'Splits': '#86198f',
                 'Cool Down': '#9d174d', 'Final Rest': '#0f0f2e'
             };
             const phaseLight = {
-                'Warm-Up': '#a78bfa', 'Foam Roller': '#be5a7c', 'Mobility': '#34d399',
-                'Static Stretching': '#818cf8', 'Active Stretch': '#f97316',
+                'Warm-Up': '#a78bfa', 'Foam Roller': '#f97316', 'Mobility': '#34d399',
+                'Static Stretching': '#818cf8', 'Active Stretch': '#be5a7c',
                 'Deep Stretch': '#fbbf24', 'Splits': '#e879f9',
                 'Cool Down': '#f472b6', 'Final Rest': '#6366f1'
             };
@@ -7773,13 +7814,15 @@ function regenerateRoutine() {
         function getJumiGoals() {
             const saved = JSON.parse(localStorage.getItem('jumiGoals') || '{}');
             const goalLabels = {
-                splits: 'Achieve front splits',
-                hips: 'Improve hip mobility',
-                hamstrings: 'Increase hamstring flexibility',
-                backpain: 'Reduce lower back pain',
+                maintenance: 'General maintenance',
+                relaxation: 'Relaxation',
                 posture: 'Improve posture',
                 recovery: 'Sport/running recovery',
-                maintenance: 'General maintenance'
+                mobility: 'Improve mobility',
+                flexibility: 'Improve flexibility',
+                alignment: 'Alignment and control',
+                frontsplits: 'Achieve front splits',
+                sidesplits: 'Achieve side splits'
             };
             const selected = Object.keys(goalLabels).filter(k => saved[k]).map(k => goalLabels[k]);
             if (saved.custom) selected.push(saved.custom);
@@ -9321,7 +9364,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
                 }
                 html += `<div class="exercise-card" style="grid-template-columns:1fr auto; cursor:default;">
                     <div>
-                        <div class="exercise-name">${routine.name}</div>
+                        <div class="exercise-name" id="starred-name-${index}" onclick="renameStarredRoutine(${index})" style="cursor:pointer;" title="Click to rename">${routine.name}</div>
                         <div class="exercise-details">
                             <span>${typeText}</span><span>·</span><span>${durationText}</span><span>·</span><span>${holdText}</span><span>·</span><span>${dateStr}</span>
                         </div>
@@ -9401,6 +9444,18 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
             startRoutine();
         };
         
+        window.renameStarredRoutine = async function(index) {
+            const starredRoutines = JSON.parse(localStorage.getItem('starredRoutines') || '[]');
+            const routine = starredRoutines[index];
+            if (!routine) return;
+            const newName = await customPrompt('Rename routine:', routine.name);
+            if (!newName || newName.trim() === '') return;
+            routine.name = newName.trim();
+            starredRoutines[index] = routine;
+            localStorage.setItem('starredRoutines', JSON.stringify(starredRoutines));
+            openStarredList();
+        };
+
         window.deleteStarredRoutine = function(index) {
             customConfirm('Delete this starred routine?').then(confirmed => {
                 if (!confirmed) return;
@@ -9885,8 +9940,8 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
             const sortedPhases = phaseOrder.filter(phase => phaseCounts[phase]).map(phase => [phase, phaseCounts[phase]]);
             
             const phaseColors = {
-                'Warm-Up': '#7c3aed', 'Foam Roller': '#9b2c52', 'Mobility': '#059669',
-                'Static Stretching': '#4338ca', 'Active Stretch': '#c2410c', 'Deep Stretch': '#ca8a04', 'Splits': '#d946ef',
+                'Warm-Up': '#7c3aed', 'Foam Roller': '#c2410c', 'Mobility': '#059669',
+                'Static Stretching': '#4338ca', 'Active Stretch': '#9b2c52', 'Deep Stretch': '#ca8a04', 'Splits': '#d946ef',
                 'Cool Down': '#db2777', 'Final Rest': '#1e1b4b'
             };
 
@@ -10024,8 +10079,8 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
                 }).join('');
 
                 const phaseColors = {
-                    'Warm-Up': '#7c3aed', 'Foam Roller': '#9b2c52', 'Mobility': '#059669',
-                    'Static Stretching': '#4338ca', 'Active Stretch': '#c2410c', 'Deep Stretch': '#ca8a04',
+                    'Warm-Up': '#7c3aed', 'Foam Roller': '#c2410c', 'Mobility': '#059669',
+                    'Static Stretching': '#4338ca', 'Active Stretch': '#9b2c52', 'Deep Stretch': '#ca8a04',
                     'Splits': '#d946ef', 'Cool Down': '#db2777', 'Final Rest': '#1e1b4b'
                 };
                 const phaseOrder2 = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
@@ -10134,7 +10189,6 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
                     renderSummarySection(history, allHistory);
                     renderDurationSection(history, true);
                     renderProgressSection(history, true);
-                    renderTypesSection(history, true);
                     break;
                 case 'exercise':
                     renderExerciseSection(history);
@@ -10146,7 +10200,6 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
                     renderSummarySection(history, allHistory);
                     renderDurationSection(history, true);
                     renderProgressSection(history, true);
-                    renderTypesSection(history, true);
             }
         }
         
@@ -10751,20 +10804,12 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
                         <div style="font-size:13px; font-weight:600; color:#1d1d1f; margin-bottom:10px;">Common goals</div>
                         <div style="display:flex; flex-direction:column; gap:8px;">
                             <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
-                                <input type="checkbox" id="goal_splits" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
-                                Achieve front splits
+                                <input type="checkbox" id="goal_maintenance" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
+                                General maintenance
                             </label>
                             <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
-                                <input type="checkbox" id="goal_hips" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
-                                Improve hip mobility
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
-                                <input type="checkbox" id="goal_hamstrings" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
-                                Increase hamstring flexibility
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
-                                <input type="checkbox" id="goal_backpain" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
-                                Reduce lower back pain
+                                <input type="checkbox" id="goal_relaxation" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
+                                Relaxation
                             </label>
                             <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
                                 <input type="checkbox" id="goal_posture" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
@@ -10775,8 +10820,24 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
                                 Sport/running recovery
                             </label>
                             <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
-                                <input type="checkbox" id="goal_maintenance" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
-                                General maintenance
+                                <input type="checkbox" id="goal_mobility" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
+                                Improve mobility
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
+                                <input type="checkbox" id="goal_flexibility" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
+                                Improve flexibility
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
+                                <input type="checkbox" id="goal_alignment" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
+                                Alignment and control
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
+                                <input type="checkbox" id="goal_frontsplits" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
+                                Achieve front splits
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
+                                <input type="checkbox" id="goal_sidesplits" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
+                                Achieve side splits
                             </label>
                         </div>
                     </div>
