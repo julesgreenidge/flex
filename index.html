@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.83: 10 changes — empty state text, Jumi icon size, flex. logo doubled, Refresh/Start spacing, Jumi auto-close, favourite rename, Ask Jumi callout, Types removed from History, FR/AS colours swapped, new Jumi goals -->
+    <!-- v3.84: Jumi explanation draws on goals, training history, and anatomy/mobility knowledge —  not just goals -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -4185,7 +4185,7 @@ You MUST wrap the routine JSON in <routine> tags exactly as shown — no raw JSO
 CRITICAL: Output JSON inside <routine></routine> tags. Never output raw JSON in your text response.
 Brief 1-2 sentence explanation then:
 <routine>{"hold":"short","Warm-Up":[{"exercise":"exact name","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}],"Foam Roller":[...],"Mobility":[...],"Static Stretching":[...],"Cool Down":[...]}</routine>
-hold at the routine level must be "short" or "long". Choose based on the user's goals and history — long hold for flexibility gains or recovery, short hold for active warmup or time-constrained sessions. Before the JSON, briefly explain your hold choice in 1 sentence.
+hold at the routine level must be "short" or "long". Choose based on the user's goals and history — long hold for flexibility gains or recovery, short hold for active warmup or time-constrained sessions. Before the JSON, write 2-3 sentences explaining this routine. Draw on all three sources: (1) the user's goals, (2) their training history and patterns (what they've been doing, what they're missing, muscle groups underrepresented), and (3) relevant anatomy or mobility knowledge (why certain phases are included). Weave them naturally.
 Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down. Do NOT include Active Stretch or Deep Stretch — the app promotes Static exercises to those phases automatically.`;
 
             try {
