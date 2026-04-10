@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.72: Jumi system prompts — ABSOLUTE RULE for routine tags added at top; tryParseJumiRoutine more robust -->
+    <!-- v3.80: Remove floatingStarBtn from renderRoutineBuilder — was causing double Favourite in custom mode -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -156,18 +156,6 @@
             gap: 10px;
         }
 
-        .duration-btn-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-        }
-
-        .duration-btn-grid-bottom {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
-
         .btn {
             padding: 12px 20px;
             border: 2px solid #d2d2d7;
@@ -288,14 +276,11 @@
         }
 
         .routine-info {
-            background: #f5ddd0;
+            background: #e8e8ed;
             padding: 16px 20px;
             border-radius: 14px;
             margin-bottom: 16px;
             box-shadow: 0 2px 12px rgba(102, 126, 234, 0.08);
-        }
-        #routineDisplayWrapper[data-mode="starred"] .routine-info {
-            background: #edd0d9;
         }
 
         .info-grid {
@@ -3177,16 +3162,19 @@
         // ===== STATE VARIABLES =====
         let exercises = [];
         const appState = {
+            mode: null,      // current mode: 'quick' | 'jumi' | 'custom' | 'starred'
+            bodyPart: null,  // body part selection: 'full' | 'upper' | 'lower'
             time: null,
-            type: null,
             hold: null,
             focus: '',
             longSession: false,
-            jumiRoutine: null
+            jumiRoutine: null,
+            _quickRoutineReady: false,
+            _starredRoutineLoaded: false,
         };
-        // Convenience aliases kept for gradual migration
+        // Convenience aliases
         Object.defineProperty(window, 'selectedTime',       { get: () => appState.time,        set: v => { appState.time = v; } });
-        Object.defineProperty(window, 'selectedType',       { get: () => appState.type,        set: v => { appState.type = v; } });
+        Object.defineProperty(window, 'selectedType',       { get: () => appState.bodyPart,    set: v => { appState.bodyPart = v; } });
         Object.defineProperty(window, 'selectedHold',       { get: () => appState.hold,        set: v => { appState.hold = v; } });
         Object.defineProperty(window, 'selectedFocus',      { get: () => appState.focus,       set: v => { appState.focus = v; } });
         Object.defineProperty(window, 'longSession',        { get: () => appState.longSession, set: v => { appState.longSession = v; } });
@@ -3614,7 +3602,10 @@
         // ── ENTER MODE ──
         // Single function for all mode transitions — sets state, UI, colours consistently
         function enterMode(mode) {
-            appState.type = mode;
+            appState.mode = mode;
+            // Reset mode-specific routine flags
+            appState._quickRoutineReady = false;
+            appState._starredRoutineLoaded = false;
             const rw = document.getElementById('routineDisplayWrapper');
             const cd = document.getElementById('customDisplay');
             const sc = document.getElementById('simpleControls');
@@ -3672,11 +3663,19 @@
         // ── FLOATING BUTTON STATE ──
         // Single source of truth for all floating button visibility
         function updateFloatingButtons() {
-            const mode = appState.type;
-            const hasRoutine = currentRoutine && currentRoutine.length > 0;
+            const mode = appState.mode;
             const feb = document.getElementById('floatingEditBtn');
             const fss = document.getElementById('floatingStartSimple');
-            const customNavOpen = document.getElementById('customNavActions').style.display === 'flex';
+
+            // Determine if a routine is available for the current mode
+            let hasRoutine = false;
+            if (mode === 'quick') {
+                hasRoutine = currentRoutine && currentRoutine.length > 0 && appState._quickRoutineReady === true;
+            } else if (mode === 'jumi') {
+                hasRoutine = appState.jumiRoutine && appState.jumiRoutine.length > 0;
+            } else if (mode === 'starred') {
+                hasRoutine = appState._starredRoutineLoaded === true;
+            }
 
             if (mode === 'custom') {
                 // Custom has its own nav — hide all floating buttons
@@ -3698,14 +3697,13 @@
         // Single source of truth for background and routine-info colours
         function applyModeColours(mode) {
             const rw = document.getElementById('routineDisplayWrapper');
-            const rd = document.getElementById('routineDisplay');
             const cd = document.getElementById('customDisplay');
             const routeCol = document.querySelector('.routine-column');
             const colours = {
-                quick:    { rw: '#fff5ef', info: '#f5ddd0' },
-                jumi:     { rw: '#f3f0fd', info: '#e0d9f7' },
-                custom:   { rw: null,      info: '#c5daf2', cd: '#f0faf7', col: '#e8f0f7' },
-                starred:  { rw: '#faf0f3', info: '#edd0d9' },
+                quick:   { rw: 'rgba(255,255,255,0.95)', info: '#e8e8ed' },
+                jumi:    { rw: 'rgba(255,255,255,0.95)', info: '#e8e8ed' },
+                custom:  { rw: null, info: '#e8e8ed', cd: 'rgba(255,255,255,0.95)', col: 'rgba(255,255,255,0.95)' },
+                starred: { rw: 'rgba(255,255,255,0.95)', info: '#e8e8ed' },
             };
             const c = colours[mode] || colours.quick;
             if (rw && c.rw) rw.style.background = c.rw;
@@ -4208,14 +4206,6 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
         };
 
         function setupEventListeners() {
-            // Duration buttons (.duration-btn no longer used — global bar handles this)
-            document.querySelectorAll('.duration-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('selected'));
-                    this.classList.add('selected');
-                    selectedTime = this.dataset.time === '999' ? 999 : parseInt(this.dataset.time);
-                });
-            });
 
             // Focus dropdown
             document.getElementById('focusSelect').addEventListener('change', function() {
@@ -4408,7 +4398,7 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
 
             document.getElementById('simpleTab').addEventListener('click', function() {
                 const simpleControls = document.getElementById('simpleControls');
-                const isOpen = simpleControls.style.display !== 'none';
+                const isOpen = appState.mode === 'quick';
                 if (isOpen) {
                     simpleControls.style.display = 'none';
                     this.classList.remove('selected');
@@ -4420,8 +4410,7 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
             });
             
             document.getElementById('customTab').addEventListener('click', function() {
-                const customControls = document.getElementById('customControls');
-                const isCustomOpen = customControls.style.display === 'flex';
+                const isCustomOpen = appState.mode === 'custom';
                 if (isCustomOpen) {
                     // Toggle off — return to quick start view
                     enterMode('quick');
@@ -4652,10 +4641,6 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
                 const meaningfulCount = customRoutine.filter(e => e.phase !== 'Final Rest').length;
                 if (floatingStartCustom) {
                     floatingStartCustom.style.display = meaningfulCount > 0 ? 'block' : 'none';
-                }
-                const starBtn = document.getElementById('floatingStarBtn');
-                if (starBtn && document.getElementById('customControls').style.display !== 'none') {
-                    starBtn.style.display = meaningfulCount > 0 ? 'flex' : 'none';
                 }
 
                 if (customRoutine.length === 0) {
@@ -4995,7 +4980,9 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
                     if (!canPlaceInPhase(moved, phase)) {
                         const correctPhase = moved.phase;
                         
-                        const message = `${moved.exercise} can only be placed in the ${correctPhase} phase.\n\nClick OK to move it there.`;
+                        const stretchPhases = ['Static Stretching', 'Active Stretch', 'Deep Stretch'];
+                        const validPhases = stretchPhases.includes(correctPhase) ? 'Static Stretching, Active Stretch, or Deep Stretch' : `the ${correctPhase} phase`;
+                        const message = `${moved.exercise} can only be placed in ${validPhases}.\n\nClick OK to move it to ${correctPhase}.`;
                         
                         const shouldMove = await customConfirm(message);
                         
@@ -5664,8 +5651,7 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
             
             // Validate type, duration, and hold are selected
             const typeSelected = selectedType && selectedType !== '';
-            const customBtn = document.querySelector('.duration-btn[data-time="custom"]');
-            const customIsActive = customBtn && customBtn.classList.contains('selected');
+            const customIsActive = selectedTime !== null && selectedTime !== undefined && ![25,35,45,60,999].includes(appState.time);
             const durationSelected = selectedTime !== null && selectedTime !== undefined && (!customIsActive || selectedTime >= 20);
             const holdSelected = selectedHold !== null;
             
@@ -6713,6 +6699,7 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
             applyDurationSettings(currentRoutine);
             
             // Show edit button for all generated routines
+            if (appState.mode === 'quick') appState._quickRoutineReady = true;
             updateFloatingButtons();
 
             displayRoutine();
@@ -7044,7 +7031,7 @@ function regenerateRoutine() {
             }
 
             display.innerHTML = html;
-            applyModeColours(appState.type);
+            applyModeColours(appState.mode);
             updateFloatingButtons();
             
             // Add event listeners to swap buttons
@@ -7739,7 +7726,7 @@ function regenerateRoutine() {
                 
                 // Show star if routine exists
                 if (currentRoutine && currentRoutine.length > 0) {
-                    setStarVisible(true);
+                    updateFloatingButtons();
                     
                     // Show edit button for ALL routines
                     updateFloatingButtons();
@@ -7928,11 +7915,6 @@ function regenerateRoutine() {
             // Default duration if not set
             if (!selectedTime) {
                 selectedTime = 35;
-                const defaultBtn = document.querySelector('.jumi-duration-btn[data-time="35"]');
-                if (defaultBtn) {
-                    document.querySelectorAll('.jumi-duration-btn').forEach(b => b.classList.remove('selected'));
-                    defaultBtn.classList.add('selected');
-                }
             }
 
             document.getElementById('jumiExplanation').style.display = 'none';
@@ -8131,7 +8113,7 @@ Return only the JSON.`;
                 // Render the routine using the same path as generateRoutine
                 initAudio();
                 displayRoutine();
-                setStarVisible(true);
+                updateFloatingButtons();
                 document.getElementById('floatingEditBtn').style.display = 'flex';
                 document.getElementById('floatingStartSimple').style.display = 'none';
                 document.getElementById('floatingStartJumi').style.display = 'block';
@@ -8311,7 +8293,7 @@ Return only the JSON.`;
                     
                     // Show star and edit buttons if routine exists
                     if (currentRoutine && currentRoutine.length > 0) {
-                        setStarVisible(true);
+                        updateFloatingButtons();
                         
                         // Show edit button for ALL routines
                         updateFloatingButtons();
@@ -8348,7 +8330,7 @@ Return only the JSON.`;
                 document.getElementById('timerView').style.display = 'none';
                 document.getElementById('mainView').style.display = 'grid';
                 if (currentRoutine && currentRoutine.length > 0) {
-                    setStarVisible(true);
+                    updateFloatingButtons();
                     updateFloatingButtons();
                 }
                 currentExerciseIndex = -1;
@@ -8498,7 +8480,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
                 
                 // Restore floating buttons
                 if (currentRoutine && currentRoutine.length > 0) {
-                    setStarVisible(true);
+                    updateFloatingButtons();
                     
                     // Show edit button for ALL routines
                     updateFloatingButtons();
@@ -8738,7 +8720,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
             
             // Show star if routine exists
             if (currentRoutine && currentRoutine.length > 0) {
-                setStarVisible(true);
+                updateFloatingButtons();
                 
                 // Show edit button for ALL routines
                 updateFloatingButtons();
@@ -9129,7 +9111,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
 
         async function openStarModal() {
             // In custom mode, build currentRoutine from customRoutine if needed
-            if (selectedType === 'custom' || document.getElementById('customControls').style.display !== 'none') {
+            if (appState.mode === 'custom') {
                 const meaningful = customRoutine.filter(e => e.phase !== 'Final Rest');
                 if (meaningful.length === 0) {
                     await customAlert('Please add exercises first');
@@ -9233,7 +9215,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
         function setStarVisible(visible) {
             const nav = document.getElementById('floatingStarBtn');
             // Custom mode has its own star button in customNavActions — don't show the floating one
-            const customNavOpen = document.getElementById('customNavActions').style.display === 'flex';
+            const customNavOpen = appState.mode === 'custom';
             if (nav) nav.style.display = (visible && !customNavOpen) ? 'flex' : 'none';
         }
 
@@ -9373,10 +9355,6 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
             const typeBtn = document.querySelector(`[data-type="${routine.type}"]`);
             if (typeBtn) typeBtn.classList.add('selected');
             
-            document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('selected'));
-            const durationBtn = document.querySelector(`[data-time="${routine.time}"]`);
-            if (durationBtn) durationBtn.classList.add('selected');
-            
             document.querySelectorAll('.hold-btn').forEach(b => b.classList.remove('selected'));
             const holdBtn = document.querySelector(`[data-hold="${routine.hold}"]`);
             if (holdBtn) holdBtn.classList.add('selected');
@@ -9387,6 +9365,7 @@ User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
             
             // Display the routine
             enterMode('starred');
+            appState._starredRoutineLoaded = true;
             displayRoutine();
             closeStarredList();
         };
