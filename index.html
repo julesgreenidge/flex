@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.80: Remove floatingStarBtn from renderRoutineBuilder — was causing double Favourite in custom mode -->
+    <!-- v3.82: Fix phase placement message in all three locations — shows Static/Active/Deep as valid options -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -1677,6 +1677,11 @@
             <button id="simpleTab" style="display:none;"></button>
             <button id="customTab" style="display:none;"></button>
 
+            <!-- LHS Start button for Jumi and Favourites modes -->
+            <div id="lhsStartJumiFav" style="display:none; margin-top:10px;">
+                <button onclick="startRoutine()" style="width:100%; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:14px; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 4px 16px rgba(52,199,89,0.35);">▶ Start Routine</button>
+            </div>
+
             <!-- JUMI PANEL — stub only, chat handles everything -->
             <div id="jumiPanel" style="display:none !important;">
                 <div id="jumiExplanation" style="display:none;">
@@ -1762,6 +1767,9 @@
 
 
                 <button onclick="generateRoutine()" id="simpleRefreshBtn" class="generate-btn" style="width:100%; margin-top:14px; background:#3a3a3c; color:white; border:none; box-shadow:none; display:flex; align-items:center; justify-content:center; gap:8px; font-size:14px;">↺ Refresh</button>
+                <div id="lhsStartSimple" style="display:none; margin-top:10px;">
+                    <button onclick="startRoutine()" style="width:100%; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:14px; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 4px 16px rgba(52,199,89,0.35);">▶ Start Routine</button>
+                </div>
             </div>
             <!-- END SIMPLE MODE CONTROLS -->
             
@@ -1798,6 +1806,10 @@
                 <!-- Fixed bottom button bar -->
                 <div style="flex-shrink: 0; padding-top: 16px; border-top: 2px solid #e0e0e0;">
                     <button id="customAddSelected" style="width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; height: 36px; white-space: nowrap;">Add Selected to Routine</button>
+                    <div id="lhsStartCustom" style="display:none; margin-top:8px; gap:8px;">
+                        <button onclick="startCustomRoutine('short')" style="flex:1; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:10px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(52,199,89,0.35);">▶ Short Hold</button>
+                        <button onclick="startCustomRoutine('long')" style="flex:1; background:linear-gradient(135deg,#2da44e,#34c759); color:white; border:none; padding:10px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(52,199,89,0.35);">▶ Long Hold</button>
+                    </div>
                 </div>
             </div>
             <!-- END CUSTOM MODE CONTROLS -->
@@ -1887,9 +1899,7 @@
                 </div>
             </div>
             <!-- Floating Start button -->
-            <div id="floatingStartSimple" style="display:none; position:sticky; bottom:20px; left:0; right:0; text-align:center; pointer-events:none;">
-                <button onclick="startRoutine()" style="pointer-events:all; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:16px 48px; border-radius:60px; font-size:17px; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(52,199,89,0.4); transition:all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">▶ Start Routine</button>
-            </div>
+            <div id="floatingStartSimple" style="display:none;"></div>
             <div id="floatingStartJumi" style="display:none;"></div>
             </div><!-- end padding wrapper -->
 
@@ -1919,13 +1929,8 @@
                     </div>
                 </div>
                 <div id="customRoutinePreview"></div>
-                <!-- Floating Start buttons for Custom mode -->
-                <div id="floatingStartCustom" style="display:none; position:sticky; bottom:20px; left:0; right:0; text-align:center; pointer-events:none;">
-                    <div style="display:inline-flex; gap:12px; pointer-events:all;">
-                        <button onclick="startCustomRoutine('short')" style="background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:16px 36px; border-radius:60px; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(52,199,89,0.4); transition:all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">▶ Short Hold</button>
-                        <button onclick="startCustomRoutine('long')" style="background:linear-gradient(135deg,#2da44e,#34c759); color:white; border:none; padding:16px 36px; border-radius:60px; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(52,199,89,0.4); transition:all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">▶ Long Hold</button>
-                    </div>
-                </div>
+                <!-- Floating Start buttons for Custom mode — moved to LHS -->
+                <div id="floatingStartCustom" style="display:none;"></div>
             </div>
         </div>
     </div>
@@ -3665,7 +3670,9 @@
         function updateFloatingButtons() {
             const mode = appState.mode;
             const feb = document.getElementById('floatingEditBtn');
-            const fss = document.getElementById('floatingStartSimple');
+            const lhsSimple = document.getElementById('lhsStartSimple');
+            const lhsJumiFav = document.getElementById('lhsStartJumiFav');
+            const lhsCustom = document.getElementById('lhsStartCustom');
 
             // Determine if a routine is available for the current mode
             let hasRoutine = false;
@@ -3677,18 +3684,22 @@
                 hasRoutine = appState._starredRoutineLoaded === true;
             }
 
+            // Hide all LHS start buttons first
+            if (lhsSimple) lhsSimple.style.display = 'none';
+            if (lhsJumiFav) lhsJumiFav.style.display = 'none';
+            if (lhsCustom) lhsCustom.style.display = 'none';
+
             if (mode === 'custom') {
-                // Custom has its own nav — hide all floating buttons
                 if (feb) feb.style.display = 'none';
-                if (fss) fss.style.display = 'none';
                 setStarVisible(false);
+                // Custom LHS buttons managed by renderRoutineBuilder
             } else if (hasRoutine) {
                 if (feb) feb.style.display = 'flex';
-                if (fss) fss.style.display = 'block';
                 setStarVisible(true);
+                if (mode === 'quick' && lhsSimple) lhsSimple.style.display = 'block';
+                if ((mode === 'jumi' || mode === 'starred') && lhsJumiFav) lhsJumiFav.style.display = 'block';
             } else {
                 if (feb) feb.style.display = 'none';
-                if (fss) fss.style.display = 'none';
                 setStarVisible(false);
             }
         }
@@ -4636,11 +4647,11 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
                 document.getElementById('customStatReps').textContent = repsTotal;
                 document.getElementById('customStatCount').textContent = customRoutine.length;
 
-                // Show/hide start buttons and star — only count non-Final Rest exercises
-                const floatingStartCustom = document.getElementById('floatingStartCustom');
+                // Show/hide LHS start buttons — only count non-Final Rest exercises
                 const meaningfulCount = customRoutine.filter(e => e.phase !== 'Final Rest').length;
-                if (floatingStartCustom) {
-                    floatingStartCustom.style.display = meaningfulCount > 0 ? 'block' : 'none';
+                const lhsStartCustom = document.getElementById('lhsStartCustom');
+                if (lhsStartCustom) {
+                    lhsStartCustom.style.display = meaningfulCount > 0 ? 'flex' : 'none';
                 }
 
                 if (customRoutine.length === 0) {
@@ -4823,7 +4834,8 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
                             const correctPhase = ex.phase;
                             const stretchPhases = ['Static Stretching', 'Active Stretch', 'Deep Stretch'];
                             
-                            const message = `${ex.exercise} can only be added to the ${correctPhase} phase.\n\nClick OK to add it there.`;
+                            const validPhases = stretchPhases.includes(correctPhase) ? 'Static Stretching, Active Stretch, or Deep Stretch' : `the ${correctPhase} phase`;
+                            const message = `${ex.exercise} can only be added to ${validPhases}.\n\nClick OK to add it to ${correctPhase}.`;
                             
                             const shouldMove = await customConfirm(message);
                             
@@ -4934,7 +4946,8 @@ Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down.
                             const correctPhase = ex.phase;
                             const stretchPhases = ['Static Stretching', 'Active Stretch', 'Deep Stretch'];
                             
-                            const message = `${ex.exercise} can only be added to the ${correctPhase} phase.\n\nClick OK to add it there.`;
+                            const validPhases = stretchPhases.includes(correctPhase) ? 'Static Stretching, Active Stretch, or Deep Stretch' : `the ${correctPhase} phase`;
+                            const message = `${ex.exercise} can only be added to ${validPhases}.\n\nClick OK to add it to ${correctPhase}.`;
                             
                             const shouldMove = await customConfirm(message);
                             
