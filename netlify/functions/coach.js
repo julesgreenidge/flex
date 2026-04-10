@@ -71,9 +71,9 @@ exports.handler = async function(event) {
             tools
         };
 
-        // Force tool use for generate mode
+        // Encourage tool use for generate mode but don't force it (allows text explanation through)
         if (isJumiGen) {
-            requestBody.tool_choice = { type: 'any' };
+            requestBody.tool_choice = { type: 'auto' };
         }
 
         const response = await fetch('https://api.anthropic.com/v1/messages', {

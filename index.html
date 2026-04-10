@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.85: Jumi routine generation via tool use — routine data always structured, never mixed with prose -->
+    <!-- v3.86: buildJumiRoutine uses tool output directly (no generateRoutine); chat requires confirm; tool_choice auto -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -4001,12 +4001,16 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                 if (cleanReply) appendChatMessage('jumi', cleanReply);
 
                 if (routineData) {
-                    try {
-                        await buildJumiRoutine(routineData);
-                        window.loadRoutineFromChat(false);
-                    } catch(e) {
-                        appendChatMessage('jumi', '(Could not build routine — please try again.)');
-                    }
+                    // Store pending routine — user must confirm before it loads
+                    const pendingRoutine = routineData;
+                    appendChatAction('▶ Confirm routine build', async () => {
+                        try {
+                            await buildJumiRoutine(pendingRoutine);
+                            window.loadRoutineFromChat(false);
+                        } catch(e) {
+                            appendChatMessage('jumi', '(Could not build routine — please try again.)');
+                        }
+                    });
                 }
 
                 // Parse <exercise> blocks for library suggestions
@@ -4070,29 +4074,59 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
         }
 
         async function buildJumiRoutine(jumiPhaseData) {
-            // jumiPhaseData: { "hold": "short"|"long", "Warm-Up": [...], "Static Stretching": [...], ... }
-            // Apply routine-level hold to set longSession before generating
+            // jumiPhaseData: { hold: 'short'|'long', 'Warm-Up': [...], 'Static Stretching': [...], ... }
+            // Tool output gives us the exact exercises — use them directly, no generateRoutine needed
             const hold = jumiPhaseData.hold || 'short';
             selectedHold = hold;
             longSession = (hold === 'long');
-
-            // Extract phase pools (exclude the top-level hold key)
-            const jumiPools = {};
-            for (const [phase, candidates] of Object.entries(jumiPhaseData)) {
-                if (phase === 'hold') continue;
-                jumiPools[phase] = Array.isArray(candidates) ? candidates : [];
-            }
-
-            console.log('[Jumi] Phases received:', Object.keys(jumiPools).join(', '));
-            Object.entries(jumiPools).forEach(([phase, arr]) => {
-                console.log(`[Jumi] ${phase}: ${arr.length} exercises — ${arr.slice(0,3).map(e=>e.exercise).join(', ')}`);
-            });
-
-            // Jumi decides body parts — set type to full to pass validation if not already set
             if (!selectedType) selectedType = 'full';
 
-            // Run the full generator with Jumi's pools overriding random selection
-            await generateRoutine(jumiPools);
+            const phaseOrder = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
+
+            // Find exercises in library matching by name (case-insensitive)
+            const exerciseMap = {};
+            exercises.forEach(ex => { exerciseMap[ex.exercise.toLowerCase()] = ex; });
+
+            currentRoutine = [];
+
+            for (const phase of phaseOrder) {
+                const candidates = jumiPhaseData[phase];
+                if (!candidates || !Array.isArray(candidates) || candidates.length === 0) continue;
+                for (const candidate of candidates) {
+                    // Match to library exercise by name
+                    const libEx = exerciseMap[candidate.exercise.toLowerCase()];
+                    if (libEx) {
+                        // Use library exercise as base, keep Jumi's sides
+                        const ex = { ...libEx, sides: candidate.sides || libEx.sides };
+                        currentRoutine.push(ex);
+                    } else {
+                        // Exercise not in library — use Jumi's data directly
+                        currentRoutine.push({
+                            exercise: candidate.exercise,
+                            target: candidate.target || '',
+                            position: candidate.position || '',
+                            sides: candidate.sides || 1,
+                            bodyPart: candidate.bodyPart || 'full',
+                            phase: phase,
+                            duration: longSession ? 75 : 45,
+                            rest: 15
+                        });
+                    }
+                }
+            }
+
+            // Add Savasana if not present
+            const savasana = exercises.find(ex => ex.exercise === 'Savasana');
+            if (savasana && !currentRoutine.find(ex => ex.exercise === 'Savasana')) {
+                currentRoutine.push({ ...savasana });
+            }
+
+            // Apply per-phase duration settings from appSettings
+            applyDurationSettings(currentRoutine);
+
+            // Set selectedTime to actual duration so duration picker reflects it
+            const totalSecs = currentRoutine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0);
+            selectedTime = Math.round(totalSecs / 60);
         }
 
         // Try to extract phase-grouped routine JSON from Jumi's reply.
