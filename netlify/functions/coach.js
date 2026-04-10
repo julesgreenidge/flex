@@ -11,40 +11,48 @@ exports.handler = async function(event) {
         const isChat = mode === 'jumi_chat';
 
         // Tool definition for structured routine output
+        // Phase names use snake_case (API requirement: no spaces in property keys)
+        // Mapped back to display names before returning
+        const PHASE_MAP = {
+            warm_up: 'Warm-Up',
+            foam_roller: 'Foam Roller',
+            mobility: 'Mobility',
+            static_stretching: 'Static Stretching',
+            active_stretch: 'Active Stretch',
+            deep_stretch: 'Deep Stretch',
+            splits: 'Splits',
+            cool_down: 'Cool Down'
+        };
+
+        const phaseSchema = { type: 'array', items: {
+            type: 'object',
+            properties: {
+                exercise: { type: 'string', description: 'Exact exercise name from library' },
+                target: { type: 'string', description: 'Target muscle group' },
+                position: { type: 'string', description: 'Body position' },
+                sides: { type: 'number', description: '1 for bilateral, 2 for unilateral (each side separately)' },
+                bodyPart: { type: 'string', enum: ['upper', 'lower', 'full'] }
+            },
+            required: ['exercise', 'target', 'position', 'sides', 'bodyPart']
+        }};
+
         const generateRoutineTool = {
             name: 'generate_routine',
-            description: 'Output a structured flexibility routine. Call this whenever you generate a routine for the user. The routine data is separate from your explanation — put your explanation in your text response, and the routine data in this tool call.',
+            description: 'Output a structured flexibility routine. Call this whenever you generate a routine for the user. Put your explanation in your text response, and the routine data in this tool call.',
             input_schema: {
                 type: 'object',
                 properties: {
-                    hold: {
-                        type: 'string',
-                        enum: ['short', 'long'],
-                        description: 'Hold duration type for the routine'
-                    },
-                    'Warm-Up': { type: 'array', items: { '$ref': '#/$defs/exercise' } },
-                    'Foam Roller': { type: 'array', items: { '$ref': '#/$defs/exercise' } },
-                    'Mobility': { type: 'array', items: { '$ref': '#/$defs/exercise' } },
-                    'Static Stretching': { type: 'array', items: { '$ref': '#/$defs/exercise' } },
-                    'Active Stretch': { type: 'array', items: { '$ref': '#/$defs/exercise' } },
-                    'Deep Stretch': { type: 'array', items: { '$ref': '#/$defs/exercise' } },
-                    'Splits': { type: 'array', items: { '$ref': '#/$defs/exercise' } },
-                    'Cool Down': { type: 'array', items: { '$ref': '#/$defs/exercise' } },
+                    hold: { type: 'string', enum: ['short', 'long'], description: 'Hold duration type' },
+                    warm_up:           phaseSchema,
+                    foam_roller:       phaseSchema,
+                    mobility:          phaseSchema,
+                    static_stretching: phaseSchema,
+                    active_stretch:    phaseSchema,
+                    deep_stretch:      phaseSchema,
+                    splits:            phaseSchema,
+                    cool_down:         phaseSchema,
                 },
-                required: ['hold'],
-                '$defs': {
-                    exercise: {
-                        type: 'object',
-                        properties: {
-                            exercise: { type: 'string', description: 'Exact exercise name from library' },
-                            target: { type: 'string', description: 'Target muscle group' },
-                            position: { type: 'string', description: 'Body position' },
-                            sides: { type: 'number', enum: [1, 2], description: '1 for bilateral, 2 for unilateral' },
-                            bodyPart: { type: 'string', enum: ['upper', 'lower', 'full'] }
-                        },
-                        required: ['exercise', 'target', 'position', 'sides', 'bodyPart']
-                    }
-                }
+                required: ['hold']
             }
         };
 
@@ -99,7 +107,14 @@ exports.handler = async function(event) {
                 if (block.type === 'text') {
                     reply += block.text;
                 } else if (block.type === 'tool_use' && block.name === 'generate_routine') {
-                    routine = block.input;
+                    // Map snake_case keys back to display phase names
+                    const raw = block.input;
+                    routine = { hold: raw.hold };
+                    for (const [snake, display] of Object.entries(PHASE_MAP)) {
+                        if (raw[snake] && raw[snake].length > 0) {
+                            routine[display] = raw[snake];
+                        }
+                    }
                 }
             }
         }
