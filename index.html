@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.84: Jumi explanation draws on goals, training history, and anatomy/mobility knowledge —  not just goals -->
+    <!-- v3.85: Jumi routine generation via tool use — routine data always structured, never mixed with prose -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3951,7 +3951,7 @@
                   currentRoutine.map(e => `${e.exercise} | ${e.phase} | ${e.target} | ${e.sides} side(s) | ${e.duration}s hold`).join('\n')
                 : 'No routine currently on screen.';
 
-            const systemPrompt = `You are Jumi, a flexibility and mobility coach with access to this user's full training history. You also have web search available — use it to find links, videos, tutorials, or any current information when asked.\nABSOLUTE RULE — ROUTINE OUTPUT FORMAT: Any time you output a routine — whether asked or not — you MUST wrap the JSON in <routine></routine> tags. Raw JSON outside these tags will break the app. No exceptions.\n<routine>{\"hold\":\"short\",\"Warm-Up\":[{\"exercise\":\"name\",\"target\":\"muscle\",\"position\":\"position\",\"sides\":1,\"bodyPart\":\"lower\"}]}</routine>\n
+            const systemPrompt = `You are Jumi, a flexibility and mobility coach with access to this user's full training history. You also have web search available — use it to find links, videos, tutorials, or any current information when asked.\n
 
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
 Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' minutes'}
@@ -3970,9 +3970,6 @@ Rules:
 - Reference the user's actual training data where relevant.
 - Be direct and specific. No filler.
 
-If the user asks you to generate a routine, you MUST wrap the JSON in <routine> tags exactly as shown below — no exceptions, no raw JSON, no markdown. The app handles all timing and structure. Do NOT include Savasana (the app adds it). Provide roughly double the expected exercise count per phase.
-CRITICAL: Output the JSON inside <routine></routine> tags. Never output raw JSON in your text response.
-<routine>{"hold":"short","Warm-Up":[{"exercise":"exact name","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}],"Foam Roller":[...],"Mobility":[...],"Static Stretching":[...],"Cool Down":[...]}</routine>
 hold at the routine level must be "short" or "long". Choose based on the user's goals and history — long hold for flexibility gains or recovery, short hold for active warmup or time-constrained sessions. Before the JSON, briefly explain your hold choice in 1 sentence. Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits, Cool Down. Only include phases relevant to the user’s goals.
 
 CRITICAL: If the user asks you to suggest or recommend any exercises not already in their library, you MUST include one <exercise> block per recommended exercise at the end of your response — no exceptions. Use this exact format for EVERY recommended exercise:
@@ -3992,43 +3989,28 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                 });
                 const data = await response.json();
                 const reply = (data.reply || '').trim();
+                const routineData = data.routine || null;
 
                 thinking.remove();
 
-                // Strip any markdown code fences from the full reply before parsing
-                const cleanedReply = reply.replace(/\x60{3}json\n?/g, '').replace(/\x60{3}\n?/g, '');
-
-                // Check for routine and exercise blocks
-                const jumiPhaseData = tryParseJumiRoutine(cleanedReply);
-                const hadRoutineTag = /<routine>[\s\S]*?<\/routine>/.test(cleanedReply);
-
-                let cleanReply = cleanedReply
-                    .replace(/<routine>[\s\S]*?<\/routine>/g, '')
-                    .replace(/<exercise>[\s\S]*?<\/exercise>/g, '');
-
-                // If routine was parsed from raw JSON (no tags), strip the raw JSON block
-                if (jumiPhaseData && !hadRoutineTag) {
-                    const braceIdx = cleanReply.indexOf('{');
-                    const lastBrace = cleanReply.lastIndexOf('}');
-                    if (braceIdx !== -1 && lastBrace > braceIdx) {
-                        cleanReply = (cleanReply.slice(0, braceIdx) + cleanReply.slice(lastBrace + 1));
-                    }
-                }
-                cleanReply = cleanReply.trim();
+                // Strip <exercise> blocks from reply before displaying
+                const cleanReply = reply
+                    .replace(/<exercise>[\s\S]*?<\/exercise>/g, '')
+                    .trim();
 
                 if (cleanReply) appendChatMessage('jumi', cleanReply);
 
-                if (jumiPhaseData) {
+                if (routineData) {
                     try {
-                        await buildJumiRoutine(jumiPhaseData);
+                        await buildJumiRoutine(routineData);
                         window.loadRoutineFromChat(false);
                     } catch(e) {
                         appendChatMessage('jumi', '(Could not build routine — please try again.)');
                     }
                 }
 
-                // Parse ALL <exercise> blocks — one Review button per exercise
-                const allExMatches = [...cleanedReply.matchAll(/<exercise>([\s\S]*?)<\/exercise>/g)];
+                // Parse <exercise> blocks for library suggestions
+                const allExMatches = [...reply.matchAll(/<exercise>([\s\S]*?)<\/exercise>/g)];
                 if (allExMatches.length > 0) {
                     for (const m of allExMatches) {
                         try {
@@ -4173,7 +4155,7 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                   currentRoutine.map(e => `${e.exercise} | ${e.phase} | ${e.target}`).join('\n')
                 : 'No routine currently on screen.';
             const targetSecs = selectedTime === 999 ? null : selectedTime * 60;
-            const systemPrompt = `You are Jumi, a flexibility and mobility coach. Generate a personalised routine immediately.\nABSOLUTE RULE — ROUTINE OUTPUT FORMAT: Any time you output a routine — whether asked or not — you MUST wrap the JSON in <routine></routine> tags. Raw JSON outside these tags will break the app. No exceptions.\n<routine>{\"hold\":\"short\",\"Warm-Up\":[{\"exercise\":\"name\",\"target\":\"muscle\",\"position\":\"position\",\"sides\":1,\"bodyPart\":\"lower\"}]}</routine>\n
+            const systemPrompt = `You are Jumi, a flexibility and mobility coach. Generate a personalised routine immediately.\n
 
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
 Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' minutes'}
@@ -4181,46 +4163,32 @@ Exercise library (ONLY use these exact names): ${exerciseLibrary}
 Current routine on screen: ${currentRoutineSummary2}
 Training history: ${contextTable}
 
-You MUST wrap the routine JSON in <routine> tags exactly as shown — no raw JSON, no markdown. The app handles all timing. Do NOT include Savasana. Provide roughly double the expected count per phase.
-CRITICAL: Output JSON inside <routine></routine> tags. Never output raw JSON in your text response.
 Brief 1-2 sentence explanation then:
-<routine>{"hold":"short","Warm-Up":[{"exercise":"exact name","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}],"Foam Roller":[...],"Mobility":[...],"Static Stretching":[...],"Cool Down":[...]}</routine>
-hold at the routine level must be "short" or "long". Choose based on the user's goals and history — long hold for flexibility gains or recovery, short hold for active warmup or time-constrained sessions. Before the JSON, write 2-3 sentences explaining this routine. Draw on all three sources: (1) the user's goals, (2) their training history and patterns (what they've been doing, what they're missing, muscle groups underrepresented), and (3) relevant anatomy or mobility knowledge (why certain phases are included). Weave them naturally.
+hold at the routine level must be "short" or "long". Choose based on the user's goals and history — long hold for flexibility gains or recovery, short hold for active warmup or time-constrained sessions. When generating a routine: use the generate_routine tool to output the structured routine data. In your text response, write 2-3 sentences explaining it — drawing on the user's goals, their training history patterns, and relevant anatomy/mobility knowledge. Weave them naturally.
 Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down. Do NOT include Active Stretch or Deep Stretch — the app promotes Static exercises to those phases automatically.`;
 
             try {
                 const response = await fetch('/.netlify/functions/coach', {
                     method: 'POST',
                     headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({ mode: 'jumi_chat', system: systemPrompt, messages: [{role:'user',content:'Generate a routine for me based on my history and goals.'}] })
+                    body: JSON.stringify({ mode: 'jumi_generate', system: systemPrompt, messages: [{role:'user',content:'Generate a routine for me based on my history and goals.'}] })
                 });
                 const data = await response.json();
                 const reply = (data.reply || '').trim();
+                const routineData = data.routine || null;
                 thinking.remove();
-                const cleanedReply2 = reply.replace(/\x60{3}json\n?/g, '').replace(/\x60{3}\n?/g, '');
-                const jumiPhaseData2 = tryParseJumiRoutine(cleanedReply2);
-                const hadRoutineTag2 = /<routine>[\s\S]*?<\/routine>/.test(cleanedReply2);
 
-                let cleanReply = cleanedReply2.replace(/<routine>[\s\S]*?<\/routine>/g, '');
-                if (jumiPhaseData2 && !hadRoutineTag2) {
-                    const braceIdx = cleanReply.indexOf('{');
-                    const lastBrace = cleanReply.lastIndexOf('}');
-                    if (braceIdx !== -1 && lastBrace > braceIdx) {
-                        cleanReply = cleanReply.slice(0, braceIdx) + cleanReply.slice(lastBrace + 1);
-                    }
-                }
-                cleanReply = cleanReply.trim();
-                if (jumiPhaseData2) {
+                if (reply) appendChatMessage('jumi', reply);
+
+                if (routineData) {
                     try {
-                        if (cleanReply) appendChatMessage('jumi', cleanReply);
-                        await buildJumiRoutine(jumiPhaseData2);
+                        await buildJumiRoutine(routineData);
                         window.loadRoutineFromChat(false);
                     } catch(e) {
-                        if (cleanReply) appendChatMessage('jumi', cleanReply);
                         appendChatMessage('jumi', '(Could not build routine — please try again.)');
                     }
-                } else if (cleanReply) {
-                    appendChatMessage('jumi', cleanReply);
+                } else {
+                    appendChatMessage('jumi', '(Could not build routine — please try again.)');
                 }
             } catch(err) {
                 thinking.remove();
