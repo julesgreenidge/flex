@@ -1,6 +1,16 @@
 exports.handler = async function(event) {
+    const corsHeaders = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+    };
+
+    if (event.httpMethod === 'OPTIONS') {
+        return { statusCode: 200, headers: corsHeaders, body: '' };
+    }
+
     if (event.httpMethod !== 'POST') {
-        return { statusCode: 405, body: 'Method Not Allowed' };
+        return { statusCode: 405, headers: corsHeaders, body: 'Method Not Allowed' };
     }
 
     try {
@@ -93,7 +103,7 @@ exports.handler = async function(event) {
             console.error('Anthropic API error:', JSON.stringify(data));
             return {
                 statusCode: response.status,
-                headers: { 'Content-Type': 'application/json' },
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ reply: `API error ${response.status}: ${data.error?.message || JSON.stringify(data)}` })
             };
         }
@@ -122,14 +132,14 @@ exports.handler = async function(event) {
 
         return {
             statusCode: 200,
-            headers: { 'Content-Type': 'application/json' },
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             body: JSON.stringify({ reply, routine })
         };
     } catch (err) {
         console.error('Function error:', err);
         return {
             statusCode: 500,
-            headers: { 'Content-Type': 'application/json' },
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             body: JSON.stringify({ reply: `Function error: ${err.message}`, routine: null })
         };
     }
