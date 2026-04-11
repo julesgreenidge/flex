@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.86: buildJumiRoutine uses tool output directly (no generateRoutine); chat requires confirm; tool_choice auto -->
+    <!-- v3.90: Completion popup fixed — window.* functions at module level; Ask Jumi primary; floating btn restored -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3862,6 +3862,13 @@
             if (jumiChatHistory.length === 0) {
                 appendChatMessage('jumi', "Hi! I'm Jumi. Tap the button above to generate a routine, or ask me anything about your training — progress, what to focus on, exercise advice, or anything else.");
             }
+            if (window._jumiSessionContext) {
+                const ctx = window._jumiSessionContext;
+                window._jumiSessionContext = null;
+                jumiChatHistory.push({ role: 'user', content: ctx });
+                jumiChatHistory.push({ role: 'assistant', content: "Great work! What would you like to focus on next — recovery, a follow-up routine, or anything else?" });
+                appendChatMessage('jumi', "Great work! What would you like to focus on next — recovery, a follow-up routine, or anything else?");
+            }
             setTimeout(() => document.getElementById('jumiChatInput').focus(), 350);
             // Close when clicking outside the panel — after a tick so this open click doesn't immediately close it
             setTimeout(() => {
@@ -4001,7 +4008,6 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                 if (cleanReply) appendChatMessage('jumi', cleanReply);
 
                 if (routineData) {
-                    // Store pending routine — user must confirm before it loads
                     const pendingRoutine = routineData;
                     appendChatAction('▶ Confirm routine build', async () => {
                         try {
@@ -4074,33 +4080,24 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
         }
 
         async function buildJumiRoutine(jumiPhaseData) {
-            // jumiPhaseData: { hold: 'short'|'long', 'Warm-Up': [...], 'Static Stretching': [...], ... }
-            // Tool output gives us the exact exercises — use them directly, no generateRoutine needed
             const hold = jumiPhaseData.hold || 'short';
             selectedHold = hold;
             longSession = (hold === 'long');
             if (!selectedType) selectedType = 'full';
 
             const phaseOrder = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
-
-            // Find exercises in library matching by name (case-insensitive)
             const exerciseMap = {};
             exercises.forEach(ex => { exerciseMap[ex.exercise.toLowerCase()] = ex; });
 
             currentRoutine = [];
-
             for (const phase of phaseOrder) {
                 const candidates = jumiPhaseData[phase];
                 if (!candidates || !Array.isArray(candidates) || candidates.length === 0) continue;
                 for (const candidate of candidates) {
-                    // Match to library exercise by name
                     const libEx = exerciseMap[candidate.exercise.toLowerCase()];
                     if (libEx) {
-                        // Use library exercise as base, keep Jumi's sides
-                        const ex = { ...libEx, sides: candidate.sides || libEx.sides };
-                        currentRoutine.push(ex);
+                        currentRoutine.push({ ...libEx, sides: candidate.sides || libEx.sides });
                     } else {
-                        // Exercise not in library — use Jumi's data directly
                         currentRoutine.push({
                             exercise: candidate.exercise,
                             target: candidate.target || '',
@@ -4115,16 +4112,11 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                 }
             }
 
-            // Add Savasana if not present
             const savasana = exercises.find(ex => ex.exercise === 'Savasana');
             if (savasana && !currentRoutine.find(ex => ex.exercise === 'Savasana')) {
                 currentRoutine.push({ ...savasana });
             }
-
-            // Apply per-phase duration settings from appSettings
             applyDurationSettings(currentRoutine);
-
-            // Set selectedTime to actual duration so duration picker reflects it
             const totalSecs = currentRoutine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0);
             selectedTime = Math.round(totalSecs / 60);
         }
@@ -8228,7 +8220,110 @@ Return only the JSON.`;
             }, 500);
         }
         
+        // Define the close function globally so onclick can access it
+        window.closeCompletionPopup = function() {
+            try {
+                // Release wake lock when exiting routine
+                releaseWakeLock();
+                
+                if (currentCompletionOverlay && currentCompletionOverlay.parentNode) {
+                    document.body.removeChild(currentCompletionOverlay);
+                    currentCompletionOverlay = null;
+                }
+                document.getElementById('timerView').style.display = 'none';
+                document.getElementById('mainView').style.display = 'grid';
+                
+                // Show star and edit buttons if routine exists
+                if (currentRoutine && currentRoutine.length > 0) {
+                    updateFloatingButtons();
+                    
+                    // Show edit button for ALL routines
+                    updateFloatingButtons();
+                }
+                
+                // Restore type button selection
+                if (selectedType && selectedType !== 'custom' && selectedType !== 'starred') {
+                    document.querySelectorAll('.type-btn').forEach(btn => {
+                        if (btn.dataset.type === selectedType) {
+                            btn.classList.add('selected');
+                        }
+                    });
+                }
+                
+                currentExerciseIndex = -1;
+                isPaused = false;
+                if (routinePauseStart !== null) { routinePausedMs += performance.now() - routinePauseStart; routinePauseStart = null; }
+                // Remove keyboard listener
+                document.removeEventListener('keydown', handleKeyboardControl);
+                showJumiChatBtn();
+            } catch (e) {
+                console.error('❌ Error closing popup:', e);
+            }
+        };
+        
+        // Define coach panel function
+        window.openCoachPanel = function() {
+            if (currentCompletionOverlay && currentCompletionOverlay.parentNode) {
+                document.body.removeChild(currentCompletionOverlay);
+                currentCompletionOverlay = null;
+            }
+            releaseWakeLock();
+            document.getElementById('timerView').style.display = 'none';
+            document.getElementById('mainView').style.display = 'grid';
+            if (currentRoutine && currentRoutine.length > 0) updateFloatingButtons();
+            currentExerciseIndex = -1;
+            isPaused = false;
+            if (routinePauseStart !== null) { routinePausedMs += performance.now() - routinePauseStart; routinePauseStart = null; }
+            document.removeEventListener('keydown', handleKeyboardControl);
+            showJumiChatBtn();
+
+            const phases = [...new Set((currentRoutine || []).map(e => e.phase))].join(', ');
+            const targets = [...new Set((currentRoutine || []).map(e => e.target))].join(', ');
+            const durationMins = Math.round((currentRoutine || []).reduce((s, e) => s + calculateExerciseTime(e), 0) / 60);
+            const sessionMsg = `Session complete: ${durationMins} minutes, ${selectedType || 'full'} body. Phases: ${phases}. Muscles: ${targets}.`;
+            window._jumiSessionContext = sessionMsg;
+            window.openJumiChat && window.openJumiChat();
+        };
+
+        // Define save to starred function - opens the star modal
+        window.saveToStarredFromCompletion = function() {
+            // Close completion popup first
+            if (currentCompletionOverlay && currentCompletionOverlay.parentNode) {
+                document.body.removeChild(currentCompletionOverlay);
+                currentCompletionOverlay = null;
+            }
+            // Return to main view
+            document.getElementById('timerView').style.display = 'none';
+            document.getElementById('mainView').style.display = 'grid';
+            
+            // Restore floating buttons
+            if (currentRoutine && currentRoutine.length > 0) {
+                updateFloatingButtons();
+                
+                // Show edit button for ALL routines
+                updateFloatingButtons();
+            }
+            
+            // Restore type button selection
+            if (selectedType && selectedType !== 'custom' && selectedType !== 'starred') {
+                document.querySelectorAll('.type-btn').forEach(btn => {
+                    if (btn.dataset.type === selectedType) {
+                        btn.classList.add('selected');
+                    }
+                });
+            }
+            
+            currentExerciseIndex = -1;
+            isPaused = false;
+                if (routinePauseStart !== null) { routinePausedMs += performance.now() - routinePauseStart; routinePauseStart = null; }
+            document.removeEventListener('keydown', handleKeyboardControl);
+            
+            // Open the star modal
+            openStarModal();
+        };
+
         function showCompletionPopup() {
+            hideJumiChatBtn();
             // Create overlay
             const overlay = document.createElement('div');
             currentCompletionOverlay = overlay; // Store globally
@@ -8259,62 +8354,41 @@ Return only the JSON.`;
             
             popup.innerHTML = `
                 <h2 style="font-size: 32px; font-weight: 700; margin: 0 0 32px 0; color: #1d1d1f;">Routine Complete</h2>
-                <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
-                    <div style="display: flex; gap: 16px; justify-content: center;">
-                        <button onclick="window.saveToStarredFromCompletion()" style="
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            color: white;
-                            border: none;
-                            padding: 16px 24px;
-                            border-radius: 12px;
-                            font-size: 18px;
-                            font-weight: 600;
-                            cursor: pointer;
-                            transition: transform 0.2s, box-shadow 0.2s;
-                            display: flex;
-                            align-items: center;
-                            gap: 8px;
-                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 24px rgba(102, 126, 234, 0.4)';" 
-                           onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                            </svg>
-                            Add to Favourites
-                        </button>
-                        <button onclick="window.closeCompletionPopup()" style="
-                            background: white;
-                            color: #667eea;
-                            border: 2px solid #667eea;
-                            padding: 16px 32px;
-                            border-radius: 12px;
-                            font-size: 18px;
-                            font-weight: 600;
-                            cursor: pointer;
-                            transition: transform 0.2s, box-shadow 0.2s;
-                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 24px rgba(102, 126, 234, 0.2)';" 
-                           onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                            Back to Home
-                        </button>
-                    </div>
+                <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
                     <button onclick="window.openCoachPanel()" style="
-                        background: transparent;
-                        color: #86868b;
-                        border: 1.5px solid #d2d2d7;
-                        padding: 12px 28px;
-                        border-radius: 12px;
-                        font-size: 15px;
-                        font-weight: 500;
-                        cursor: pointer;
-                        transition: all 0.2s;
-                        display: flex;
-                        align-items: center;
-                        gap: 8px;
-                    " onmouseover="this.style.borderColor='#667eea'; this.style.color='#667eea';"
-                       onmouseout="this.style.borderColor='#d2d2d7'; this.style.color='#86868b';">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white; border: none; padding: 16px 24px; border-radius: 12px;
+                        font-size: 18px; font-weight: 600; cursor: pointer;
+                        transition: transform 0.2s, box-shadow 0.2s;
+                        display: flex; align-items: center; gap: 8px;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 24px rgba(102,126,234,0.4)';"
+                       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                         </svg>
-                        Chat with Coach
+                        Ask Jumi
+                    </button>
+                    <button onclick="window.saveToStarredFromCompletion()" style="
+                        background: white; color: #667eea; border: 2px solid #667eea;
+                        padding: 16px 24px; border-radius: 12px;
+                        font-size: 18px; font-weight: 600; cursor: pointer;
+                        transition: transform 0.2s, box-shadow 0.2s;
+                        display: flex; align-items: center; gap: 8px;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 24px rgba(102,126,234,0.2)';"
+                       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                        </svg>
+                        Add to Favourites
+                    </button>
+                    <button onclick="window.closeCompletionPopup()" style="
+                        background: transparent; color: #86868b;
+                        border: 1.5px solid #d2d2d7; padding: 16px 24px;
+                        border-radius: 12px; font-size: 18px; font-weight: 600;
+                        cursor: pointer; transition: all 0.2s;
+                    " onmouseover="this.style.borderColor='#667eea'; this.style.color='#667eea';"
+                       onmouseout="this.style.borderColor='#d2d2d7'; this.style.color='#86868b';">
+                        Back to Home
                     </button>
                 </div>
             `;
@@ -8336,231 +8410,6 @@ Return only the JSON.`;
             `;
             document.head.appendChild(style);
             
-            // Define the close function globally so onclick can access it
-            window.closeCompletionPopup = function() {
-                try {
-                    // Release wake lock when exiting routine
-                    releaseWakeLock();
-                    
-                    if (currentCompletionOverlay && currentCompletionOverlay.parentNode) {
-                        document.body.removeChild(currentCompletionOverlay);
-                        currentCompletionOverlay = null;
-                    }
-                    document.getElementById('timerView').style.display = 'none';
-                    document.getElementById('mainView').style.display = 'grid';
-                    
-                    // Show star and edit buttons if routine exists
-                    if (currentRoutine && currentRoutine.length > 0) {
-                        updateFloatingButtons();
-                        
-                        // Show edit button for ALL routines
-                        updateFloatingButtons();
-                    }
-                    
-                    // Restore type button selection
-                    if (selectedType && selectedType !== 'custom' && selectedType !== 'starred') {
-                        document.querySelectorAll('.type-btn').forEach(btn => {
-                            if (btn.dataset.type === selectedType) {
-                                btn.classList.add('selected');
-                            }
-                        });
-                    }
-                    
-                    currentExerciseIndex = -1;
-                    isPaused = false;
-                    if (routinePauseStart !== null) { routinePausedMs += performance.now() - routinePauseStart; routinePauseStart = null; }
-                    // Remove keyboard listener
-                    document.removeEventListener('keydown', handleKeyboardControl);
-                } catch (e) {
-                    console.error('❌ Error closing popup:', e);
-                }
-            };
-            
-            // Define coach panel function
-            window.openCoachPanel = function() {
-                // Close the completion popup
-                if (currentCompletionOverlay && currentCompletionOverlay.parentNode) {
-                    document.body.removeChild(currentCompletionOverlay);
-                    currentCompletionOverlay = null;
-                }
-                // Go home first
-                releaseWakeLock();
-                document.getElementById('timerView').style.display = 'none';
-                document.getElementById('mainView').style.display = 'grid';
-                if (currentRoutine && currentRoutine.length > 0) {
-                    updateFloatingButtons();
-                    updateFloatingButtons();
-                }
-                currentExerciseIndex = -1;
-                isPaused = false;
-                if (routinePauseStart !== null) { routinePausedMs += performance.now() - routinePauseStart; routinePauseStart = null; }
-                document.removeEventListener('keydown', handleKeyboardControl);
-
-                // Build session summary for Claude
-                const phases = [...new Set((currentRoutine || []).map(e => e.phase))].join(', ');
-                const targets = [...new Set((currentRoutine || []).map(e => e.target))].join(', ');
-                const durationMins = Math.round((currentRoutine || []).reduce((s, e) => s + calculateExerciseTime(e), 0) / 60);
-                const exerciseList = (currentRoutine || []).map(e => e.exercise).join(', ');
-                const sessionSummary = `Session: ${durationMins} minutes. Type: ${selectedType || 'full'} body. Phases: ${phases}. Muscle groups: ${targets}. Exercises: ${exerciseList}.`;
-
-                // Create coach overlay
-                const coachOverlay = document.createElement('div');
-                coachOverlay.id = 'coachOverlay';
-                coachOverlay.style.cssText = `
-                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                    background: rgba(0,0,0,0.6); display: flex; align-items: center;
-                    justify-content: center; z-index: 10000; animation: fadeIn 0.3s ease;
-                `;
-
-                const coachPanel = document.createElement('div');
-                coachPanel.style.cssText = `
-                    background: white; border-radius: 24px; padding: 32px;
-                    width: min(560px, 92vw); max-height: 80vh; display: flex;
-                    flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-                    animation: slideUp 0.3s ease-out;
-                `;
-
-                coachPanel.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                        <div>
-                            <div style="font-size:20px; font-weight:700; color:#1d1d1f;">Jumi</div>
-                            <div style="font-size:13px; color:#86868b; margin-top:2px;">${durationMins} min · ${selectedType || 'full'} body</div>
-                        </div>
-                        <button onclick="document.body.removeChild(document.getElementById('coachOverlay'))" style="background:none;border:none;cursor:pointer;color:#86868b;font-size:22px;line-height:1;padding:4px;">✕</button>
-                    </div>
-                    <div id="coachMessages" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:12px; margin-bottom:20px; min-height:120px; max-height:340px;">
-                        <div style="background:#f5f5f7; border-radius:14px; padding:16px 18px; font-size:15px; color:#1d1d1f; line-height:1.5;">
-                            Great work completing your session! How did it feel? You can ask me about any exercises, mention anything that felt tight or uncomfortable, or just tell me how it went.
-                        </div>
-                    </div>
-                    <div style="display:flex; gap:10px;">
-                        <input id="coachInput" type="text" placeholder="e.g. my left hip was really tight in low lunge…"
-                            style="flex:1; border:1.5px solid #d2d2d7; border-radius:12px; padding:12px 16px; font-size:15px; outline:none; font-family:inherit;"
-                            onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); window.sendCoachMessage(); }"
-                            onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#d2d2d7'"/>
-                        <button onclick="window.sendCoachMessage()" id="coachSendBtn" style="
-                            background: linear-gradient(135deg, #667eea, #764ba2);
-                            color: white; border: none; border-radius: 12px;
-                            padding: 12px 20px; font-size: 15px; font-weight: 600;
-                            cursor: pointer; white-space: nowrap;">Send</button>
-                    </div>
-                `;
-
-                coachOverlay.appendChild(coachPanel);
-                document.body.appendChild(coachOverlay);
-
-                // Focus input
-                setTimeout(() => document.getElementById('coachInput')?.focus(), 100);
-
-                // Conversation history for multi-turn
-                const coachHistory = [];
-                // Pass full history context to Jumi
-                const jumiCtx = buildJumiContext();
-                const systemPrompt = `You are Jumi, a flexibility and mobility AI coach. You have full access to the user's exercise history. Be direct and practical. Write 2-3 short sentences maximum. Put each sentence on its own line. No markdown, no bold, no bullet points, no headers. No filler.
-
-Today's session: ${sessionSummary}
-
-User's history (last 728 days): ${JSON.stringify(jumiCtx)}`;
-
-                window.sendCoachMessage = async function() {
-                    const input = document.getElementById('coachInput');
-                    const sendBtn = document.getElementById('coachSendBtn');
-                    const messages = document.getElementById('coachMessages');
-                    const text = input?.value?.trim();
-                    if (!text || !input) return;
-
-                    // Add user message
-                    input.value = '';
-                    sendBtn.disabled = true;
-                    sendBtn.textContent = '…';
-
-                    const userBubble = document.createElement('div');
-                    userBubble.style.cssText = 'background: linear-gradient(135deg,#667eea,#764ba2); color:white; border-radius:14px; padding:12px 16px; font-size:15px; line-height:1.5; align-self:flex-end; max-width:85%;';
-                    userBubble.textContent = text;
-                    messages.appendChild(userBubble);
-                    messages.scrollTop = messages.scrollHeight;
-
-                    // Add to history
-                    coachHistory.push({ role: 'user', content: text });
-
-                    // Thinking bubble
-                    const thinkingBubble = document.createElement('div');
-                    thinkingBubble.style.cssText = 'background:#f5f5f7; border-radius:14px; padding:12px 16px; font-size:15px; color:#86868b;';
-                    thinkingBubble.textContent = 'Thinking…';
-                    messages.appendChild(thinkingBubble);
-                    messages.scrollTop = messages.scrollHeight;
-
-                    try {
-                        const response = await fetch('/.netlify/functions/coach', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                system: systemPrompt,
-                                messages: coachHistory
-                            })
-                        });
-                        const data = await response.json();
-                        const rawReply = data.reply || 'Sorry, I could not get a response. Please try again.';
-                        // Strip markdown formatting
-                        const reply = rawReply
-                            .replace(/\*\*(.*?)\*\*/g, '$1')
-                            .replace(/\*(.*?)\*/g, '$1')
-                            .replace(/#{1,6} /g, '')
-                            .trim();
-
-                        // Replace thinking with reply — use innerHTML for line breaks
-                        thinkingBubble.style.color = '#1d1d1f';
-                        thinkingBubble.innerHTML = reply.replace(/\n/g, '<br>');
-
-                        // Add assistant reply to history
-                        coachHistory.push({ role: 'assistant', content: reply });
-                    } catch (err) {
-                        thinkingBubble.style.color = '#ff3b30';
-                        thinkingBubble.textContent = 'Could not reach the coach. Check your connection and try again.';
-                    }
-
-                    sendBtn.disabled = false;
-                    sendBtn.textContent = 'Send';
-                    messages.scrollTop = messages.scrollHeight;
-                };
-            };
-
-            // Define save to starred function - opens the star modal
-            window.saveToStarredFromCompletion = function() {
-                // Close completion popup first
-                if (currentCompletionOverlay && currentCompletionOverlay.parentNode) {
-                    document.body.removeChild(currentCompletionOverlay);
-                    currentCompletionOverlay = null;
-                }
-                // Return to main view
-                document.getElementById('timerView').style.display = 'none';
-                document.getElementById('mainView').style.display = 'grid';
-                
-                // Restore floating buttons
-                if (currentRoutine && currentRoutine.length > 0) {
-                    updateFloatingButtons();
-                    
-                    // Show edit button for ALL routines
-                    updateFloatingButtons();
-                }
-                
-                // Restore type button selection
-                if (selectedType && selectedType !== 'custom' && selectedType !== 'starred') {
-                    document.querySelectorAll('.type-btn').forEach(btn => {
-                        if (btn.dataset.type === selectedType) {
-                            btn.classList.add('selected');
-                        }
-                    });
-                }
-                
-                currentExerciseIndex = -1;
-                isPaused = false;
-                    if (routinePauseStart !== null) { routinePausedMs += performance.now() - routinePauseStart; routinePauseStart = null; }
-                document.removeEventListener('keydown', handleKeyboardControl);
-                
-                // Open the star modal
-                openStarModal();
-            };
         }
 
         // ===== SWAP EXERCISE FUNCTION =====
