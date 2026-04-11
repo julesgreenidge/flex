@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.92: buildJumiRoutine pads short routines with static/active/deep stretch exercises to hit target duration -->
+    <!-- v3.93: Fix padding variable scoping bug causing overshoot; savasana index refreshed per iteration -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -4122,42 +4122,36 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
             // Pad routine if significantly under target duration
             if (selectedTime && selectedTime !== 999) {
                 const targetSecs = selectedTime * 60;
-                let totalSecs = currentRoutine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0);
                 const usedNames = new Set(currentRoutine.map(ex => ex.exercise.toLowerCase()));
-
-                // Get pool of static/active stretch exercises not already used
                 const padPhases = ['Static Stretching', 'Active Stretch', 'Deep Stretch'];
                 const padPool = exercises.filter(ex =>
                     padPhases.includes(ex.phase) &&
                     !usedNames.has(ex.exercise.toLowerCase())
                 );
-
-                // Shuffle pad pool
+                // Shuffle
                 for (let i = padPool.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [padPool[i], padPool[j]] = [padPool[j], padPool[i]];
                 }
-
                 let padIdx = 0;
-                const savasanaIdx = currentRoutine.findIndex(ex => ex.exercise === 'Savasana');
-
-                while (totalSecs < targetSecs - 60 && padIdx < padPool.length) {
+                let runningTotal = currentRoutine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0);
+                while (runningTotal < targetSecs - 60 && padIdx < padPool.length) {
                     const ex = { ...padPool[padIdx++] };
                     applyDurationSettings([ex]);
                     const exSecs = calculateExerciseTime(ex);
-                    // Insert before Savasana
-                    if (savasanaIdx >= 0) {
-                        currentRoutine.splice(savasanaIdx, 0, ex);
+                    // Insert before Savasana (find fresh each iteration as splice shifts indices)
+                    const savIdx = currentRoutine.findIndex(e => e.exercise === 'Savasana');
+                    if (savIdx >= 0) {
+                        currentRoutine.splice(savIdx, 0, ex);
                     } else {
                         currentRoutine.push(ex);
                     }
-                    totalSecs += exSecs;
+                    runningTotal += exSecs;
                     usedNames.add(ex.exercise.toLowerCase());
                 }
             }
 
-            const totalSecs = currentRoutine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0);
-            selectedTime = Math.round(totalSecs / 60);
+            selectedTime = Math.round(currentRoutine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0) / 60);
         }
 
         // Try to extract phase-grouped routine JSON from Jumi's reply.
