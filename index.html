@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.90: Completion popup fixed — window.* functions at module level; Ask Jumi primary; floating btn restored -->
+    <!-- v3.91: Jumi prompt fixes — target reps for duration accuracy; Active/Deep Stretch phases restored -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3962,6 +3962,7 @@
 
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
 Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' minutes'}
+Target total reps (sides) when generating a routine: ${selectedTime === 999 ? "No limit" : Math.round((selectedTime * 60) / (selectedHold === "long" ? 90 : 60))} — this is the most important constraint for hitting the target duration. Each exercise counts as 1 rep if sides=1, or 2 reps if sides=2.
 
 Exercise library (${exercises.length} exercises already in the user's library — do NOT recommend these):
 ${exerciseLibraryList}
@@ -4181,17 +4182,21 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                   currentRoutine.map(e => `${e.exercise} | ${e.phase} | ${e.target}`).join('\n')
                 : 'No routine currently on screen.';
             const targetSecs = selectedTime === 999 ? null : selectedTime * 60;
+            const holdDuration = (appSettings.quickStartHold === 'long') ? 75 : 45;
+            const secsPerSide = holdDuration + 15; // hold + rest
+            const targetReps = targetSecs ? Math.round(targetSecs / secsPerSide) : 40;
             const systemPrompt = `You are Jumi, a flexibility and mobility coach. Generate a personalised routine immediately.\n
 
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
 Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' minutes'}
+Target total reps (sides): ${targetReps} — this is the most important constraint. Each exercise counts as 1 rep if sides=1, or 2 reps if sides=2. Total must reach approximately ${targetReps} reps to hit the target duration.
 Exercise library (ONLY use these exact names): ${exerciseLibrary}
 Current routine on screen: ${currentRoutineSummary2}
 Training history: ${contextTable}
 
-Brief 1-2 sentence explanation then:
-hold at the routine level must be "short" or "long". Choose based on the user's goals and history — long hold for flexibility gains or recovery, short hold for active warmup or time-constrained sessions. When generating a routine: use the generate_routine tool to output the structured routine data. In your text response, write 2-3 sentences explaining it — drawing on the user's goals, their training history patterns, and relevant anatomy/mobility knowledge. Weave them naturally. Use snake_case keys for phases: warm_up, foam_roller, mobility, static_stretching, active_stretch, deep_stretch, splits, cool_down.
-Phases to include: Warm-Up, Foam Roller, Mobility, Static Stretching, Cool Down. Do NOT include Active Stretch or Deep Stretch — the app promotes Static exercises to those phases automatically.`;
+hold at the routine level must be "short" or "long". Choose based on the user's goals and history. When generating a routine: use the generate_routine tool. In your text response, write 2-3 sentences explaining the routine — drawing on goals, history patterns, and anatomy/mobility knowledge. Weave naturally.
+Use snake_case keys for phases: warm_up, foam_roller, mobility, static_stretching, active_stretch, deep_stretch, splits, cool_down.
+Include all relevant phases — Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Cool Down. Active Stretch and Deep Stretch are valid phases, include them when relevant to the user's goals.`;
 
             try {
                 const response = await fetch('/.netlify/functions/coach', {
