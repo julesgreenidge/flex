@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.93: Fix padding variable scoping bug causing overshoot; savasana index refreshed per iteration -->
+    <!-- v3.94: buildJumiRoutine saves originalTargetMins before state changes; rep targeting removed from prompts -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -3962,7 +3962,6 @@
 
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
 Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' minutes'}
-Target total reps (sides) when generating a routine: ${selectedTime === 999 ? "No limit" : Math.round((selectedTime * 60) / (selectedHold === "long" ? 90 : 60))} — this is the most important constraint for hitting the target duration. Each exercise counts as 1 rep if sides=1, or 2 reps if sides=2.
 
 Exercise library (${exercises.length} exercises already in the user's library — do NOT recommend these):
 ${exerciseLibraryList}
@@ -4081,6 +4080,7 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
         }
 
         async function buildJumiRoutine(jumiPhaseData) {
+            const originalTargetMins = appState.time; // Save before anything modifies state
             const hold = jumiPhaseData.hold || 'short';
             selectedHold = hold;
             longSession = (hold === 'long');
@@ -4120,8 +4120,8 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
             applyDurationSettings(currentRoutine);
 
             // Pad routine if significantly under target duration
-            if (selectedTime && selectedTime !== 999) {
-                const targetSecs = selectedTime * 60;
+            if (originalTargetMins && originalTargetMins !== 999) {
+                const targetSecs = originalTargetMins * 60;
                 const usedNames = new Set(currentRoutine.map(ex => ex.exercise.toLowerCase()));
                 const padPhases = ['Static Stretching', 'Active Stretch', 'Deep Stretch'];
                 const padPool = exercises.filter(ex =>
@@ -4214,14 +4214,10 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                   currentRoutine.map(e => `${e.exercise} | ${e.phase} | ${e.target}`).join('\n')
                 : 'No routine currently on screen.';
             const targetSecs = selectedTime === 999 ? null : selectedTime * 60;
-            const holdDuration = (appSettings.quickStartHold === 'long') ? 75 : 45;
-            const secsPerSide = holdDuration + 15; // hold + rest
-            const targetReps = targetSecs ? Math.round(targetSecs / secsPerSide) : 40;
             const systemPrompt = `You are Jumi, a flexibility and mobility coach. Generate a personalised routine immediately.\n
 
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
 Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' minutes'}
-Target total reps (sides): ${targetReps} — this is the most important constraint. Each exercise counts as 1 rep if sides=1, or 2 reps if sides=2. Total must reach approximately ${targetReps} reps to hit the target duration.
 Exercise library (ONLY use these exact names): ${exerciseLibrary}
 Current routine on screen: ${currentRoutineSummary2}
 Training history: ${contextTable}
