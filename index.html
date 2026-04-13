@@ -4015,7 +4015,10 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                             if (!selectedType) selectedType = appSettings.quickStartType || 'full';
                             selectedHold = pendingRoutine.hold || 'short';
                             longSession = selectedHold === 'long';
-                            await generateRoutine(pendingRoutine);
+                            selectedType = pendingRoutine.body_type || selectedType;
+                            const restore = applyJumiPriority(pendingRoutine);
+                            await generateRoutine();
+                            restore();
                             window.loadRoutineFromChat(false);
                         } catch(e) {
                             appendChatMessage('jumi', '(Could not build routine — please try again.)');
@@ -4084,7 +4087,7 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
         }
 
         window.loadRoutineFromChat = function(keepOpen) {
-            // currentRoutine already set by generateRoutine(jumiPools)
+            // currentRoutine already set by generateRoutine()
             currentJumiRoutine = currentRoutine.map(e => ({...e}));
             selectedType = 'jumi';
             if (!keepOpen) window.closeJumiChat();
@@ -4128,10 +4131,14 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
 
                 if (routineData) {
                     try {
-                        // Apply hold from Jumi's choice
+                        // Apply Jumi's choices
                         selectedHold = routineData.hold || 'short';
                         longSession = (selectedHold === 'long');
-                        await generateRoutine(routineData);
+                        selectedType = routineData.body_type || 'full';
+                        // Inject Jumi's ranked picks to front of each phase pool
+                        const restore = applyJumiPriority(routineData);
+                        await generateRoutine();
+                        restore();
                         window.loadRoutineFromChat(false);
                     } catch(e) {
                         appendChatMessage('jumi', '(Could not build routine — please try again.)');
@@ -5616,7 +5623,7 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
         }
 
         // ===== ROUTINE GENERATION =====
-        async function generateRoutine(jumiPools) {
+        async function generateRoutine() {
             // Hide start button to prevent starting outdated routine if user re-generates
             document.getElementById('floatingStartSimple').style.display = 'none';
             
@@ -5742,24 +5749,15 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
             }
             
             // BUILD POOLS ONCE - before retry loop
-            // For Jumi routines: promote from Jumi's own Static candidates so the same exercises appear in Deep Stretch
-            // For simple routines: use the full exercisesForGen pool
-            const jumiStaticCandidates = jumiPools && jumiPools['Static Stretching']
-                ? jumiPools['Static Stretching'].map(e => {
-                    const source = exercisesForGen.find(s => s.exercise === e.exercise);
-                    return source ? {...source} : {...e};
-                  })
-                : null;
-
             // Filter and shuffle Static Stretching exercises for Active/Deep Stretch reservation
-            const allStaticShuffled = (jumiStaticCandidates || exercisesForGen
+            const allStaticShuffled = exercisesForGen
                 .filter(e => e.phase === "Static Stretching" && e.exercise !== 'Savasana')
                 .filter(e => {
                     const bp = (e.bodyPart || '').toLowerCase();
                     if (selectedType === 'upper') return bp === 'upper' || bp === 'full';
                     if (selectedType === 'lower') return bp === 'lower' || bp === 'full';
-                    return true; // full body includes all
-                }))
+                    return true;
+                })
                 .slice()
                 .sort(() => Math.random() - 0.5);
             
@@ -5803,39 +5801,6 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
             const deepStretchPool = allStaticShuffled
                 .filter(e => deepStretchReserved.has(e.exercise))
                 .map(e => ({...e, phase: "Deep Stretch", duration: longSession ? 120 : 90}));
-
-            // For Jumi routines: pre-build Active/Deep promotion pools from Jumi's Static candidates
-            // for any phase Jumi didn't explicitly provide
-            let jumiActivePool = null;
-            let jumiDeepPool = null;
-            if (jumiPools && jumiPools['Static Stretching']) {
-                const jumiStatic = jumiPools['Static Stretching'].map(e => {
-                    const source = exercisesForGen.find(s => s.exercise === e.exercise);
-                    return source ? {...source} : {...e};
-                });
-                const needDeep = minDeepStretches || 2;
-                const needActive = minActiveStretches || 3;
-                const total = jumiStatic.length;
-
-                if (!jumiPools['Deep Stretch']) {
-                    jumiDeepPool = jumiStatic.slice(Math.max(0, total - needDeep))
-                        .map(e => ({...e, phase: 'Deep Stretch', duration: longSession ? 120 : 90}));
-                }
-                if (!jumiPools['Active Stretch']) {
-                    const deepCount = jumiDeepPool ? jumiDeepPool.length : 0;
-                    jumiActivePool = jumiStatic.slice(Math.max(0, total - deepCount - needActive), Math.max(0, total - deepCount))
-                        .map(e => ({...e, phase: 'Active Stretch', duration: longSession ? 75 : 45}));
-                }
-
-                // Remove pre-reserved exercises from Jumi Static pool so they don't appear in Static phase
-                const jumiReservedNames = new Set([
-                    ...(jumiDeepPool || []),
-                    ...(jumiActivePool || [])
-                ].map(e => e.exercise));
-                if (jumiReservedNames.size > 0) {
-                    jumiPools['Static Stretching'] = jumiPools['Static Stretching'].filter(e => !jumiReservedNames.has(e.exercise));
-                }
-            }
 
             let bestRoutine = null;
             let bestTimeDiff = Infinity;
@@ -6024,56 +5989,23 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                 // Select exercises for each phase
                 for (let phase of phases) {
                     let allPhaseExercises;
-                    const usingJumiPool = jumiPools && jumiPools[phase] && jumiPools[phase].length > 0;
 
-                    if (usingJumiPool) {
-                        // Jumi mode: use priority-ordered candidates, filtered against already-used names
-                        const promoteDuration =
-                            phase === 'Active Stretch' ? (longSession ? 75 : 45) :
-                            phase === 'Deep Stretch'   ? (longSession ? 120 : 90) : null;
-                        allPhaseExercises = jumiPools[phase]
-                            .filter(e => !usedExerciseNames.has(e.exercise))
-                            .map(e => {
-                                const source = exercisesForGen.find(s => s.exercise === e.exercise);
-                                const base = source ? {...source} : {...e};
-                                // Always override phase and duration for promoted phases
-                                if (promoteDuration !== null) {
-                                    base.phase = phase;
-                                    base.duration = promoteDuration;
-                                }
-                                return base;
-                            });
-                    } else if (jumiPools && (phase === 'Active Stretch' || phase === 'Deep Stretch') && jumiActivePool && jumiDeepPool) {
-                        // Jumi provided Static but no explicit Active/Deep — use pre-built promotion pools
-                        allPhaseExercises = (phase === 'Active Stretch' ? jumiActivePool : jumiDeepPool)
-                            .filter(e => !usedExerciseNames.has(e.exercise));
-                    } else if (jumiPools && phase === 'Static Stretching' && !jumiPools['Static Stretching']) {
-                        // No Jumi Static pool — fall through to normal
+                    // Standard pool selection — same for Quick Start and Jumi
+                    // (Jumi's preferred exercises are already at the front of exercisesForGen via applyJumiPriority)
+                    if (phase === "Active Stretch") {
+                        allPhaseExercises = activeStretchPool.filter(e => !usedExerciseNames.has(e.exercise));
+                    } else if (phase === "Deep Stretch") {
+                        allPhaseExercises = deepStretchPool.filter(e => !usedExerciseNames.has(e.exercise));
+                    } else if (phase === "Static Stretching") {
                         allPhaseExercises = exercisesForGen.filter(e =>
-                            e.phase === 'Static Stretching' &&
+                            e.phase === "Static Stretching" &&
                             !activeStretchReserved.has(e.exercise) &&
                             !deepStretchReserved.has(e.exercise)
                         );
                     } else {
-                        // Normal mode: use standard pools
-                        // Active Stretch and Deep Stretch use their promoted pools; other phases use exercises array.
-                        // Static Stretching excludes any exercises already reserved for Active/Deep Stretch.
-                        // This ensures no exercise name appears in multiple phases.
-                        if (phase === "Active Stretch") {
-                            allPhaseExercises = activeStretchPool.filter(e => !usedExerciseNames.has(e.exercise));
-                        } else if (phase === "Deep Stretch") {
-                            allPhaseExercises = deepStretchPool.filter(e => !usedExerciseNames.has(e.exercise));
-                        } else if (phase === "Static Stretching") {
-                            allPhaseExercises = exercisesForGen.filter(e => 
-                                e.phase === "Static Stretching" && 
-                                !activeStretchReserved.has(e.exercise) && 
-                                !deepStretchReserved.has(e.exercise)
-                            );
-                        } else {
-                            allPhaseExercises = exercisesForGen.filter(e => e.phase === phase);
-                        }
+                        allPhaseExercises = exercisesForGen.filter(e => e.phase === phase);
                     }
-                    
+
                     const seenInPool = new Set();
                     allPhaseExercises = allPhaseExercises.filter(e => {
                         if (seenInPool.has(e.exercise)) return false;
@@ -6081,40 +6013,31 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                         return true;
                     });
 
-                    // Apply focus and body part filtering only for non-Jumi phases
-                    // (Jumi already decided priority and body parts)
+                    // Apply focus and body part filtering
                     let focusExercises = [];
-                    if (!usingJumiPool) {
-                        // Apply focus - sort focused exercises to front of unique pool
-                        if (selectedFocus && !isAllExercises) {
-                            // Separate focus exercises from others
-                            focusExercises = allPhaseExercises.filter(e => e.target === selectedFocus);
-                            let otherExercises = allPhaseExercises.filter(e => e.target !== selectedFocus);
-                            
-                            // Randomize within each group
-                            focusExercises = weightedShuffle(focusExercises);
-                            otherExercises = weightedShuffle(otherExercises);
-                            
-                            // Put focus exercises first
-                            allPhaseExercises = [...focusExercises, ...otherExercises];
-                        }
-                        
-                        // Filter by routine type based on bodyPart (case-insensitive)
-                        if (selectedType === 'upper') {
-                            allPhaseExercises = allPhaseExercises.filter(e => {
-                                const bp = (e.bodyPart || '').toLowerCase();
-                                return bp === 'upper' || bp === 'full';
-                            });
-                            allPhaseExercises = weightedShuffle(allPhaseExercises);
-                        } else if (selectedType === 'lower') {
-                            allPhaseExercises = allPhaseExercises.filter(e => {
-                                const bp = (e.bodyPart || '').toLowerCase();
-                                return bp === 'lower' || bp === 'full';
-                            });
-                            allPhaseExercises = weightedShuffle(allPhaseExercises);
-                        } else {
-                            allPhaseExercises = weightedShuffle(allPhaseExercises);
-                        }
+                    if (selectedFocus && !isAllExercises) {
+                        focusExercises = allPhaseExercises.filter(e => e.target === selectedFocus);
+                        let otherExercises = allPhaseExercises.filter(e => e.target !== selectedFocus);
+                        focusExercises = weightedShuffle(focusExercises);
+                        otherExercises = weightedShuffle(otherExercises);
+                        allPhaseExercises = [...focusExercises, ...otherExercises];
+                    }
+
+                    // Filter by body type
+                    if (selectedType === 'upper') {
+                        allPhaseExercises = allPhaseExercises.filter(e => {
+                            const bp = (e.bodyPart || '').toLowerCase();
+                            return bp === 'upper' || bp === 'full';
+                        });
+                        allPhaseExercises = weightedShuffle(allPhaseExercises);
+                    } else if (selectedType === 'lower') {
+                        allPhaseExercises = allPhaseExercises.filter(e => {
+                            const bp = (e.bodyPart || '').toLowerCase();
+                            return bp === 'lower' || bp === 'full';
+                        });
+                        allPhaseExercises = weightedShuffle(allPhaseExercises);
+                    } else {
+                        allPhaseExercises = weightedShuffle(allPhaseExercises);
                     }
                     
                     // Safety check: if no exercises after filtering, skip this phase
@@ -6218,7 +6141,6 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                     }
                     
                     routine.push(...phaseExercises);
-                    if (jumiPools) console.log(`[Jumi] After ${phase}: total=${totalTime}s reserved=${reservedTime}s projected=${totalTime+reservedTime}s max=${maxSeconds}s count=${phaseExercises.length}`);
                 }
 
                 
@@ -6306,7 +6228,6 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                 } else {
                     console.warn('Savasana NOT added - savasana object is null');
                 }
-                if (jumiPools) console.log(`[Jumi] FINAL total=${totalTime}s (${(totalTime/60).toFixed(1)}min) max=${maxSeconds}s (${maxSeconds/60}min)`);
                 
                 // AGGRESSIVE FALLBACK: If we're over time, trim exercises to fit
                 if (!isAllExercises && totalTime > maxSeconds) {
@@ -7878,6 +7799,55 @@ function regenerateRoutine() {
             };
         }
 
+        // ── JUMI: Priority injector — moves Jumi's ranked picks to front of each phase pool ──
+        // routineData is the tool output: { hold, body_type, warm_up: [...], static_stretching: [...], ... }
+        // Returns a restore function that puts exercises back to original order.
+        function applyJumiPriority(routineData) {
+            const PHASE_MAP = {
+                warm_up: 'Warm-Up',
+                foam_roller: 'Foam Roller',
+                mobility: 'Mobility',
+                static_stretching: 'Static Stretching',
+                active_stretch: 'Active Stretch',
+                deep_stretch: 'Deep Stretch',
+                splits: 'Splits',
+                cool_down: 'Cool Down'
+            };
+
+            const original = exercises.slice();
+
+            for (const [snakeKey, displayPhase] of Object.entries(PHASE_MAP)) {
+                const candidates = routineData[snakeKey];
+                if (!candidates || candidates.length === 0) continue;
+
+                // Build ordered list of names Jumi ranked (best first)
+                const rankedNames = candidates.map(c => c.exercise).filter(Boolean);
+                if (rankedNames.length === 0) continue;
+
+                // Find which exercises in the global array belong to this phase
+                const phaseExercises = exercises.filter(e => e.phase === displayPhase);
+                const rankedSet = new Set(rankedNames);
+
+                // Ranked exercises in Jumi's order, then remaining exercises in original order
+                const ranked = rankedNames.map(name => phaseExercises.find(e => e.exercise === name)).filter(Boolean);
+                const rest = phaseExercises.filter(e => !rankedSet.has(e.exercise));
+                const reordered = [...ranked, ...rest];
+
+                // Replace in the exercises array (preserve positions of other phases)
+                let phaseIdx = 0;
+                for (let i = 0; i < exercises.length; i++) {
+                    if (exercises[i].phase === displayPhase && phaseIdx < reordered.length) {
+                        exercises[i] = reordered[phaseIdx++];
+                    }
+                }
+            }
+
+            return function restore() {
+                exercises.length = 0;
+                original.forEach(e => exercises.push(e));
+            };
+        }
+
         // ── JUMI: Slot builder — computes exact per-phase counts and candidate pools ──
         function buildJumiSlots() {
             const exercisesForGen = exercises.map(ex => ({...ex}));
@@ -7936,14 +7906,6 @@ function regenerateRoutine() {
                 let pool = exercisesForGen.filter(ex => {
                     if (ex.exercise === 'Savasana') return false;
                     if (ex.phase !== sourcePhase) return false;
-                    if (selectedType === 'upper') {
-                        const bp = (ex.bodyPart || '').toLowerCase();
-                        return bp === 'upper' || bp === 'full';
-                    }
-                    if (selectedType === 'lower') {
-                        const bp = (ex.bodyPart || '').toLowerCase();
-                        return bp === 'lower' || bp === 'full';
-                    }
                     return true;
                 }).map(ex => ex.exercise);
 
@@ -7956,7 +7918,6 @@ function regenerateRoutine() {
         // ── JUMI: Build system prompt + user message from slots ──
         function buildJumiPrompt(goals, contextTable, slots) {
             const durationLabel = selectedTime === 999 ? 'no time limit (all exercises)' : selectedTime + ' minutes';
-            const typeLabel = slots.type === 'upper' ? 'upper body' : slots.type === 'lower' ? 'lower body' : 'full body';
 
             // Build the slot brief for the system prompt
             let slotBrief = '';
@@ -7967,16 +7928,17 @@ function regenerateRoutine() {
                 slotBrief += data.pool.map(name => `  - ${name}`).join('\n') + '\n';
             }
 
-            const systemPrompt = `You are Jumi, a flexibility and mobility coach. Your job is to rank exercise candidates for each phase of a ${typeLabel} routine.
+            const systemPrompt = `You are Jumi, a flexibility and mobility coach. Your job is to select and rank exercise candidates for a routine.
 
 IMPORTANT RULES:
 - Only use exercises from the candidate pools below — exact names, no changes, no invented exercises.
 - Do NOT set durations, counts, or timing — the app handles all of that.
-- For each phase, return your top ranked candidates in priority order (best first), up to the candidate budget shown. You may return fewer if the pool is small.
+- For each phase, return your top ranked candidates in priority order (best first), up to the candidate budget shown.
 - Use the generate_routine tool to output your selections.
 - Use snake_case phase keys: warm_up, foam_roller, mobility, static_stretching, active_stretch, deep_stretch, cool_down.
-- Choose "short" or "long" hold at the routine level based on the user's goals and history.
-- In your text response, write 2–3 sentences explaining your selections — drawing on goals, history, and flexibility anatomy. Keep it natural.
+- Choose "short" or "long" hold based on the user's goals and history.
+- Choose body_type: "full", "upper", or "lower" based on the user's goals and history.
+- In your text response, write 2-3 sentences explaining your selections. Keep it natural, no markdown.
 
 CANDIDATE POOLS (rank these, do not add others):
 ${slotBrief}`;
@@ -7986,7 +7948,7 @@ Duration: ${durationLabel}
 Training history:
 ${contextTable}
 
-Please rank the candidates for each phase and return your selections using the generate_routine tool.`;
+Please choose hold, body_type, and rank the candidates for each phase using the generate_routine tool.`;
 
             return { systemPrompt, userMessage };
         }
@@ -8043,11 +8005,14 @@ Please rank the candidates for each phase and return your selections using the g
                     return;
                 }
 
-                // Apply Jumi's hold choice, then let generateRoutine do all the structural work
+                // Apply Jumi's choices, inject priority, run generateRoutine cleanly
                 selectedHold = routineData.hold || 'short';
                 longSession = selectedHold === 'long';
+                selectedType = routineData.body_type || 'full';
 
-                await generateRoutine(routineData);
+                const restore = applyJumiPriority(routineData);
+                await generateRoutine();
+                restore();
 
                 // Save and display
                 currentJumiRoutine = currentRoutine.map(e => ({...e}));
@@ -10653,7 +10618,7 @@ Please rank the candidates for each phase and return your selections using the g
                 <!-- Version Content -->
                 <div id="settingsVersionContent" class="settings-content-panel" style="display: none;">
                     <h2 style="margin-bottom: 8px;">Version</h2>
-                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">4.8</div>
+                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">4.9</div>
                     <div style="font-size: 14px; color: #86868b; margin-bottom: 4px;">flex.</div>
                     <div id="buildDateDisplay" style="font-size: 12px; color: #aeaeb2;"></div>
                 </div>

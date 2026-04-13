@@ -53,6 +53,7 @@ exports.handler = async function(event) {
                 type: 'object',
                 properties: {
                     hold: { type: 'string', enum: ['short', 'long'], description: 'Hold duration type' },
+                    body_type: { type: 'string', enum: ['full', 'upper', 'lower'], description: 'Body type: full, upper, or lower body' },
                     warm_up:           phaseSchema,
                     foam_roller:       phaseSchema,
                     mobility:          phaseSchema,
