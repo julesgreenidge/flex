@@ -4011,6 +4011,8 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                     const pendingRoutine = routineData;
                     appendChatAction('▶ Confirm routine build', async () => {
                         try {
+                            if (!selectedTime) selectedTime = 35;
+                            if (!selectedType) selectedType = appSettings.quickStartType || 'full';
                             selectedHold = pendingRoutine.hold || 'short';
                             longSession = selectedHold === 'long';
                             await generateRoutine(pendingRoutine);
@@ -4101,6 +4103,10 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
             thinking.textContent = 'Jumi is building your routine…';
             container.appendChild(thinking);
             container.scrollTop = container.scrollHeight;
+
+            if (!selectedTime) selectedTime = 35;
+            if (!selectedType) selectedType = appSettings.quickStartType || 'full';
+            if (!selectedHold) { selectedHold = appSettings.quickStartHold || 'short'; longSession = selectedHold === 'long'; }
 
             const goals = getJumiGoals();
             const contextTable = buildChatContext();
