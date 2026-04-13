@@ -1567,7 +1567,7 @@
             background: white;
         }
     </style>
-<meta name="build-date" content="06 Apr 2026">
+<meta name="build-date" content="13 Apr 2026">
 </head>
 <body>
     <!-- Splash Screen -->
@@ -4011,7 +4011,9 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                     const pendingRoutine = routineData;
                     appendChatAction('▶ Confirm routine build', async () => {
                         try {
-                            await buildJumiRoutine(pendingRoutine);
+                            selectedHold = pendingRoutine.hold || 'short';
+                            longSession = selectedHold === 'long';
+                            await generateRoutine(pendingRoutine);
                             window.loadRoutineFromChat(false);
                         } catch(e) {
                             appendChatMessage('jumi', '(Could not build routine — please try again.)');
@@ -4079,131 +4081,8 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
             document.getElementById('exApprovalModal').style.display = 'flex';
         }
 
-        async function buildJumiRoutine(jumiPhaseData) {
-            const originalTargetMins = appState.time; // Save before anything modifies state
-            const hold = jumiPhaseData.hold || 'short';
-            selectedHold = hold;
-            longSession = (hold === 'long');
-            if (!selectedType) selectedType = 'full';
-
-            const phaseOrder = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
-            const exerciseMap = {};
-            exercises.forEach(ex => { exerciseMap[ex.exercise.toLowerCase()] = ex; });
-
-            currentRoutine = [];
-            for (const phase of phaseOrder) {
-                const candidates = jumiPhaseData[phase];
-                if (!candidates || !Array.isArray(candidates) || candidates.length === 0) continue;
-                for (const candidate of candidates) {
-                    const libEx = exerciseMap[candidate.exercise.toLowerCase()];
-                    if (libEx) {
-                        currentRoutine.push({ ...libEx, sides: candidate.sides || libEx.sides });
-                    } else {
-                        currentRoutine.push({
-                            exercise: candidate.exercise,
-                            target: candidate.target || '',
-                            position: candidate.position || '',
-                            sides: candidate.sides || 1,
-                            bodyPart: candidate.bodyPart || 'full',
-                            phase: phase,
-                            duration: longSession ? 75 : 45,
-                            rest: 15
-                        });
-                    }
-                }
-            }
-
-            const savasana = exercises.find(ex => ex.exercise === 'Savasana');
-            if (savasana && !currentRoutine.find(ex => ex.exercise === 'Savasana')) {
-                currentRoutine.push({ ...savasana });
-            }
-            applyDurationSettings(currentRoutine);
-
-            // Trim or pad to hit target duration
-            if (originalTargetMins && originalTargetMins !== 999) {
-                const targetSecs = originalTargetMins * 60;
-                const tolerance = 90; // within 90 seconds is acceptable
-
-                // TRIM: remove exercises from stretch phases if over target
-                const trimPhases = ['Deep Stretch', 'Active Stretch', 'Static Stretching', 'Mobility', 'Foam Roller'];
-                let runningTotal = currentRoutine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0);
-                while (runningTotal > targetSecs + tolerance) {
-                    // Find last exercise in a trimmable phase (not Savasana, not Warm-Up, not Cool Down)
-                    let removed = false;
-                    for (const phase of trimPhases) {
-                        const idx = currentRoutine.map((e, i) => ({e, i}))
-                            .filter(({e}) => e.phase === phase)
-                            .pop();
-                        if (idx) {
-                            const exSecs = calculateExerciseTime(idx.e);
-                            currentRoutine.splice(idx.i, 1);
-                            runningTotal -= exSecs;
-                            removed = true;
-                            break;
-                        }
-                    }
-                    if (!removed) break; // nothing left to trim
-                }
-
-                // PAD: add stretch exercises if under target
-                const usedNames = new Set(currentRoutine.map(ex => ex.exercise.toLowerCase()));
-                const padPhases = ['Static Stretching', 'Active Stretch', 'Deep Stretch'];
-                const padPool = exercises.filter(ex =>
-                    padPhases.includes(ex.phase) &&
-                    !usedNames.has(ex.exercise.toLowerCase())
-                );
-                for (let i = padPool.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [padPool[i], padPool[j]] = [padPool[j], padPool[i]];
-                }
-                let padIdx = 0;
-                while (runningTotal < targetSecs - tolerance && padIdx < padPool.length) {
-                    const ex = { ...padPool[padIdx++] };
-                    applyDurationSettings([ex]);
-                    const exSecs = calculateExerciseTime(ex);
-                    const savIdx = currentRoutine.findIndex(e => e.exercise === 'Savasana');
-                    if (savIdx >= 0) currentRoutine.splice(savIdx, 0, ex);
-                    else currentRoutine.push(ex);
-                    runningTotal += exSecs;
-                    usedNames.add(ex.exercise.toLowerCase());
-                }
-            }
-
-            selectedTime = Math.round(currentRoutine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0) / 60);
-        }
-
-        // Try to extract phase-grouped routine JSON from Jumi's reply.
-        // Handles both <routine>{...}</routine> tags and raw JSON fallback.
-        function tryParseJumiRoutine(text) {
-            const knownPhases = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down'];
-            function isValidRoutine(obj) {
-                const keys = Object.keys(obj);
-                const phaseKeys = keys.filter(k => k !== 'hold');
-                return phaseKeys.length > 0 && phaseKeys.some(k => knownPhases.includes(k)) && phaseKeys.every(k => Array.isArray(obj[k]));
-            }
-            // 1. Try tagged format first
-            const tagMatch = text.match(/<routine>([\s\S]*?)<\/routine>/);
-            if (tagMatch) {
-                try { const r = JSON.parse(tagMatch[1].trim()); if (isValidRoutine(r)) return r; } catch(e) {}
-            }
-            // 2. Fallback: scan all { positions, try from each to every } position
-            let braceIdx = text.indexOf('{');
-            while (braceIdx !== -1) {
-                let closeIdx = text.lastIndexOf('}');
-                while (closeIdx > braceIdx) {
-                    try {
-                        const candidate = JSON.parse(text.slice(braceIdx, closeIdx + 1));
-                        if (isValidRoutine(candidate)) return candidate;
-                    } catch(e) {}
-                    closeIdx = text.lastIndexOf('}', closeIdx - 1);
-                }
-                braceIdx = text.indexOf('{', braceIdx + 1);
-            }
-            return null;
-        }
-
         window.loadRoutineFromChat = function(keepOpen) {
-            // currentRoutine already set by buildJumiRoutine → generateRoutine
+            // currentRoutine already set by generateRoutine(jumiPools)
             currentJumiRoutine = currentRoutine.map(e => ({...e}));
             selectedType = 'jumi';
             if (!keepOpen) window.closeJumiChat();
@@ -4225,30 +4104,14 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
 
             const goals = getJumiGoals();
             const contextTable = buildChatContext();
-            const exerciseLibrary = exercises.map(e => e.exercise).join(', ');
-            const durationSettings2 = `Warm-Up: ${appSettings.warmupShortDuration||30}s | Foam Roller: ${appSettings.foamrollerShortDuration||30}s | Mobility: ${appSettings.mobilityShortDuration||45}s | Static Stretching: ${appSettings.staticstretchingShortDuration||45}s | Active Stretch: ${appSettings.activestretchShortDuration||30}s | Deep Stretch: ${appSettings.deepstretchShortDuration||90}s | Splits: ${appSettings.splitsShortDuration||60}s | Cool Down: ${appSettings.cooldownShortDuration||30}s | Rest: ${appSettings.shortHoldRest||15}s`;
-            const currentRoutineSummary2 = (currentRoutine && currentRoutine.length > 0)
-                ? `The user currently has this ${selectedType||'simple'} routine on screen (${currentRoutine.length} exercises):\n` +
-                  currentRoutine.map(e => `${e.exercise} | ${e.phase} | ${e.target}`).join('\n')
-                : 'No routine currently on screen.';
-            const targetSecs = selectedTime === 999 ? null : selectedTime * 60;
-            const systemPrompt = `You are Jumi, a flexibility and mobility coach. Generate a personalised routine immediately.\n
-
-Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
-Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' minutes'}
-Exercise library (ONLY use these exact names): ${exerciseLibrary}
-Current routine on screen: ${currentRoutineSummary2}
-Training history: ${contextTable}
-
-hold at the routine level must be "short" or "long". Choose based on the user's goals and history. When generating a routine: use the generate_routine tool. In your text response, write 2-3 sentences explaining the routine — drawing on goals, history patterns, and anatomy/mobility knowledge. Weave naturally.
-Use snake_case keys for phases: warm_up, foam_roller, mobility, static_stretching, active_stretch, deep_stretch, splits, cool_down.
-Include all relevant phases — Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Cool Down. Active Stretch and Deep Stretch are valid phases, include them when relevant to the user's goals.`;
+            const slots = buildJumiSlots();
+            const { systemPrompt, userMessage } = buildJumiPrompt(goals, contextTable, slots);
 
             try {
                 const response = await fetch('https://flexibilityapp3849.netlify.app/.netlify/functions/coach', {
                     method: 'POST',
                     headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({ mode: 'jumi_generate', system: systemPrompt, messages: [{role:'user',content:'Generate a routine for me based on my history and goals.'}] })
+                    body: JSON.stringify({ mode: 'jumi_generate', system: systemPrompt, messages: [{role:'user',content:userMessage}] })
                 });
                 const data = await response.json();
                 const reply = (data.reply || '').trim();
@@ -4259,7 +4122,10 @@ Include all relevant phases — Warm-Up, Foam Roller, Mobility, Static Stretchin
 
                 if (routineData) {
                     try {
-                        await buildJumiRoutine(routineData);
+                        // Apply hold from Jumi's choice
+                        selectedHold = routineData.hold || 'short';
+                        longSession = (selectedHold === 'long');
+                        await generateRoutine(routineData);
                         window.loadRoutineFromChat(false);
                     } catch(e) {
                         appendChatMessage('jumi', '(Could not build routine — please try again.)');
@@ -8006,24 +7872,134 @@ function regenerateRoutine() {
             };
         }
 
-        // ── JUMI: AI-driven routine generation ──
+        // ── JUMI: Slot builder — computes exact per-phase counts and candidate pools ──
+        function buildJumiSlots() {
+            const exercisesForGen = exercises.map(ex => ({...ex}));
+            applyDurationSettings(exercisesForGen);
+
+            const isAllExercises = selectedTime === 999;
+            const targetMinutes = selectedTime || 35;
+
+            // Determine config key (mirrors generateRoutine logic exactly)
+            let configKey;
+            if (isAllExercises) {
+                configKey = 999;
+            } else if (targetMinutes <= 25) {
+                configKey = 25;
+            } else if (targetMinutes <= 30) {
+                configKey = 30;
+            } else if (targetMinutes <= 35) {
+                configKey = 35;
+            } else if (targetMinutes <= 40) {
+                configKey = 40;
+            } else if (targetMinutes <= 45) {
+                configKey = 45;
+            } else if (targetMinutes <= 50) {
+                configKey = 50;
+            } else {
+                configKey = 60;
+            }
+
+            const phaseConfig = {
+                25: { 'Warm-Up':{min:2,max:3},'Foam Roller':{min:2,max:3},'Mobility':{min:2,max:3},'Static Stretching':{min:4,max:8},'Active Stretch':{min:1,max:1},'Deep Stretch':{min:1,max:1},'Cool Down':{min:1,max:2} },
+                30: { 'Warm-Up':{min:2,max:3},'Foam Roller':{min:2,max:3},'Mobility':{min:2,max:3},'Static Stretching':{min:4,max:10},'Active Stretch':{min:2,max:2},'Deep Stretch':{min:2,max:2},'Cool Down':{min:1,max:2} },
+                35: { 'Warm-Up':{min:2,max:3},'Foam Roller':{min:2,max:3},'Mobility':{min:2,max:3},'Static Stretching':{min:5,max:11},'Active Stretch':{min:2,max:3},'Deep Stretch':{min:2,max:3},'Cool Down':{min:1,max:2} },
+                40: { 'Warm-Up':{min:2,max:3},'Foam Roller':{min:2,max:3},'Mobility':{min:2,max:3},'Static Stretching':{min:5,max:13},'Active Stretch':{min:2,max:4},'Deep Stretch':{min:2,max:4},'Cool Down':{min:1,max:3} },
+                45: { 'Warm-Up':{min:2,max:3},'Foam Roller':{min:2,max:3},'Mobility':{min:2,max:3},'Static Stretching':{min:7,max:15},'Active Stretch':{min:2,max:4},'Deep Stretch':{min:2,max:4},'Cool Down':{min:1,max:3} },
+                50: { 'Warm-Up':{min:2,max:3},'Foam Roller':{min:2,max:3},'Mobility':{min:2,max:3},'Static Stretching':{min:9,max:17},'Active Stretch':{min:3,max:5},'Deep Stretch':{min:3,max:5},'Cool Down':{min:1,max:3} },
+                60: { 'Warm-Up':{min:2,max:3},'Foam Roller':{min:2,max:3},'Mobility':{min:2,max:3},'Static Stretching':{min:11,max:21},'Active Stretch':{min:3,max:6},'Deep Stretch':{min:3,max:6},'Cool Down':{min:1,max:3} },
+                999: { 'Warm-Up':{min:0,max:999},'Foam Roller':{min:0,max:999},'Mobility':{min:0,max:999},'Static Stretching':{min:0,max:999},'Active Stretch':{min:0,max:999},'Deep Stretch':{min:0,max:999},'Cool Down':{min:0,max:999} }
+            };
+
+            const config = phaseConfig[configKey] || phaseConfig[60];
+
+            // Build filtered pools per phase (same bodyPart logic as generateRoutine)
+            const phases = ['Warm-Up', 'Foam Roller', 'Mobility', 'Static Stretching', 'Active Stretch', 'Deep Stretch', 'Cool Down'];
+            const result = { type: selectedType || 'full', hold: selectedHold || 'short', phases: {} };
+
+            for (const phase of phases) {
+                const conf = config[phase] || {min:1, max:3};
+                // Use max slots — generateRoutine will trim to fit timing; Jumi needs the full candidate set
+                const slots = isAllExercises ? 999 : conf.max;
+                // Candidate budget: slots + 3 or 1.5× slots, whichever is larger (ensures variety)
+                const candidateBudget = isAllExercises ? 999 : Math.max(slots + 3, Math.ceil(slots * 1.5));
+
+                // For Active/Deep Stretch, pool from Static Stretching phase exercises (they get promoted)
+                const sourcePhase = (phase === 'Active Stretch' || phase === 'Deep Stretch') ? 'Static Stretching' : phase;
+
+                let pool = exercisesForGen.filter(ex => {
+                    if (ex.exercise === 'Savasana') return false;
+                    if (ex.phase !== sourcePhase) return false;
+                    if (selectedType === 'upper') {
+                        const bp = (ex.bodyPart || '').toLowerCase();
+                        return bp === 'upper' || bp === 'full';
+                    }
+                    if (selectedType === 'lower') {
+                        const bp = (ex.bodyPart || '').toLowerCase();
+                        return bp === 'lower' || bp === 'full';
+                    }
+                    return true;
+                }).map(ex => ex.exercise);
+
+                result.phases[phase] = { slots, candidateBudget, pool };
+            }
+
+            return result;
+        }
+
+        // ── JUMI: Build system prompt + user message from slots ──
+        function buildJumiPrompt(goals, contextTable, slots) {
+            const durationLabel = selectedTime === 999 ? 'no time limit (all exercises)' : selectedTime + ' minutes';
+            const typeLabel = slots.type === 'upper' ? 'upper body' : slots.type === 'lower' ? 'lower body' : 'full body';
+
+            // Build the slot brief for the system prompt
+            let slotBrief = '';
+            for (const [phase, data] of Object.entries(slots.phases)) {
+                if (data.pool.length === 0) continue;
+                const n = data.candidateBudget === 999 ? 'all' : data.candidateBudget;
+                slotBrief += `\n${phase} (need up to ${data.slots === 999 ? 'all' : data.slots} exercise${data.slots === 1 ? '' : 's'} — return your top ${n} ranked candidates):\n`;
+                slotBrief += data.pool.map(name => `  - ${name}`).join('\n') + '\n';
+            }
+
+            const systemPrompt = `You are Jumi, a flexibility and mobility coach. Your job is to rank exercise candidates for each phase of a ${typeLabel} routine.
+
+IMPORTANT RULES:
+- Only use exercises from the candidate pools below — exact names, no changes, no invented exercises.
+- Do NOT set durations, counts, or timing — the app handles all of that.
+- For each phase, return your top ranked candidates in priority order (best first), up to the candidate budget shown. You may return fewer if the pool is small.
+- Use the generate_routine tool to output your selections.
+- Use snake_case phase keys: warm_up, foam_roller, mobility, static_stretching, active_stretch, deep_stretch, cool_down.
+- Choose "short" or "long" hold at the routine level based on the user's goals and history.
+- In your text response, write 2–3 sentences explaining your selections — drawing on goals, history, and flexibility anatomy. Keep it natural.
+
+CANDIDATE POOLS (rank these, do not add others):
+${slotBrief}`;
+
+            const userMessage = `Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
+Duration: ${durationLabel}
+Training history:
+${contextTable}
+
+Please rank the candidates for each phase and return your selections using the generate_routine tool.`;
+
+            return { systemPrompt, userMessage };
+        }
+
+        // ── JUMI: AI-driven routine generation (Path A — main card button) ──
         async function generateJumiRoutine(userPrompt) {
             const btn = document.getElementById('jumiQuickBtn');
-            if (btn) { btn.disabled = true; }
+            if (btn) btn.disabled = true;
             const _jqs = document.getElementById('jumiQuickSubtitle');
             if (_jqs) _jqs.textContent = 'Thinking…';
 
-            // Default duration if not set
-            if (!selectedTime) {
-                selectedTime = 35;
-            }
+            if (!selectedTime) selectedTime = 35;
+            if (!selectedType) selectedType = appSettings.quickStartType || 'full';
+            if (!selectedHold) { selectedHold = appSettings.quickStartHold || 'short'; longSession = selectedHold === 'long'; }
 
+            // Show thinking placeholder in routine panel
             document.getElementById('jumiExplanation').style.display = 'none';
             document.getElementById('floatingStartSimple').style.display = 'none';
             document.getElementById('floatingStartJumi').style.display = 'none';
-            
-
-            // Clear RHS and show thinking placeholder
             document.getElementById('routineDisplayWrapper').style.display = 'block';
             document.getElementById('customDisplay').style.display = 'none';
             if (domCache.routineDisplay) {
@@ -8033,46 +8009,11 @@ function regenerateRoutine() {
                 </div>`;
             }
 
-            const isAllMode = selectedTime === 999;
-            const ctx = buildJumiContext();
             const goals = getJumiGoals();
-            const durationTarget = isAllMode ? 'all exercises, no time limit' : `${selectedTime} minutes`;
-
-            // Build the exercise library summary for Jumi
-            const exerciseLibrary = exercises.map(e =>
-                `${e.exercise} | phase:${e.phase} | target:${e.target} | position:${e.position} | sides:${e.sides} | bodyPart:${e.bodyPart}`
-            ).join('\n');
-
-            const systemPrompt = `You are Jumi, a flexibility coach. Build personalised routines based on user history and goals. Use anatomical knowledge of secondary muscles when setting durations.
-
-Respond with ONLY valid JSON:
-{"routine":[{"exercise":"exact library name","phase":"exact library phase","target":"muscle","position":"position","sides":1,"bodyPart":"upper/lower/full","duration":45,"rest":15}],"explanation":"2-3 sentences. Separate each sentence with a blank line. No markdown."}
-
-DURATION RULES:
-- Warm-Up: 20-40s. Foam Roller: 25-60s. Mobility: 25-45s. Cool Down: 45-60s.
-- Static Stretching: vary by goal relevance and recency — goal-relevant exercises get longer holds.
-- Active Stretch: same duration logic as Static Stretching (more intensity, not longer).
-- Deep Stretch: 1.5-2x a comparable Static Stretch duration.
-- Final Rest (Savasana): exactly 120s. MANDATORY last exercise.
-
-SELECTION RULES:
-- Only use exercises from the library (exact names). Phase order: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits (optional), Cool Down, Final Rest.
-- Target: ${durationTarget}. Focus on getting RATIOS right — the app scales to fit.`;
-
-            const promptSection = userPrompt ? `\n\nUser note: ${userPrompt}` : '';
-            const userMessage = `Goals: ${goals.length > 0 ? goals.join(', ') : 'General flexibility maintenance'}${promptSection}
-
-History (last 728 days):
-${JSON.stringify(ctx, null, 2)}
-
-Exercise library:
-${exerciseLibrary}
-
-Please build an optimised routine based on my goals, history, and your knowledge of flexibility science.
-
-DURATION GUIDE: Target duration is ${durationTarget}. Include enough exercises to fill this time — for reference, a 45s exercise with 15s rest on 2 sides takes 2 minutes. Err on the side of including slightly more exercises rather than fewer; the app will trim to fit.
-
-Return only the JSON.`;
+            const contextTable = buildChatContext();
+            const slots = buildJumiSlots();
+            const promptNote = userPrompt ? `\n\nUser note: ${userPrompt}` : '';
+            const { systemPrompt, userMessage } = buildJumiPrompt(goals, contextTable, slots);
 
             try {
                 const response = await fetch('https://flexibilityapp3849.netlify.app/.netlify/functions/coach', {
@@ -8081,167 +8022,59 @@ Return only the JSON.`;
                     body: JSON.stringify({
                         mode: 'jumi_generate',
                         system: systemPrompt,
-                        messages: [{ role: 'user', content: userMessage }]
+                        messages: [{ role: 'user', content: userMessage + promptNote }]
                     })
                 });
 
                 const data = await response.json();
-                const rawReply = data.reply || '';
+                const routineData = data.routine || null;
+                const explanation = (data.reply || '').trim();
 
-                // Parse JSON from response
-                let parsed;
-                try {
-                    // Strip any markdown code fences if present
-                    const cleaned = rawReply.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-                    parsed = JSON.parse(cleaned);
-                } catch(e) {
-                    console.error('JSON parse error:', e);
-                    console.error('Raw reply was:', rawReply);
+                if (!routineData) {
+                    if (domCache.routineDisplay) domCache.routineDisplay.innerHTML = '<div style="padding:40px;text-align:center;color:#86868b;">Jumi could not build a routine \u2014 please try again.</div>';
                     if (btn) btn.disabled = false;
                     if (_jqs) _jqs.textContent = 'AI routine';
-                    await customAlert('Jumi returned: ' + rawReply.substring(0, 300));
                     return;
                 }
 
-                // Load the routine into the app
-                currentRoutine = parsed.routine;
-                selectedType = 'full';
-                selectedHold = 'short';
+                // Apply Jumi's hold choice, then let generateRoutine do all the structural work
+                selectedHold = routineData.hold || 'short';
+                longSession = selectedHold === 'long';
 
-                // Log Jumi's raw output before adjustment
-                console.log('Jumi raw durations:', currentRoutine.map(e => `${e.exercise}: ${e.duration}s x${e.sides}`).join(', '));
+                await generateRoutine(routineData);
 
-                // Trim or pad routine to hit duration target
-                if (selectedTime !== 999) {
-                    const targetSecs = selectedTime * 60;
-                    const calcTime = ex => (ex.duration + ex.rest) * ex.sides;
-                    let total = currentRoutine.reduce((s, e) => s + calcTime(e), 0);
-
-                    // Respect splits frequency setting
-                    const splitsFreq = appSettings.splitsFrequency ?? 0.1;
-                    const splitsForced = window.splitsForced || false;
-                    if (!splitsForced && Math.random() >= splitsFreq) {
-                        // Remove splits exercises if frequency check fails
-                        const before = currentRoutine.length;
-                        currentRoutine = currentRoutine.filter(e => e.phase !== 'Splits');
-                    }
-
-                    // Ensure Savasana is always present
-                    const hasFinalRest = currentRoutine.some(e => e.phase === 'Final Rest');
-                    if (!hasFinalRest) {
-                        const savasana = exercises.find(e => e.exercise === 'Savasana');
-                        if (savasana) currentRoutine.push({...savasana});
-                    }
-                    total = currentRoutine.reduce((s, e) => s + calcTime(e), 0);
-
-                    // Scale routine to target duration while preserving proportions
-                    // Only Final Rest is protected; everything else scales
-                    const protectedPhases = new Set(['Final Rest']);
-                    const scalableExercises = currentRoutine.filter(e => !protectedPhases.has(e.phase));
-                    const scalableTime = scalableExercises.reduce((s, e) => s + calcTime(e), 0);
-
-                    if (scalableTime > 0) {
-                        const protectedTime = currentRoutine
-                            .filter(e => protectedPhases.has(e.phase))
-                            .reduce((s, e) => s + calcTime(e), 0);
-                        const availableTime = targetSecs - protectedTime;
-                        const scaleFactor = availableTime / scalableTime;
-
-                        // Group scalable exercises by phase, preserve phase % and intra-phase %
-                        const phaseGroups = {};
-                        scalableExercises.forEach(ex => {
-                            if (!phaseGroups[ex.phase]) phaseGroups[ex.phase] = [];
-                            phaseGroups[ex.phase].push(ex);
-                        });
-
-                        // Scale each phase's total time, then each exercise within the phase
-                        Object.values(phaseGroups).forEach(group => {
-                            const phaseTotal = group.reduce((s, e) => s + calcTime(e), 0);
-                            const newPhaseTotal = phaseTotal * scaleFactor;
-                            group.forEach(ex => {
-                                const exShare = calcTime(ex) / phaseTotal;
-                                const newExTime = newPhaseTotal * exShare;
-                                const newDuration = Math.max(10, (newExTime / ex.sides) - ex.rest);
-                                ex.duration = newDuration;
-                            });
-                        });
-
-                        total = currentRoutine.reduce((s, e) => s + calcTime(e), 0);
-                    }
-
-                    // Recalculate total after scaling
-                    total = currentRoutine.reduce((s, e) => s + calcTime(e), 0);
-
-                    // If over, trim durations proportionally across non-protected exercises
-                    if (total > targetSecs) {
-                        const trimmable = currentRoutine.filter(e => !protectedPhases.has(e.phase));
-                        const trimmableTime = trimmable.reduce((s, e) => s + calcTime(e), 0);
-                        if (trimmableTime > 0) {
-                            const excess = total - targetSecs;
-                            trimmable.forEach(ex => {
-                                const share = calcTime(ex) / trimmableTime;
-                                const removePerSide = Math.floor((excess * share) / ex.sides);
-                                if (removePerSide >= 1 && ex.duration - removePerSide >= 10) {
-                                    ex.duration -= removePerSide;
-                                    total -= removePerSide * ex.sides;
-                                }
-                            });
-                        }
-                        // If still over after trimming, remove whole exercises as last resort
-                        if (total > targetSecs) {
-                            for (let i = currentRoutine.length - 1; i >= 0 && total > targetSecs; i--) {
-                                if (!protectedPhases.has(currentRoutine[i].phase)) {
-                                    total -= calcTime(currentRoutine[i]);
-                                    currentRoutine.splice(i, 1);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Save Jumi routine for restore
+                // Save and display
                 currentJumiRoutine = currentRoutine.map(e => ({...e}));
                 const _jgpb = document.getElementById('jumiGeneratePanelBtn');
                 if (_jgpb) _jgpb.textContent = '↺ Refresh';
 
-
-                // Switch RHS to routine display (away from custom builder)
                 document.getElementById('routineDisplayWrapper').style.display = 'block';
                 document.getElementById('customDisplay').style.display = 'none';
                 const _jcr = document.getElementById('customNavActions');
                 if (_jcr) _jcr.style.display = 'none';
 
-                // Render the routine using the same path as generateRoutine
                 initAudio();
                 displayRoutine();
                 updateFloatingButtons();
                 document.getElementById('floatingEditBtn').style.display = 'flex';
                 document.getElementById('floatingStartSimple').style.display = 'none';
                 document.getElementById('floatingStartJumi').style.display = 'block';
-                
 
-                // Update Jumi card icon
                 const _ji = document.getElementById('jumiQuickIcon');
                 if (_ji) _ji.textContent = '↺';
 
-
-                // Show explanation
-                if (parsed.explanation && !isAllMode) {
+                // Show explanation if present
+                if (explanation) {
                     const jumiTip = document.getElementById('jumiExplanationText');
-                    if (jumiTip) jumiTip.innerHTML = parsed.explanation
-                        .replace(/\n\n/g, '</p><p style="margin:0 0 8px;">')
-                        .replace(/\n/g, '<br>');
-                    document.getElementById('jumiExplanation').style.display = 'block';
-                    // Reset chevron to closed state
-                    const chev = document.getElementById('jumiExplanationChevron');
-                    if (chev) chev.style.transform = '';
-                    const txt = document.getElementById('jumiExplanationText');
-                    if (txt) txt.style.display = 'none';
+                    if (jumiTip) {
+                        jumiTip.innerHTML = explanation.split(/\n\n+/).map(s => `<p style="margin:0 0 8px 0;">${s}</p>`).join('');
+                        document.getElementById('jumiExplanation').style.display = 'block';
+                    }
                 }
 
             } catch(err) {
                 console.error('Jumi generation error:', err);
-                await customAlert('Could not reach Jumi. Please check your connection and try again.');
+                if (domCache.routineDisplay) domCache.routineDisplay.innerHTML = '<div style="padding:40px;text-align:center;color:#86868b;">Could not reach Jumi. Please check your connection.</div>';
             }
 
             if (btn) btn.disabled = false;
@@ -10814,7 +10647,7 @@ Return only the JSON.`;
                 <!-- Version Content -->
                 <div id="settingsVersionContent" class="settings-content-panel" style="display: none;">
                     <h2 style="margin-bottom: 8px;">Version</h2>
-                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">4.7</div>
+                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">4.8</div>
                     <div style="font-size: 14px; color: #86868b; margin-bottom: 4px;">flex.</div>
                     <div id="buildDateDisplay" style="font-size: 12px; color: #aeaeb2;"></div>
                 </div>
