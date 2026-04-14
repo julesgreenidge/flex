@@ -4002,7 +4002,7 @@
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
 Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' minutes'}
 
-Exercise library (${exercises.length} exercises already in the user's library — do NOT recommend these):
+Exercise library — these ${exercises.length} exercises are ALREADY in the user's library. Recommending any of them is an error. Do not suggest, mention, or include any of these in your recommendations under any circumstances, even under a different name or variation:
 ${exerciseLibraryList}
 
 Current routine on screen (IMPORTANT — this is live data, trust it even if you previously said you couldn't see a routine): ${currentRoutineSummary}
@@ -8079,8 +8079,8 @@ Please rank the candidates for each phase using the generate_routine tool.`;
         async function getJumiExplanation(routine, goals, userPrompt) {
             const exerciseList = routine.map(e => `${e.exercise} (${e.phase}, ${e.target})`).join(', ');
             const focusNote = userPrompt ? ` The user's focus today was: "${userPrompt}".` : '';
-            const system = `You are Jumi, a long-term flexibility and mobility coach. Write a 100-150 word explanation of a routine that has already been built. Be specific about the exercises chosen and why they serve the user's long-term goals and history. No markdown, no bullet points, plain prose only.`;
-            const message = `Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}.${focusNote}\n\nThe routine that was built contains these exercises:\n${exerciseList}\n\nExplain this routine in 100-150 words from a long-term coaching perspective. Reference specific exercises by name.`;
+            const system = `You are Jumi, a long-term flexibility and mobility coach. Write a 100-150 word explanation of a routine that has already been built. Write in 3 short paragraphs, each 2-3 sentences. Each paragraph should cover a different aspect: 1) the main theme or goal of the routine, 2) specific exercise choices and why, 3) long-term benefit. Be specific — reference exercises by name. No markdown, no bullet points, no lists. Leave a blank line between each paragraph.`;
+            const message = `Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}.${focusNote}\n\nThe routine that was built contains these exercises:\n${exerciseList}\n\nExplain this routine in 3 short paragraphs (100-150 words total). Reference specific exercises by name.`;
             try {
                 const response = await fetch('https://flexibilityapp3849.netlify.app/.netlify/functions/coach', {
                     method: 'POST',
