@@ -52,7 +52,6 @@ exports.handler = async function(event) {
             input_schema: {
                 type: 'object',
                 properties: {
-                    body_type: { type: 'string', enum: ['full', 'upper', 'lower'], description: 'Body type: full, upper, or lower body' },
                     warm_up:           phaseSchema,
                     foam_roller:       phaseSchema,
                     mobility:          phaseSchema,
@@ -119,7 +118,7 @@ exports.handler = async function(event) {
                 } else if (block.type === 'tool_use' && block.name === 'generate_routine') {
                     const raw = block.input;
                     // Keep snake_case keys so frontend applyJumiPriority can find them
-                    routine = { body_type: raw.body_type || 'full' };
+                    routine = {};
                     for (const snake of Object.keys(PHASE_MAP)) {
                         if (raw[snake] && raw[snake].length > 0) {
                             routine[snake] = raw[snake];

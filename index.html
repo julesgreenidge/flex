@@ -3685,9 +3685,10 @@
         // ── ENTER MODE ──
         // Single function for all mode transitions — sets state, UI, colours consistently
         function enterMode(mode) {
+            const previousMode = appState.mode;
             appState.mode = mode;
-            // Reset mode-specific routine flags
-            appState._quickRoutineReady = false;
+            // Reset mode-specific routine flags only when switching modes
+            if (previousMode !== 'quick') appState._quickRoutineReady = false;
             appState._starredRoutineLoaded = false;
             const rw = document.getElementById('routineDisplayWrapper');
             const cd = document.getElementById('customDisplay');
@@ -4013,7 +4014,7 @@ Rules:
 - Reference the user's actual training data where relevant.
 - Be direct and specific. No filler.
 
-body_type must be \"full\", \"upper\", or \"lower\" — choose based on what the user asks for or their goals. Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits, Cool Down. Only include phases relevant to the user's goals.
+Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits, Cool Down. Only include phases relevant to the user's goals.
 
 CRITICAL: If the user asks you to suggest or recommend any exercises not already in their library, you MUST include one <exercise> block per recommended exercise at the end of your response — no exceptions. Use this exact format for EVERY recommended exercise:
 <exercise>{"exercise":"name","phase":"phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}</exercise>
@@ -4051,9 +4052,8 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                             if (!selectedType) selectedType = appSettings.quickStartType || 'full';
                             longSession = selectedHold === 'long';
                             selectedType = pendingRoutine.body_type || selectedType;
-                            const restore = applyJumiPriority(pendingRoutine);
-                            await generateRoutine();
-                            restore();
+                            const prioritised = applyJumiPriority(pendingRoutine);
+                            await generateRoutine(prioritised);
                             window.loadRoutineFromChat(false);
                         } catch(e) {
                             appendChatMessage('jumi', '(Could not build routine — please try again.)');
@@ -4170,9 +4170,8 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                         longSession = (selectedHold === 'long');
                         selectedType = routineData.body_type || 'full';
                         // Inject Jumi's ranked picks to front of each phase pool
-                        const restore = applyJumiPriority(routineData);
-                        await generateRoutine();
-                        restore();
+                        const prioritised = applyJumiPriority(routineData);
+                        await generateRoutine(prioritised);
                         window.loadRoutineFromChat(false);
                     } catch(e) {
                         appendChatMessage('jumi', '(Could not build routine — please try again.)');
@@ -5673,7 +5672,7 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
         }
 
         // ===== ROUTINE GENERATION =====
-        async function generateRoutine() {
+        async function generateRoutine(prioritisedExercises) {
             // Hide start button to prevent starting outdated routine if user re-generates
             document.getElementById('floatingStartSimple').style.display = 'none';
             
@@ -5709,7 +5708,8 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
             
             
             // Deep-copy exercises so we don't mutate the master array with duration settings
-            const exercisesForGen = exercises.map(ex => ({...ex}));
+            // If prioritisedExercises provided (Jumi mode), use that ordering directly
+            const exercisesForGen = (prioritisedExercises || exercises).map(ex => ({...ex}));
             applyDurationSettings(exercisesForGen);
             
             const targetMinutes = selectedTime;
@@ -7910,9 +7910,8 @@ function regenerateRoutine() {
             };
         }
 
-        // ── JUMI: Priority injector — moves Jumi's ranked picks to front of each phase pool ──
-        // routineData is the tool output: { hold, body_type, warm_up: [...], static_stretching: [...], ... }
-        // Returns a restore function that puts exercises back to original order.
+        // ── JUMI: Priority injector — returns a reordered copy of exercises with Jumi's picks at front ──
+        // routineData is the tool output with snake_case phase keys
         function applyJumiPriority(routineData) {
             const PHASE_MAP = {
                 warm_up: 'Warm-Up',
@@ -7925,38 +7924,34 @@ function regenerateRoutine() {
                 cool_down: 'Cool Down'
             };
 
-            const original = exercises.slice();
+            // Work on a copy — never mutate the master array
+            const reordered = exercises.slice();
 
             for (const [snakeKey, displayPhase] of Object.entries(PHASE_MAP)) {
                 const candidates = routineData[snakeKey];
                 if (!candidates || candidates.length === 0) continue;
 
-                // Build ordered list of names Jumi ranked (best first)
                 const rankedNames = candidates.map(c => c.exercise).filter(Boolean);
                 if (rankedNames.length === 0) continue;
 
-                // Find which exercises in the global array belong to this phase
-                const phaseExercises = exercises.filter(e => e.phase === displayPhase);
                 const rankedSet = new Set(rankedNames);
+                const phaseExercises = reordered.filter(e => e.phase === displayPhase);
 
-                // Ranked exercises in Jumi's order, then remaining exercises in original order
+                // Ranked first (in Jumi's order), then rest
                 const ranked = rankedNames.map(name => phaseExercises.find(e => e.exercise === name)).filter(Boolean);
                 const rest = phaseExercises.filter(e => !rankedSet.has(e.exercise));
-                const reordered = [...ranked, ...rest];
+                const phaseReordered = [...ranked, ...rest];
 
-                // Replace in the exercises array (preserve positions of other phases)
+                // Replace phase slots in reordered array
                 let phaseIdx = 0;
-                for (let i = 0; i < exercises.length; i++) {
-                    if (exercises[i].phase === displayPhase && phaseIdx < reordered.length) {
-                        exercises[i] = reordered[phaseIdx++];
+                for (let i = 0; i < reordered.length; i++) {
+                    if (reordered[i].phase === displayPhase && phaseIdx < phaseReordered.length) {
+                        reordered[i] = phaseReordered[phaseIdx++];
                     }
                 }
             }
 
-            return function restore() {
-                exercises.length = 0;
-                original.forEach(e => exercises.push(e));
-            };
+            return reordered;
         }
 
         // ── JUMI: Slot builder — computes exact per-phase counts and candidate pools ──
@@ -8047,7 +8042,6 @@ IMPORTANT RULES:
 - For each phase, return your top ranked candidates in priority order (best first), up to the candidate budget shown.
 - Use the generate_routine tool to output your selections.
 - Use snake_case phase keys: warm_up, foam_roller, mobility, static_stretching, active_stretch, deep_stretch, cool_down.
-- Choose body_type: "full", "upper", or "lower" based on the user's goals and history.
 - In your text response, write 2-3 sentences explaining your selections. Keep it natural, no markdown.
 
 CANDIDATE POOLS (rank these, do not add others):
@@ -8058,7 +8052,7 @@ Duration: ${durationLabel}
 Training history:
 ${contextTable}
 
-Please choose body_type and rank the candidates for each phase using the generate_routine tool.`;
+Please rank the candidates for each phase using the generate_routine tool.`;
 
             return { systemPrompt, userMessage };
         }
@@ -8119,9 +8113,8 @@ Please choose body_type and rank the candidates for each phase using the generat
                 longSession = selectedHold === 'long';
                 selectedType = routineData.body_type || 'full';
 
-                const restore = applyJumiPriority(routineData);
-                await generateRoutine();
-                restore();
+                const prioritised = applyJumiPriority(routineData);
+                await generateRoutine(prioritised);
 
                 // Save and display
                 currentJumiRoutine = currentRoutine.map(e => ({...e}));
