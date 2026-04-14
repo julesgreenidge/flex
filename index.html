@@ -1692,6 +1692,54 @@
                         <button class="hold-btn" data-hold="long">Long Hold</button>
                     </div>
                 </div>
+                <!-- Optional collapsible — shared between Quick Start and Jumi -->
+                <div style="margin-bottom:14px;">
+                    <button onclick="toggleOptional()" id="optionalToggle" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:none;border:none;padding:4px 0;cursor:pointer;">
+                        <div style="display:flex;align-items:center;gap:10px;flex:1;">
+                            <div style="flex:1;height:1px;background:#e5e5e7;"></div>
+                            <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:#aaa;">Optional</span>
+                            <div style="flex:1;height:1px;background:#e5e5e7;"></div>
+                        </div>
+                        <svg id="optionalChevron" width="10" height="10" viewBox="0 0 10 6" fill="#aaa" style="margin-left:8px;flex-shrink:0;transition:transform 0.2s;"><path d="M0 0 L10 0 L5 6 Z"/></svg>
+                    </button>
+                    <div id="optionalSection" style="display:none;">
+                        <!-- Focus -->
+                        <div class="section" style="margin-top:10px;">
+                            <div class="section-title" style="color:#86868b;">Focus <span class="info-icon">i<span class="info-tooltip">Optionally bias the routine towards a specific muscle group.<br><br>The generator will prioritise exercises targeting that area while still including other phases.</span></span></div>
+                            <select id="focusSelect">
+                                <option value="">None</option>
+                                <option value="Adductors">Adductors</option>
+                                <option value="Ankles">Ankles</option>
+                                <option value="Back">Back</option>
+                                <option value="Calves">Calves</option>
+                                <option value="Chest">Chest</option>
+                                <option value="Full Body">Full Body</option>
+                                <option value="Glutes">Glutes</option>
+                                <option value="Hamstrings">Hamstrings</option>
+                                <option value="Hips">Hips</option>
+                                <option value="Knees">Knees</option>
+                                <option value="Lower Spine">Lower Spine</option>
+                                <option value="Neck">Neck</option>
+                                <option value="Quads">Quads</option>
+                                <option value="Shoulders">Shoulders</option>
+                                <option value="Spine">Spine</option>
+                                <option value="Upper Spine">Upper Spine</option>
+                                <option value="Wrists">Wrists</option>
+                            </select>
+                        </div>
+                        <!-- Splits -->
+                        <div class="section" id="splitsSection">
+                            <div class="section-title" style="color:#86868b;">Front Splits (Optional) <span class="info-icon">i<span class="info-tooltip" style="left:50%;right:auto;top:auto;bottom:20px;transform:translateX(-50%);">Tick this to guarantee a front splits exercise is included in the routine.<br><br>The frequency of automatic inclusion (without ticking) can be adjusted in Settings.</span></span></div>
+                            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;">
+                                <span style="font-size:14px;font-weight:500;color:#1d1d1f;">Include Front Splits</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="splitsToggle" onchange="window.splitsForced = this.checked;">
+                                    <span class="toggle-track"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Hidden tab triggers — kept for JS compatibility -->
@@ -1715,7 +1763,7 @@
 
                 <!-- Focus note — always visible -->
                 <div class="section">
-                    <div class="section-title" style="color:#86868b;">Focus note <span style="font-weight:400;font-size:11px;color:#aaa;">(optional)</span></div>
+                    <div class="section-title" style="color:#86868b;">Tell Jumi <span style="font-weight:400;font-size:11px;color:#aaa;">(optional)</span></div>
                     <textarea id="jumiPromptInput" placeholder="I want to focus on shoulders today…" rows="3" style="width:100%;border:1.5px solid #d2d2d7;border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;resize:none;outline:none;line-height:1.5;box-sizing:border-box;color:#1d1d1f;"></textarea>
                 </div>
 
@@ -1728,59 +1776,6 @@
 
             <!-- SIMPLE MODE CONTROLS -->
             <div id="simpleControls" style="display: none;">
-
-            <!-- Optional collapsible -->
-            <div style="margin-bottom: 14px;">
-                <button onclick="toggleOptional()" id="optionalToggle" style="width:100%; display:flex; align-items:center; justify-content:space-between; background:none; border:none; padding:4px 0; cursor:pointer;">
-                    <div style="display:flex; align-items:center; gap:10px; flex:1;">
-                        <div style="flex:1; height:1px; background:#e5e5e7;"></div>
-                        <span style="font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.8px; color:#aaa;">Optional</span>
-                        <div style="flex:1; height:1px; background:#e5e5e7;"></div>
-                    </div>
-                    <svg id="optionalChevron" width="10" height="10" viewBox="0 0 10 6" fill="#aaa" style="margin-left:8px; flex-shrink:0; transition:transform 0.2s;"><path d="M0 0 L10 0 L5 6 Z"/></svg>
-                </button>
-
-                <div id="optionalSection" style="display:none;">
-                    <!-- Focus -->
-                    <div class="section" style="margin-top:10px;">
-                        <div class="section-title" style="color:#86868b;">Focus <span class="info-icon">i<span class="info-tooltip">Optionally bias the routine towards a specific muscle group.<br><br>The generator will prioritise exercises targeting that area while still including other phases.</span></span></div>
-                        <select id="focusSelect">
-                            <option value="">None</option>
-                            <option value="Adductors">Adductors</option>
-                            <option value="Ankles">Ankles</option>
-                            <option value="Back">Back</option>
-                            <option value="Calves">Calves</option>
-                            <option value="Chest">Chest</option>
-                            <option value="Full Body">Full Body</option>
-                            <option value="Glutes">Glutes</option>
-                            <option value="Hamstrings">Hamstrings</option>
-                            <option value="Hips">Hips</option>
-                            <option value="Knees">Knees</option>
-                            <option value="Lower Spine">Lower Spine</option>
-                            <option value="Neck">Neck</option>
-                            <option value="Quads">Quads</option>
-                            <option value="Shoulders">Shoulders</option>
-                            <option value="Spine">Spine</option>
-                            <option value="Upper Spine">Upper Spine</option>
-                            <option value="Wrists">Wrists</option>
-                        </select>
-                    </div>
-
-                    <!-- Splits -->
-                    <div class="section" id="splitsSection">
-                        <div class="section-title" style="color:#86868b;">Front Splits (Optional) <span class="info-icon">i<span class="info-tooltip" style="left:50%; right:auto; top:auto; bottom:20px; transform:translateX(-50%);">Tick this to guarantee a front splits exercise is included in the routine.<br><br>The frequency of automatic inclusion (without ticking) can be adjusted in Settings.</span></span></div>
-                        <div style="display:flex; align-items:center; justify-content:space-between; padding: 8px 0;">
-                            <span style="font-size:14px; font-weight:500; color:#1d1d1f;">Include Front Splits</span>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="splitsToggle" onchange="window.splitsForced = this.checked;">
-                                <span class="toggle-track"></span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-
 
                 <button onclick="quickStartGenerate()" id="simpleRefreshBtn" class="generate-btn" style="width:100%; margin-top:14px; background:#3a3a3c; color:white; border:none; box-shadow:none; display:flex; align-items:center; justify-content:center; gap:8px; font-size:16px; font-weight:700;">&#9654; Generate</button>
                 <div id="lhsStartSimple" style="display:none; margin-top:24px;">
