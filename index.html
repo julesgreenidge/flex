@@ -4013,7 +4013,7 @@ Rules:
 - Reference the user's actual training data where relevant.
 - Be direct and specific. No filler.
 
-hold at the routine level must be \"short\" or \"long\". body_type must be \"full\", \"upper\", or \"lower\" — choose based on what the user asks for or their goals. Choose both based on the user's goals and history. Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits, Cool Down. Only include phases relevant to the user's goals.
+body_type must be \"full\", \"upper\", or \"lower\" — choose based on what the user asks for or their goals. Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits, Cool Down. Only include phases relevant to the user's goals.
 
 CRITICAL: If the user asks you to suggest or recommend any exercises not already in their library, you MUST include one <exercise> block per recommended exercise at the end of your response — no exceptions. Use this exact format for EVERY recommended exercise:
 <exercise>{"exercise":"name","phase":"phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}</exercise>
@@ -4049,7 +4049,6 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                         try {
                             if (!selectedTime) selectedTime = 35;
                             if (!selectedType) selectedType = appSettings.quickStartType || 'full';
-                            selectedHold = pendingRoutine.hold || 'short';
                             longSession = selectedHold === 'long';
                             selectedType = pendingRoutine.body_type || selectedType;
                             const restore = applyJumiPriority(pendingRoutine);
@@ -4168,7 +4167,6 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
                 if (routineData) {
                     try {
                         // Apply Jumi's choices
-                        selectedHold = routineData.hold || 'short';
                         longSession = (selectedHold === 'long');
                         selectedType = routineData.body_type || 'full';
                         // Inject Jumi's ranked picks to front of each phase pool
@@ -6698,15 +6696,18 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
             document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('selected', b.dataset.type === selectedType));
             document.querySelectorAll('[data-hold]').forEach(b => b.classList.toggle('selected', b.dataset.hold === selectedHold));
 
-            // Clear RHS until user generates
+            // Clear RHS only if no routine generated yet
             const rw = document.getElementById('routineDisplayWrapper');
-            if (rw) rw.style.display = 'none';
-            appState._quickRoutineReady = false;
-            currentRoutine = [];
-            const btn = document.getElementById('simpleRefreshBtn');
-            if (btn) btn.innerHTML = '&#9654; Generate';
-            const lhsSimple = document.getElementById('lhsStartSimple');
-            if (lhsSimple) lhsSimple.style.display = 'none';
+            if (!appState._quickRoutineReady) {
+                if (rw) rw.style.display = 'none';
+                currentRoutine = [];
+                const btn = document.getElementById('simpleRefreshBtn');
+                if (btn) btn.innerHTML = '&#9654; Generate';
+                const lhsSimple = document.getElementById('lhsStartSimple');
+                if (lhsSimple) lhsSimple.style.display = 'none';
+            } else {
+                if (rw) rw.style.display = 'block';
+            }
 
             // Hide Jumi explanation
             const je = document.getElementById('jumiExplanation');
@@ -8046,7 +8047,6 @@ IMPORTANT RULES:
 - For each phase, return your top ranked candidates in priority order (best first), up to the candidate budget shown.
 - Use the generate_routine tool to output your selections.
 - Use snake_case phase keys: warm_up, foam_roller, mobility, static_stretching, active_stretch, deep_stretch, cool_down.
-- Choose "short" or "long" hold based on the user's goals and history.
 - Choose body_type: "full", "upper", or "lower" based on the user's goals and history.
 - In your text response, write 2-3 sentences explaining your selections. Keep it natural, no markdown.
 
@@ -8058,7 +8058,7 @@ Duration: ${durationLabel}
 Training history:
 ${contextTable}
 
-Please choose hold, body_type, and rank the candidates for each phase using the generate_routine tool.`;
+Please choose body_type and rank the candidates for each phase using the generate_routine tool.`;
 
             return { systemPrompt, userMessage };
         }
@@ -8116,7 +8116,6 @@ Please choose hold, body_type, and rank the candidates for each phase using the 
                 }
 
                 // Apply Jumi's choices, inject priority, run generateRoutine cleanly
-                selectedHold = routineData.hold || 'short';
                 longSession = selectedHold === 'long';
                 selectedType = routineData.body_type || 'full';
 
