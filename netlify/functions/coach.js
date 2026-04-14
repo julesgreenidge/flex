@@ -118,12 +118,12 @@ exports.handler = async function(event) {
                 if (block.type === 'text') {
                     reply += block.text;
                 } else if (block.type === 'tool_use' && block.name === 'generate_routine') {
-                    // Map snake_case keys back to display phase names
                     const raw = block.input;
-                    routine = { hold: raw.hold };
-                    for (const [snake, display] of Object.entries(PHASE_MAP)) {
+                    // Keep snake_case keys so frontend applyJumiPriority can find them
+                    routine = { hold: raw.hold, body_type: raw.body_type || 'full' };
+                    for (const snake of Object.keys(PHASE_MAP)) {
                         if (raw[snake] && raw[snake].length > 0) {
-                            routine[display] = raw[snake];
+                            routine[snake] = raw[snake];
                         }
                     }
                 }
