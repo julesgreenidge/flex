@@ -6715,6 +6715,8 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
 
         async function quickStartGenerate() {
             const btn = document.getElementById('simpleRefreshBtn');
+            const rw = document.getElementById('routineDisplayWrapper');
+            if (rw) rw.style.display = 'block';
             await generateRoutine();
             if (btn) btn.innerHTML = '&#8635; Regenerate';
             appState._quickRoutineReady = true;
@@ -8142,13 +8144,15 @@ Please choose hold, body_type, and rank the candidates for each phase using the 
                 const _ji = document.getElementById('jumiQuickIcon');
                 if (_ji) _ji.textContent = '↺';
 
-                // Show explanation if present
+                // Show explanation in chat panel
                 if (explanation) {
                     const jumiTip = document.getElementById('jumiExplanationText');
                     if (jumiTip) {
                         jumiTip.innerHTML = explanation.split(/\n\n+/).map(s => `<p style="margin:0 0 8px 0;">${s}</p>`).join('');
                         document.getElementById('jumiExplanation').style.display = 'block';
                     }
+                    // Also append to chat so it shows when panel auto-opens
+                    appendChatMessage('jumi', explanation);
                 }
 
             } catch(err) {
