@@ -6172,15 +6172,14 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                         phaseCount++;
                     }
                     
-                    // Only add duplicates if NOT in "All exercises" mode
-                    if (!isAllExercises && phaseCount < phaseConf.max && phaseExercises.length > 0) {
+                    // Only add duplicates if ALL unique pool exercises have been used
+                    if (!isAllExercises && phaseCount < phaseConf.max && phaseExercises.length > 0 && phaseExercises.length >= allPhaseExercises.length) {
                         // Snapshot of unique exercises - round-robin ONLY from these
                         const uniqueSnapshot = [...phaseExercises];
                         let dupIndex = 0;
                         let attempts = 0;
                         while (phaseCount < phaseConf.max && attempts < 50) {
                             attempts++;
-                            // Safety: bail out if the snapshot is somehow empty
                             if (uniqueSnapshot.length === 0) break;
                             const sourceEx = uniqueSnapshot[dupIndex % uniqueSnapshot.length];
                             const exTime = calculateExerciseTime(sourceEx);
