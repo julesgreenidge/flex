@@ -1763,7 +1763,7 @@
 
                 <!-- Focus note — always visible -->
                 <div class="section">
-                    <div class="section-title" style="color:#86868b;">Tell Jumi <span style="font-weight:400;font-size:11px;color:#aaa;">(optional)</span></div>
+                    <div class="section-title" style="color:#86868b;">Tell Jumi</div>
                     <textarea id="jumiPromptInput" placeholder="I want to focus on shoulders today…" rows="3" style="width:100%;border:1.5px solid #d2d2d7;border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;resize:none;outline:none;line-height:1.5;box-sizing:border-box;color:#1d1d1f;"></textarea>
                 </div>
 
@@ -1906,7 +1906,7 @@
             <!-- SIMPLE MODE DISPLAY -->
             <div id="routineDisplay">
                 <div class="routine-empty">
-                    <div class="routine-empty-text">Select a routine option to get started</div>
+                    <div class="routine-empty-text">Select an option to get started</div>
                 </div>
             </div>
             <!-- Floating Start button -->
@@ -2504,6 +2504,15 @@
                 };
                 
                 saveSettings(appSettings);
+
+                // Update Quick Start card subtitle
+                const _sub = document.getElementById('qsSubtitle');
+                if (_sub) {
+                    const _t = appSettings.quickStartType || 'full';
+                    const _h = appSettings.quickStartHold || 'short';
+                    const _tLabel = _t === 'full' ? 'Full body' : _t === 'upper' ? 'Upper body' : 'Lower body';
+                    _sub.textContent = _tLabel + ' · ' + (_h === 'long' ? 'long hold' : 'short hold');
+                }
                 
                 document.getElementById('settingsView').style.display = 'none';
                 document.getElementById('mainView').style.display = 'grid';
@@ -3878,7 +3887,7 @@
             const panel = document.getElementById('jumiChatPanel');
             panel.style.transform = 'translateX(0)';
             if (jumiChatHistory.length === 0) {
-                appendChatMessage('jumi', "Hi! I'm Jumi. Tap the button above to generate a routine, or ask me anything about your training — progress, what to focus on, exercise advice, or anything else.");
+                appendChatMessage('jumi', "Hi! I'm Jumi. Ask me anything about your training — progress, what to focus on, exercise advice, or anything else.");
             }
             if (window._jumiSessionContext) {
                 const ctx = window._jumiSessionContext;
@@ -9695,7 +9704,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
             const first = smoothed[0].mins;
             const last = smoothed[smoothed.length - 1].mins;
             const diff = last - first;
-            const trendLabel = diff > 2 ? '↑ Sessions getting longer' : diff < -2 ? '↓ Sessions getting shorter' : '→ Consistent session length';
+            const trendLabel = '';
             const trendColor = diff > 2 ? '#059669' : diff < -2 ? '#dc2626' : '#86868b';
 
             const svgHTML = `
@@ -9723,7 +9732,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
             const html = `
                 <h2 style="margin-top: 40px;">Session Duration Over Time</h2>
                 <div style="background: white; border: 1px solid #e5e5e7; padding: 20px 24px 12px; border-radius: 12px; margin-bottom: 40px;">
-                    <div style="font-size:12px;font-weight:600;color:${trendColor};margin-bottom:12px;">${trendLabel}</div>
+                    <div style="font-size:12px;font-weight:600;color:${trendColor};margin-bottom:12px;"></div>
                     ${svgHTML}
                     <div style="font-size:11px;color:#aeaeb2;margin-top:4px;">minutes per day</div>
                 </div>`;
