@@ -1567,7 +1567,7 @@
             background: white;
         }
     </style>
-<meta name="build-date" content="13 Apr 2026">
+<meta name="build-date" content="14 Apr 2026">
 </head>
 <body>
     <!-- Splash Screen -->
@@ -1644,7 +1644,7 @@
                         <span id="jumiQuickIcon" style="font-size:18px; color:white; flex-shrink:0; line-height:1;">&#10022;</span>
                         <div>
                             <div style="font-size:14px; font-weight:600; color:white; line-height:1.2;">Jumi</div>
-                            <div id="jumiQuickSubtitle" style="font-size:11px; color:rgba(255,255,255,0.75);">AI picks your routine</div>
+                            <div id="jumiQuickSubtitle" style="font-size:11px; color:rgba(255,255,255,0.75);">AI generated routine</div>
                         </div>
                     </button>
 
@@ -1682,12 +1682,47 @@
                 <button onclick="startRoutine()" style="width:100%; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:14px; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 4px 16px rgba(52,199,89,0.35);">▶ Start Routine</button>
             </div>
 
-            <!-- JUMI PANEL — stub only, chat handles everything -->
+            <!-- JUMI PANEL — stub for explanation storage -->
             <div id="jumiPanel" style="display:none !important;">
                 <div id="jumiExplanation" style="display:none;">
                     <div id="jumiExplanationText" style="display:none;"></div>
                 </div>
             </div>
+
+            <!-- JUMI MODE CONTROLS -->
+            <div id="jumiControls" style="display:none;">
+
+                <!-- Type -->
+                <div class="section">
+                    <div class="section-title">Type</div>
+                    <div class="segmented">
+                        <button class="jumi-type-btn" data-type="full">Full Body</button>
+                        <button class="jumi-type-btn" data-type="upper">Upper Body</button>
+                        <button class="jumi-type-btn" data-type="lower">Lower Body</button>
+                    </div>
+                </div>
+
+                <!-- Hold -->
+                <div class="section">
+                    <div class="section-title">Hold <span class="info-icon">i<span class="info-tooltip">How long each stretch is held.<br><br><b>Short Hold:</b> 45 seconds by default — good for active sessions or when time is short.<br><b>Long Hold:</b> 75 seconds by default — better for deep flexibility work.</span></span></div>
+                    <div class="segmented">
+                        <button class="jumi-hold-btn" data-hold="short">Short Hold</button>
+                        <button class="jumi-hold-btn" data-hold="long">Long Hold</button>
+                    </div>
+                </div>
+
+                <!-- Focus note — always visible -->
+                <div class="section">
+                    <div class="section-title" style="color:#86868b;">Focus note <span style="font-weight:400;font-size:11px;color:#aaa;">(optional)</span></div>
+                    <textarea id="jumiPromptInput" placeholder="I want to focus on shoulders today…" rows="3" style="width:100%;border:1.5px solid #d2d2d7;border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;resize:none;outline:none;line-height:1.5;box-sizing:border-box;color:#1d1d1f;"></textarea>
+                </div>
+
+                <button onclick="jumiGenerate()" id="jumiGenerateBtn" class="generate-btn" style="width:100%;margin-top:14px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;box-shadow:none;display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:700;">✦ Generate</button>
+                <div id="lhsStartJumi" style="display:none;margin-top:10px;">
+                    <button onclick="startRoutine()" style="width:100%;background:linear-gradient(135deg,#34c759,#2da44e);color:white;border:none;padding:14px;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(52,199,89,0.35);">&#9658; Start Routine</button>
+                </div>
+            </div>
+            <!-- END JUMI MODE CONTROLS -->
 
             <!-- SIMPLE MODE CONTROLS -->
             <div id="simpleControls" style="display: none;">
@@ -1766,7 +1801,7 @@
 
 
 
-                <button onclick="generateRoutine()" id="simpleRefreshBtn" class="generate-btn" style="width:100%; margin-top:14px; background:#3a3a3c; color:white; border:none; box-shadow:none; display:flex; align-items:center; justify-content:center; gap:8px; font-size:14px;">↺ Refresh</button>
+                <button onclick="quickStartGenerate()" id="simpleRefreshBtn" class="generate-btn" style="width:100%; margin-top:14px; background:#3a3a3c; color:white; border:none; box-shadow:none; display:flex; align-items:center; justify-content:center; gap:8px; font-size:16px; font-weight:700;">&#9654; Generate</button>
                 <div id="lhsStartSimple" style="display:none; margin-top:24px;">
                     <button onclick="startRoutine()" style="width:100%; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:14px; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 4px 16px rgba(52,199,89,0.35);">▶ Start Routine</button>
                 </div>
@@ -3682,6 +3717,7 @@
             } else if (mode === 'jumi') {
                 setActiveCard('jumiQuickBtn');
                 if (sc) sc.style.display = 'none';
+                if (jc) jc.style.display = 'block';
                 if (rw) rw.style.display = 'block';
                 if (cd) cd.style.display = 'none';
                 if (ddd) ddd.style.opacity = '1';
@@ -3740,7 +3776,11 @@
                 if (feb) feb.style.display = 'flex';
                 setStarVisible(true);
                 if (mode === 'quick' && lhsSimple) lhsSimple.style.display = 'block';
-                if ((mode === 'jumi' || mode === 'starred') && lhsJumiFav) lhsJumiFav.style.display = 'block';
+                if (mode === 'jumi') {
+                    const lhsJ = document.getElementById('lhsStartJumi');
+                    if (lhsJ) lhsJ.style.display = 'block';
+                }
+                if (mode === 'starred' && lhsJumiFav) lhsJumiFav.style.display = 'block';
             } else {
                 if (feb) feb.style.display = 'none';
                 setStarVisible(false);
@@ -3770,7 +3810,6 @@
         function jumiCardClick() {
             enterMode('jumi');
             jumiQuickStart();
-            window.openJumiChat && window.openJumiChat();
         }
 
 
@@ -3790,10 +3829,7 @@
                         <div style="font-size:15px;font-weight:700;color:#1d1d1f;">✦ Jumi</div>
                         <button onclick="window.closeJumiChat()" style="background:none;border:none;cursor:pointer;padding:4px;color:#86868b;font-size:20px;line-height:1;">✕</button>
                     </div>
-                    <button onclick="window.quickJumiGenerate()" style="display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;margin-bottom:12px;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.88'" onmouseout="this.style.opacity='1'">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="white" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                        Jumi Routine
-                    </button>
+
                 </div>
                 <div id="jumiChatMessages" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px;"></div>
                 <div style="padding:12px 16px;border-top:1px solid #e8e8ed;flex-shrink:0;">
@@ -3977,7 +4013,7 @@ Rules:
 - Reference the user's actual training data where relevant.
 - Be direct and specific. No filler.
 
-hold at the routine level must be "short" or "long". Choose based on the user's goals and history — long hold for flexibility gains or recovery, short hold for active warmup or time-constrained sessions. Before the JSON, briefly explain your hold choice in 1 sentence. Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits, Cool Down. Only include phases relevant to the user’s goals.
+hold at the routine level must be \"short\" or \"long\". body_type must be \"full\", \"upper\", or \"lower\" — choose based on what the user asks for or their goals. Choose both based on the user's goals and history. Phases available: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Splits, Cool Down. Only include phases relevant to the user's goals.
 
 CRITICAL: If the user asks you to suggest or recommend any exercises not already in their library, you MUST include one <exercise> block per recommended exercise at the end of your response — no exceptions. Use this exact format for EVERY recommended exercise:
 <exercise>{"exercise":"name","phase":"phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}</exercise>
@@ -4187,7 +4223,23 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
             document.getElementById('focusSelect').addEventListener('change', function() {
                 selectedFocus = this.value;
             });
-            
+
+            // Jumi type buttons
+            document.querySelectorAll('.jumi-type-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.jumi-type-btn').forEach(b => b.classList.remove('selected'));
+                    this.classList.add('selected');
+                });
+            });
+
+            // Jumi hold buttons
+            document.querySelectorAll('.jumi-hold-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.jumi-hold-btn').forEach(b => b.classList.remove('selected'));
+                    this.classList.add('selected');
+                });
+            });
+
             // Hold buttons
             document.querySelectorAll('[data-hold]').forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -6627,18 +6679,13 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
 
         async function trueQuickStart() {
             enterMode('quick');
-            // Don't clear currentJumiRoutine — user may return to Jumi tab
             sessionStorage.removeItem('jumiPrompt');
             const _jp = document.getElementById('jumiPanel');
             if (_jp) _jp.style.display = 'none';
-            const _ji2b = document.getElementById('jumiPromptInput');
-            if (_ji2b) _ji2b.value = '';
             const _ji2 = document.getElementById('jumiQuickIcon');
             if (_ji2) _ji2.textContent = '✦';
-            const _jgpb2 = document.getElementById('jumiGeneratePanelBtn');
-            if (_jgpb2) _jgpb2.textContent = '✦ Generate with Jumi';
 
-            // Always read duration from the global picker
+            // Read duration
             const _savedDur = localStorage.getItem('globalDuration');
             if (_savedDur) selectedTime = _savedDur === '999' ? 999 : parseInt(_savedDur);
             else if (!selectedTime) selectedTime = 35;
@@ -6651,32 +6698,70 @@ BodyPart must be "upper", "lower", or "full". Phase must be one of: Warm-Up, Foa
             document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('selected', b.dataset.type === selectedType));
             document.querySelectorAll('[data-hold]').forEach(b => b.classList.toggle('selected', b.dataset.hold === selectedHold));
 
-            await generateRoutine();
+            // Clear RHS until user generates
+            const rw = document.getElementById('routineDisplayWrapper');
+            if (rw) rw.style.display = 'none';
+            appState._quickRoutineReady = false;
+            currentRoutine = [];
+            const btn = document.getElementById('simpleRefreshBtn');
+            if (btn) btn.innerHTML = '&#9654; Generate';
+            const lhsSimple = document.getElementById('lhsStartSimple');
+            if (lhsSimple) lhsSimple.style.display = 'none';
 
             // Hide Jumi explanation
             const je = document.getElementById('jumiExplanation');
             if (je) je.style.display = 'none';
         }
 
+        async function quickStartGenerate() {
+            const btn = document.getElementById('simpleRefreshBtn');
+            await generateRoutine();
+            if (btn) btn.innerHTML = '&#8635; Regenerate';
+            appState._quickRoutineReady = true;
+            updateFloatingButtons();
+        }
+
+        function toggleJumiOptional() {
+            const sec = document.getElementById('jumiOptionalSection');
+            const chev = document.getElementById('jumiOptionalChevron');
+            if (!sec) return;
+            const open = sec.style.display !== 'none';
+            sec.style.display = open ? 'none' : 'block';
+            if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
+        }
+
 function regenerateRoutine() {
-            if (currentJumiRoutine !== null) {
-                window.quickJumiGenerate();
+            if (appState.mode === 'jumi') {
+                jumiGenerate();
             } else {
-                generateRoutine();
+                quickStartGenerate();
             }
         }
 
         function jumiQuickStart() {
             enterMode('jumi');
             if (!selectedTime) selectedTime = 35;
-            const jp = document.getElementById('jumiPanel');
-            if (jp) jp.style.display = 'none';
-            // Only show RHS if a Jumi routine already exists — otherwise hide it
+
+            // Default Jumi type/hold buttons to full/short if nothing selected
+            const activeType = document.querySelector('.jumi-type-btn.selected');
+            if (!activeType) {
+                const def = document.querySelector('.jumi-type-btn[data-type="full"]');
+                if (def) def.classList.add('selected');
+            }
+            const activeHold = document.querySelector('.jumi-hold-btn.selected');
+            if (!activeHold) {
+                const def = document.querySelector('.jumi-hold-btn[data-hold="short"]');
+                if (def) def.classList.add('selected');
+            }
+
+            // Show RHS only if a Jumi routine already exists
             const rw = document.getElementById('routineDisplayWrapper');
             if (currentJumiRoutine && currentJumiRoutine.length > 0) {
                 currentRoutine = currentJumiRoutine;
                 if (rw) rw.style.display = 'block';
                 displayRoutine();
+                const lhsJ = document.getElementById('lhsStartJumi');
+                if (lhsJ) lhsJ.style.display = 'block';
             } else {
                 if (rw) rw.style.display = 'none';
                 updateFloatingButtons();
@@ -6684,11 +6769,34 @@ function regenerateRoutine() {
         }
 
         async function jumiGenerate() {
-            const input = document.getElementById('jumiPromptInput');
-            const prompt = input ? input.value.trim() : '';
-            // Save prompt for session persistence
-            sessionStorage.setItem('jumiPrompt', prompt);
+            const btn = document.getElementById('jumiGenerateBtn');
+            if (btn) { btn.disabled = true; btn.innerHTML = '&#8635; Generating…'; }
+
+            // Read from Jumi LHS controls
+            const _savedDur = localStorage.getItem('globalDuration');
+            if (_savedDur) selectedTime = _savedDur === '999' ? 999 : parseInt(_savedDur);
+            else if (!selectedTime) selectedTime = 35;
+
+            // Read type from jumi-type-btn
+            const activeType = document.querySelector('.jumi-type-btn.selected');
+            selectedType = activeType ? activeType.dataset.type : 'full';
+
+            // Read hold from jumi-hold-btn
+            const activeHold = document.querySelector('.jumi-hold-btn.selected');
+            selectedHold = activeHold ? activeHold.dataset.hold : 'short';
+            longSession = selectedHold === 'long';
+
+            const prompt = (document.getElementById('jumiPromptInput') || {}).value || '';
             await generateJumiRoutine(prompt);
+
+            if (btn) { btn.disabled = false; btn.innerHTML = '&#8635; Regenerate'; }
+
+            // Show Start Routine button
+            const lhsJ = document.getElementById('lhsStartJumi');
+            if (lhsJ) lhsJ.style.display = 'block';
+
+            // Auto-open chat to show explanation
+            window.openJumiChat && window.openJumiChat();
         }
 
         async function jumiRegenerate() {
@@ -10618,7 +10726,7 @@ Please choose hold, body_type, and rank the candidates for each phase using the 
                 <!-- Version Content -->
                 <div id="settingsVersionContent" class="settings-content-panel" style="display: none;">
                     <h2 style="margin-bottom: 8px;">Version</h2>
-                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">4.9</div>
+                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">5.0</div>
                     <div style="font-size: 14px; color: #86868b; margin-bottom: 4px;">flex.</div>
                     <div id="buildDateDisplay" style="font-size: 12px; color: #aeaeb2;"></div>
                 </div>
