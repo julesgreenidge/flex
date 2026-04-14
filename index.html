@@ -1673,6 +1673,27 @@
                 <div style="flex:1; height:1px; background:#e5e5e7;"></div>
             </div>
 
+            <!-- SHARED TYPE/HOLD CONTROLS — visible for Quick Start and Jumi, hidden for Custom/Favourites -->
+            <div id="sharedTypeHold" style="display:none;">
+                <!-- Type -->
+                <div class="section">
+                    <div class="section-title">Type</div>
+                    <div class="segmented">
+                        <button class="type-btn" data-type="full">Full Body</button>
+                        <button class="type-btn" data-type="upper">Upper Body</button>
+                        <button class="type-btn" data-type="lower">Lower Body</button>
+                    </div>
+                </div>
+                <!-- Hold -->
+                <div class="section">
+                    <div class="section-title">Hold <span class="info-icon">i<span class="info-tooltip">How long each stretch is held.<br><br><b>Short Hold:</b> 45 seconds by default — good for active sessions or when time is short.<br><b>Long Hold:</b> 75 seconds by default — better for deep flexibility work.</span></span></div>
+                    <div class="segmented">
+                        <button class="hold-btn" data-hold="short">Short Hold</button>
+                        <button class="hold-btn" data-hold="long">Long Hold</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Hidden tab triggers — kept for JS compatibility -->
             <button id="simpleTab" style="display:none;"></button>
             <button id="customTab" style="display:none;"></button>
@@ -1692,25 +1713,6 @@
             <!-- JUMI MODE CONTROLS -->
             <div id="jumiControls" style="display:none;">
 
-                <!-- Type -->
-                <div class="section">
-                    <div class="section-title">Type</div>
-                    <div class="segmented">
-                        <button class="jumi-type-btn" data-type="full">Full Body</button>
-                        <button class="jumi-type-btn" data-type="upper">Upper Body</button>
-                        <button class="jumi-type-btn" data-type="lower">Lower Body</button>
-                    </div>
-                </div>
-
-                <!-- Hold -->
-                <div class="section">
-                    <div class="section-title">Hold <span class="info-icon">i<span class="info-tooltip">How long each stretch is held.<br><br><b>Short Hold:</b> 45 seconds by default — good for active sessions or when time is short.<br><b>Long Hold:</b> 75 seconds by default — better for deep flexibility work.</span></span></div>
-                    <div class="segmented">
-                        <button class="jumi-hold-btn" data-hold="short">Short Hold</button>
-                        <button class="jumi-hold-btn" data-hold="long">Long Hold</button>
-                    </div>
-                </div>
-
                 <!-- Focus note — always visible -->
                 <div class="section">
                     <div class="section-title" style="color:#86868b;">Focus note <span style="font-weight:400;font-size:11px;color:#aaa;">(optional)</span></div>
@@ -1726,27 +1728,6 @@
 
             <!-- SIMPLE MODE CONTROLS -->
             <div id="simpleControls" style="display: none;">
-
-            <!-- Type -->
-            <div class="section">
-                <div class="section-title">Type</div>
-                <div class="segmented">
-                    <button class="type-btn" data-type="full">Full Body</button>
-                    <button class="type-btn" data-type="upper">Upper Body</button>
-                    <button class="type-btn" data-type="lower">Lower Body</button>
-                </div>
-            </div>
-
-
-
-            <!-- Hold -->
-            <div class="section">
-                <div class="section-title">Hold <span class="info-icon">i<span class="info-tooltip">How long each stretch is held.<br><br><b>Short Hold:</b> 45 seconds by default — good for active sessions or when time is short.<br><b>Long Hold:</b> 75 seconds by default — better for deep flexibility work.</span></span></div>
-                <div class="segmented">
-                    <button class="hold-btn" data-hold="short">Short Hold</button>
-                    <button class="hold-btn" data-hold="long">Long Hold</button>
-                </div>
-            </div>
 
             <!-- Optional collapsible -->
             <div style="margin-bottom: 14px;">
@@ -3709,10 +3690,12 @@
             const jp = document.getElementById('jumiPanel'); if (jp) jp.style.display = 'none';
             const je = document.getElementById('jumiExplanation'); if (je) je.style.display = 'none';
             const jc = document.getElementById('jumiControls'); if (jc) jc.style.display = 'none';
+            const sth = document.getElementById('sharedTypeHold'); if (sth) sth.style.display = 'none';
 
             if (mode === 'quick') {
                 setActiveCard('trueQuickStartBtn');
                 if (sc) sc.style.display = 'block';
+                if (sth) sth.style.display = 'block';
                 if (rw) rw.style.display = 'block';
                 if (cd) cd.style.display = 'none';
                 if (ddd) ddd.style.opacity = '1';
@@ -3721,6 +3704,7 @@
                 setActiveCard('jumiQuickBtn');
                 if (sc) sc.style.display = 'none';
                 if (jc) jc.style.display = 'block';
+                if (sth) sth.style.display = 'block';
                 if (rw) rw.style.display = 'block';
                 if (cd) cd.style.display = 'none';
                 if (ddd) ddd.style.opacity = '1';
@@ -4225,22 +4209,6 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             // Focus dropdown
             document.getElementById('focusSelect').addEventListener('change', function() {
                 selectedFocus = this.value;
-            });
-
-            // Jumi type buttons
-            document.querySelectorAll('.jumi-type-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.querySelectorAll('.jumi-type-btn').forEach(b => b.classList.remove('selected'));
-                    this.classList.add('selected');
-                });
-            });
-
-            // Jumi hold buttons
-            document.querySelectorAll('.jumi-hold-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.querySelectorAll('.jumi-hold-btn').forEach(b => b.classList.remove('selected'));
-                    this.classList.add('selected');
-                });
             });
 
             // Hold buttons
@@ -6756,14 +6724,14 @@ function regenerateRoutine() {
             if (!selectedTime) selectedTime = 35;
 
             // Default Jumi type/hold buttons to full/short if nothing selected
-            const activeType = document.querySelector('.jumi-type-btn.selected');
+            const activeType = document.querySelector('.type-btn.selected');
             if (!activeType) {
-                const def = document.querySelector('.jumi-type-btn[data-type="full"]');
+                const def = document.querySelector('.type-btn[data-type="full"]');
                 if (def) def.classList.add('selected');
             }
-            const activeHold = document.querySelector('.jumi-hold-btn.selected');
+            const activeHold = document.querySelector('.hold-btn.selected');
             if (!activeHold) {
-                const def = document.querySelector('.jumi-hold-btn[data-hold="short"]');
+                const def = document.querySelector('.hold-btn[data-hold="short"]');
                 if (def) def.classList.add('selected');
             }
 
@@ -6790,12 +6758,12 @@ function regenerateRoutine() {
             if (_savedDur) selectedTime = _savedDur === '999' ? 999 : parseInt(_savedDur);
             else if (!selectedTime) selectedTime = 35;
 
-            // Read type from jumi-type-btn
-            const activeType = document.querySelector('.jumi-type-btn.selected');
+            // Read type from type-btn
+            const activeType = document.querySelector('.type-btn.selected');
             selectedType = activeType ? activeType.dataset.type : 'full';
 
-            // Read hold from jumi-hold-btn
-            const activeHold = document.querySelector('.jumi-hold-btn.selected');
+            // Read hold from hold-btn
+            const activeHold = document.querySelector('.hold-btn.selected');
             selectedHold = activeHold ? activeHold.dataset.hold : 'short';
             longSession = selectedHold === 'long';
 
