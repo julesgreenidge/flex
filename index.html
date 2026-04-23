@@ -8866,8 +8866,16 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                 if (status) { status.style.color = '#ff3b30'; status.textContent = 'No exercises to export.'; }
                 return;
             }
+            const phaseOrder = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
+            const sorted = exList.slice().sort((a, b) => {
+                const pCmp = (phaseOrder.indexOf(a.phase) - phaseOrder.indexOf(b.phase));
+                if (pCmp !== 0) return pCmp;
+                const tCmp = (a.target || '').localeCompare(b.target || '');
+                if (tCmp !== 0) return tCmp;
+                return (a.position || '').localeCompare(b.position || '');
+            });
             const headers = ['phase', 'exercise', 'target', 'position', 'sides', 'bodyPart', 'duration', 'rest'];
-            const rows = [headers, ...exList.map(e => headers.map(h => '"' + String(e[h] ?? '').replace(/"/g, '""') + '"'))];
+            const rows = [headers, ...sorted.map(e => headers.map(h => '"' + String(e[h] ?? '').replace(/"/g, '""') + '"'))];
             const csv = rows.map(r => r.join(',')).join('\n');
             const blob = new Blob([csv], {type: 'text/csv'});
             const url = URL.createObjectURL(blob);
