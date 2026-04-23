@@ -2320,7 +2320,7 @@
                         .filter(e => e.phase === phase)
                         .sort((a, b) => {
                             const tCmp = (a.target || '').localeCompare(b.target || '');
-                            return tCmp !== 0 ? tCmp : (a.exercise || '').localeCompare(b.exercise || '');
+                            return tCmp !== 0 ? tCmp : (a.position || '').localeCompare(b.position || '');
                         });
                     if (phaseExercises.length === 0) return;
                     html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#86868b;margin:14px 0 4px;padding-top:10px;border-top:1.5px solid #e8e8ed;">${phase}</div>`;
