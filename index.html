@@ -8855,7 +8855,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
         }
         
         window.exportExerciseCSV = function() {
-            const exList = JSON.parse(localStorage.getItem('flexibilityRoutineExercises') || '[]');
+            const exList = exercises;
             const status = document.getElementById('csvUploadStatus');
             if (exList.length === 0) {
                 if (status) { status.style.color = '#ff3b30'; status.textContent = 'No exercises to export.'; }
