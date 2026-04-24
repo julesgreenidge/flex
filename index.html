@@ -1003,33 +1003,34 @@
 
         .segmented {
             display: flex;
-            background: white;
+            background: #f2f2f7;
             border-radius: 12px;
-            padding: 0;
-            gap: 0;
-            border: 2px solid #d2d2d7;
+            padding: 3px;
+            gap: 3px;
+            border: none;
             overflow: hidden;
         }
         .segmented button {
             flex: 1;
             border: none;
             background: transparent;
-            border-radius: 0;
-            padding: 11px 4px;
+            border-radius: 9px;
+            padding: 9px 4px;
             font-size: 13px;
             font-weight: 600;
-            color: #1d1d1f;
+            color: #6e6e73;
             cursor: pointer;
             transition: all 0.18s;
             white-space: nowrap;
         }
         .segmented button + button {
-            border-left: 1px solid #d2d2d7;
+            border-left: none;
         }
         .segmented button.selected {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: white;
+            color: #1d1d1f;
             border-left-color: transparent;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.06);
         }
         .segmented button svg {
             transition: transform 0.2s;
