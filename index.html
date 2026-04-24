@@ -6960,7 +6960,8 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     const hasAlternatives = availableAlternatives.length > 0;
                     
                     html += `
-                        <div class="exercise-card">
+                        <div class="exercise-card" style="position:relative;overflow:hidden;">
+                            <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--phase-${phaseClass});border-radius:0;"></div>
                             <div>
                                 <div class="exercise-name">${ex.exercise}</div>
                                 <div class="exercise-details">
