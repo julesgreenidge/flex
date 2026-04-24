@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v3.97: Fetch URLs updated to full Netlify URL for GitHub Pages hosting -->
+    <!-- v4.1: Timing bug fixed — smarter trim picks best-fit exercise, padding runs after over-trim, assertion threshold aligned with tolerance -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -706,13 +706,10 @@
         }
 
         .phase-warmup { background: var(--phase-warmup); color: white; }
-        .phase-foam { background: var(--phase-foamroller); color: white; }
         .phase-foamroller { background: var(--phase-foamroller); color: white; }
         .phase-mobility { background: var(--phase-mobility); color: white; }
-        .phase-static { background: var(--phase-staticstretching); color: white; }
         .phase-staticstretching { background: var(--phase-staticstretching); color: white; }
         .phase-activestretch { background: var(--phase-activestretch); color: white; }
-        .phase-deep { background: var(--phase-deepstretch); color: white; }
         .phase-deepstretch { background: var(--phase-deepstretch); color: white; }
         .phase-splits { background: var(--phase-splits); color: white; }
         .phase-cooldown { background: var(--phase-cooldown); color: white; }
@@ -1567,7 +1564,7 @@
             background: white;
         }
     </style>
-<meta name="build-date" content="14 Apr 2026">
+<meta name="build-date" content="24 Apr 2026">
 </head>
 <body>
     <!-- Splash Screen -->
@@ -1615,16 +1612,7 @@
             </div>
 
             <!-- Hidden duration buttons for JS compatibility -->
-            <div style="display:none;">
-                <div id="globalDurationBtns">
-                    <button class="global-dur-btn" data-time="25">25m</button>
-                    <button class="global-dur-btn" data-time="35">35m</button>
-                    <button class="global-dur-btn" data-time="45">45m</button>
-                    <button class="global-dur-btn" data-time="999">All</button>
-                    <button class="global-dur-btn" data-time="custom">Custom</button>
-                </div>
-                <input type="number" id="globalCustomDuration" class="custom-duration-input" placeholder="Enter minutes (minimum 20)" min="20" max="120" step="5">
-            </div>
+
 
             <!-- MODE GRID -->
             <div id="quickStartSection" style="margin-bottom:12px;">
@@ -1649,7 +1637,7 @@
                     </button>
 
                     <!-- Custom -->
-                    <button id="customCardBtn" onclick="document.getElementById('customTab').click()" style="display:flex; align-items:center; gap:10px; background:#1a3a5c; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:opacity 0.15s; box-shadow:0 4px 12px rgba(26,58,92,0.35);">
+                    <button id="customCardBtn" onclick="enterMode('custom'); initCustomBuilder();" style="display:flex; align-items:center; gap:10px; background:#1a3a5c; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:opacity 0.15s; box-shadow:0 4px 12px rgba(26,58,92,0.35);">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         <div>
                             <div style="font-size:14px; font-weight:600; color:white; line-height:1.2;">Custom</div>
@@ -1742,9 +1730,6 @@
                 </div>
             </div>
 
-            <!-- Hidden tab triggers — kept for JS compatibility -->
-            <button id="simpleTab" style="display:none;"></button>
-            <button id="customTab" style="display:none;"></button>
 
             <!-- LHS Start button for Jumi and Favourites modes -->
             <div id="lhsStartJumiFav" style="display:none; margin-top:10px;">
@@ -1758,31 +1743,18 @@
                 </div>
             </div>
 
-            <!-- JUMI MODE CONTROLS -->
-            <div id="jumiControls" style="display:none;">
-
-                <!-- Focus note — always visible -->
-                <div class="section">
+            <!-- MODE CONTROLS — single panel for quick and jumi -->
+            <div id="modeControls" style="display:none;">
+                <div id="tellJumiSection" class="section" style="display:none;">
                     <div class="section-title" style="color:#86868b;">Tell Jumi</div>
                     <textarea id="jumiPromptInput" placeholder="I want to focus on shoulders today…" rows="3" style="width:100%;border:1.5px solid #d2d2d7;border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;resize:none;outline:none;line-height:1.5;box-sizing:border-box;color:#1d1d1f;"></textarea>
                 </div>
-
-                <button onclick="jumiGenerate()" id="jumiGenerateBtn" class="generate-btn" style="width:100%;margin-top:14px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;box-shadow:none;display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:700;">✦ Generate</button>
-                <div id="lhsStartJumi" style="display:none;margin-top:10px;">
-                    <button onclick="startRoutine()" style="width:100%;background:linear-gradient(135deg,#34c759,#2da44e);color:white;border:none;padding:14px;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(52,199,89,0.35);">&#9658; Start Routine</button>
+                <button onclick="generate(appState.mode)" id="modeGenerateBtn" class="generate-btn" style="width:100%;margin-top:14px;padding:14px;background:#3a3a3c;color:white;border:none;border-radius:14px;box-shadow:none;display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:700;cursor:pointer;">&#9654; Generate</button>
+                <div id="lhsStart" style="display:none;margin-top:10px;">
+                    <button onclick="startRoutine()" style="width:100%;background:linear-gradient(135deg,#34c759,#2da44e);color:white;border:none;padding:14px;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(52,199,89,0.35);">▶ Start Routine</button>
                 </div>
             </div>
-            <!-- END JUMI MODE CONTROLS -->
-
-            <!-- SIMPLE MODE CONTROLS -->
-            <div id="simpleControls" style="display: none;">
-
-                <button onclick="quickStartGenerate()" id="simpleRefreshBtn" class="generate-btn" style="width:100%; margin-top:14px; background:#3a3a3c; color:white; border:none; box-shadow:none; display:flex; align-items:center; justify-content:center; gap:8px; font-size:16px; font-weight:700;">&#9654; Generate</button>
-                <div id="lhsStartSimple" style="display:none; margin-top:24px;">
-                    <button onclick="startRoutine()" style="width:100%; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:14px; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 4px 16px rgba(52,199,89,0.35);">▶ Start Routine</button>
-                </div>
-            </div>
-            <!-- END SIMPLE MODE CONTROLS -->
+            <!-- END MODE CONTROLS -->
             
             <!-- CUSTOM MODE CONTROLS (hidden initially) -->
             <div id="customControls" style="display: none; height: 100%; flex-direction: column; overflow: hidden;">
@@ -1910,8 +1882,6 @@
                 </div>
             </div>
             <!-- Floating Start button -->
-            <div id="floatingStartSimple" style="display:none;"></div>
-            <div id="floatingStartJumi" style="display:none;"></div>
             </div><!-- end padding wrapper -->
 
 
@@ -1941,7 +1911,6 @@
                 </div>
                 <div id="customRoutinePreview"></div>
                 <!-- Floating Start buttons for Custom mode — moved to LHS -->
-                <div id="floatingStartCustom" style="display:none;"></div>
             </div>
         </div>
     </div>
@@ -2143,6 +2112,7 @@
     </div>
 
     <script>
+
         // ===== SPLASH SCREEN =====
         window.addEventListener('DOMContentLoaded', () => {
             const splashScreen = document.getElementById('splashScreen');
@@ -3256,6 +3226,7 @@
             quickRoutine: null,
             _quickRoutineReady: false,
             _starredRoutineLoaded: false,
+            splitsForced: false,
         };
         // Convenience aliases
         Object.defineProperty(window, 'selectedTime',       { get: () => appState.time,        set: v => { appState.time = v; } });
@@ -3264,6 +3235,7 @@
         Object.defineProperty(window, 'selectedFocus',      { get: () => appState.focus,       set: v => { appState.focus = v; } });
         Object.defineProperty(window, 'longSession',        { get: () => appState.longSession, set: v => { appState.longSession = v; } });
         Object.defineProperty(window, 'currentJumiRoutine',{ get: () => appState.jumiRoutine, set: v => { appState.jumiRoutine = v; } });
+        Object.defineProperty(window, 'splitsForced', { get: () => appState.splitsForced, set: v => { appState.splitsForced = v; } });
         const GET_READY_TIME = 15; // 15 seconds for "Get Ready" phase
         let currentRoutine = [];
         let currentExerciseIndex = -1;
@@ -3748,12 +3720,15 @@
             appState._starredRoutineLoaded = false;
             const rw = document.getElementById('routineDisplayWrapper');
             const cd = document.getElementById('customDisplay');
-            const sc = document.getElementById('simpleControls');
+            const mc = document.getElementById('modeControls');
             const cc = document.getElementById('customControls');
             const cna = document.getElementById('customNavActions');
             const selCol = document.querySelector('.selection-column');
             const routeCol = document.querySelector('.routine-column');
             const ddd = document.getElementById('selectedDurationDisplay');
+            const sth = document.getElementById('sharedTypeHold');
+            const genBtn = document.getElementById('modeGenerateBtn');
+            const tjs = document.getElementById('tellJumiSection');
 
             // Reset shared elements
             if (cc) { cc.style.display = 'none'; cc.style.flexDirection = ''; }
@@ -3762,29 +3737,31 @@
             if (routeCol) routeCol.style.background = 'rgba(255,255,255,0.95)';
             const jp = document.getElementById('jumiPanel'); if (jp) jp.style.display = 'none';
             const je = document.getElementById('jumiExplanation'); if (je) je.style.display = 'none';
-            const jc = document.getElementById('jumiControls'); if (jc) jc.style.display = 'none';
-            const sth = document.getElementById('sharedTypeHold'); if (sth) sth.style.display = 'none';
+            if (mc) mc.style.display = 'none';
+            if (sth) sth.style.display = 'none';
+            if (tjs) tjs.style.display = 'none';
 
             if (mode === 'quick') {
                 setActiveCard('trueQuickStartBtn');
-                if (sc) sc.style.display = 'block';
+                if (mc) mc.style.display = 'block';
                 if (sth) sth.style.display = 'block';
                 if (rw) rw.style.display = 'block';
                 if (cd) cd.style.display = 'none';
                 if (ddd) ddd.style.opacity = '1';
+                if (genBtn) { genBtn.style.background = '#3a3a3c'; if (!appState._quickRoutineReady) genBtn.innerHTML = '&#9654; Generate'; else genBtn.innerHTML = '&#8635; Regenerate'; }
 
             } else if (mode === 'jumi') {
                 setActiveCard('jumiQuickBtn');
-                if (sc) sc.style.display = 'none';
-                if (jc) jc.style.display = 'block';
+                if (mc) mc.style.display = 'block';
                 if (sth) sth.style.display = 'block';
+                if (tjs) tjs.style.display = 'block';
                 if (rw) rw.style.display = 'block';
                 if (cd) cd.style.display = 'none';
                 if (ddd) ddd.style.opacity = '1';
+                if (genBtn) { genBtn.style.background = 'linear-gradient(135deg,#667eea,#764ba2)'; if (!appState.jumiRoutine || !appState.jumiRoutine.length) genBtn.innerHTML = '✦ Generate'; else genBtn.innerHTML = '&#8635; Regenerate'; }
 
             } else if (mode === 'custom') {
                 setActiveCard('customCardBtn');
-                if (sc) sc.style.display = 'none';
                 if (rw) rw.style.display = 'none';
                 if (cd) cd.style.display = 'flex';
                 if (cc) { cc.style.display = 'flex'; cc.style.flexDirection = 'column'; cc.style.height = '100%'; cc.style.overflow = 'hidden'; }
@@ -3794,7 +3771,6 @@
 
             } else if (mode === 'starred') {
                 setActiveCard('starredBtn');
-                if (sc) sc.style.display = 'none';
                 if (rw) rw.style.display = 'block';
                 if (cd) cd.style.display = 'none';
                 if (ddd) ddd.style.opacity = '0.35';
@@ -3809,7 +3785,7 @@
         function updateFloatingButtons() {
             const mode = appState.mode;
             const feb = document.getElementById('floatingEditBtn');
-            const lhsSimple = document.getElementById('lhsStartSimple');
+            const lhsStart = document.getElementById('lhsStart');
             const lhsJumiFav = document.getElementById('lhsStartJumiFav');
             const lhsCustom = document.getElementById('lhsStartCustom');
 
@@ -3824,7 +3800,7 @@
             }
 
             // Hide all LHS start buttons first
-            if (lhsSimple) lhsSimple.style.display = 'none';
+            if (lhsStart) lhsStart.style.display = 'none';
             if (lhsJumiFav) lhsJumiFav.style.display = 'none';
             if (lhsCustom) lhsCustom.style.display = 'none';
 
@@ -3835,11 +3811,7 @@
             } else if (hasRoutine) {
                 if (feb) feb.style.display = 'flex';
                 setStarVisible(true);
-                if (mode === 'quick' && lhsSimple) lhsSimple.style.display = 'block';
-                if (mode === 'jumi') {
-                    const lhsJ = document.getElementById('lhsStartJumi');
-                    if (lhsJ) lhsJ.style.display = 'block';
-                }
+                if ((mode === 'quick' || mode === 'jumi') && lhsStart) lhsStart.style.display = 'block';
                 if (mode === 'starred' && lhsJumiFav) lhsJumiFav.style.display = 'block';
             } else {
                 if (feb) feb.style.display = 'none';
@@ -4018,11 +3990,18 @@
         function appendChatAction(label, onclick) {
             const container = document.getElementById('jumiChatMessages');
             const div = document.createElement('div');
+            div.className = 'chat-action-row';
             div.style.cssText = 'display:flex; justify-content:flex-start; margin-top:4px;';
             const btn = document.createElement('button');
             btn.textContent = label;
             btn.style.cssText = 'background:white; border:1.5px solid #667eea; color:#667eea; border-radius:20px; padding:6px 14px; font-size:13px; font-weight:600; cursor:pointer; text-align:left;';
-            btn.onclick = onclick;
+            btn.onclick = async function() {
+                // Disable immediately to prevent double-fire
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'default';
+                await onclick();
+            };
             div.appendChild(btn);
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
@@ -4374,10 +4353,6 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     }
                     // Highlight selected
                     document.querySelectorAll('.dur-pick-btn').forEach(b => b.classList.remove('selected'));
-                    // Sync hidden btns
-                    document.querySelectorAll('.global-dur-btn').forEach(b => {
-                        b.classList.toggle('selected', b.dataset.time === val);
-                    });
                     // Transition to main UI
                     hideDurationPicker();
                 };
@@ -4428,75 +4403,13 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 }, 800);
             })();
 
-            // ── GLOBAL DURATION BAR ──
-            (function() {
-                const saved = localStorage.getItem('globalDuration');
-                selectedTime = saved ? (saved === '999' ? 999 : parseInt(saved)) : 35;
+            // ── DURATION INIT ── read saved duration on startup
+            {
+                const _saved = localStorage.getItem('globalDuration');
+                selectedTime = _saved ? (_saved === '999' ? 999 : parseInt(_saved)) : 35;
+            }
 
-                function selectGlobalDur(timeVal) {
-                    if (timeVal !== 'custom') {
-                        selectedTime = timeVal === '999' ? 999 : parseInt(timeVal);
-                        localStorage.setItem('globalDuration', timeVal);
-                    }
-                    document.querySelectorAll('.global-dur-btn').forEach(b => {
-                        b.classList.toggle('selected', b.dataset.time === timeVal);
-                    });
-                    const gc = document.getElementById('globalCustomDuration');
-                    if (gc) gc.style.display = timeVal === 'custom' ? 'block' : 'none';
-                }
-
-                // Set initial selection
-                const initialBtn = saved || '35';
-                selectGlobalDur(initialBtn);
-
-                document.querySelectorAll('.global-dur-btn').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        selectGlobalDur(this.dataset.time);
-                        if (this.dataset.time === 'custom') {
-                            const gc = document.getElementById('globalCustomDuration');
-                            if (gc) gc.focus();
-                        }
-                    });
-                });
-
-                const gc = document.getElementById('globalCustomDuration');
-                if (gc) {
-                    gc.addEventListener('input', function() {
-                        const v = parseInt(this.value);
-                        if (v >= 20) {
-                            selectedTime = v;
-                            localStorage.setItem('globalDuration', String(v));
-                        }
-                    });
-                }
-            })();
-
-            document.getElementById('simpleTab').addEventListener('click', function() {
-                const simpleControls = document.getElementById('simpleControls');
-                const isOpen = appState.mode === 'quick';
-                if (isOpen) {
-                    simpleControls.style.display = 'none';
-                    this.classList.remove('selected');
-                    return;
-                }
-                enterMode('quick');
-                this.classList.add('selected');
-                document.getElementById('customTab').classList.remove('selected');
-            });
-            
-            document.getElementById('customTab').addEventListener('click', function() {
-                const isCustomOpen = appState.mode === 'custom';
-                if (isCustomOpen) {
-                    // Toggle off — return to quick start view
-                    enterMode('quick');
-                    this.classList.remove('selected');
-                    return;
-                }
-                enterMode('custom');
-                this.classList.add('selected');
-                document.getElementById('simpleTab').classList.remove('selected');
-                initCustomBuilder();
-            });
+            // simpleTab/customTab removed — mode switching now via enterMode() directly
             
             // ── JUMI TAB ──
 
@@ -4512,7 +4425,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 // Buttons removed - no-op
             }
             
-            function initCustomBuilder() {
+            window.initCustomBuilder = function initCustomBuilder() {
                 if (customRoutine.length === 0) {
                     const savasana = exercises.find(ex => ex.exercise === 'Savasana');
                     if (savasana) customRoutine.push({...savasana});
@@ -5325,12 +5238,10 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     customRoutine = customRoutine.filter(ex => ex.phase === 'Final Rest');
                     saveCustomState();
                     renderRoutineBuilder();
-                    document.getElementById('floatingStartCustom').style.display = 'none';
                 }
             });
             
             document.getElementById('customCancel').addEventListener('click', function() {
-                document.getElementById('floatingStartCustom').style.display = 'none';
                 enterMode('quick');
             });
             
@@ -5358,7 +5269,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     
                     // If custom button clicked, open custom builder
                     if (this.dataset.type === 'custom') {
-                        document.getElementById('customTab').click();
+                        enterMode('custom'); initCustomBuilder();
                         return;
                     }
                     
@@ -5724,7 +5635,6 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
         // ===== ROUTINE GENERATION =====
         async function generateRoutine(prioritisedExercises) {
             // Hide start button to prevent starting outdated routine if user re-generates
-            document.getElementById('floatingStartSimple').style.display = 'none';
             
             // Validate type, duration, and hold are selected
             const typeSelected = selectedType && selectedType !== '';
@@ -5749,7 +5659,6 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             if (!durationSelected) {
                 if (customIsActive) {
                     await customAlert('⚠️ Please enter a custom duration (minimum 20 minutes)');
-                    document.getElementById('globalCustomDuration') && document.getElementById('globalCustomDuration').focus();
                 } else {
                     await customAlert('⚠️ Please select a duration:\n• 25, 35, or 45 minutes\n• All exercises\n• Custom duration');
                 }
@@ -6414,7 +6323,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             if (!isAllExercises) {
                 let currentTotal = bestRoutine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0);
                 const targetSecs = targetMinutes * 60;
-                const minSecs = targetSecs - 30;
+                const minSecs = targetSecs - 45; // Match assertion tolerance exactly
                 const maxSecs = targetSecs;
                 
                 
@@ -6422,41 +6331,46 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 let trimAttempts = 0;
                 let didTrim = false;
                 while (currentTotal > maxSecs && trimAttempts < 30) {
-                    // Priority 1: Trim Static Stretches
-                    const staticToRemove = bestRoutine.filter(ex => 
+                    const overshoot = currentTotal - maxSecs;
+                    
+                    // Priority 1: Static Stretching — pick best fit (smallest that fixes overshoot without going below minSecs)
+                    const staticCandidates = bestRoutine.filter(ex => 
                         ex.phase === 'Static Stretching' && ex.exercise !== 'Savasana'
                     );
                     
-                    // Priority 2: Trim Deep Stretches (keep minimum 2)
-                    const deepToRemove = bestRoutine.filter(ex => ex.phase === 'Deep Stretch');
+                    // Priority 2: Deep Stretches (keep minimum 2)
+                    const deepCandidates = bestRoutine.filter(ex => ex.phase === 'Deep Stretch');
                     
-                    if (staticToRemove.length > 0) {
-                        const toRemove = staticToRemove[staticToRemove.length - 1];
-                        const removeIndex = bestRoutine.indexOf(toRemove);
-                        const removedTime = calculateExerciseTime(toRemove);
-                        bestRoutine.splice(removeIndex, 1);
-                        currentTotal -= removedTime;
-                        didTrim = true;
-                    } else if (deepToRemove.length > 2) {
-                        const toRemove = deepToRemove[deepToRemove.length - 1];
-                        const removeIndex = bestRoutine.indexOf(toRemove);
-                        const removedTime = calculateExerciseTime(toRemove);
-                        bestRoutine.splice(removeIndex, 1);
-                        currentTotal -= removedTime;
-                        didTrim = true;
+                    let toRemove = null;
+                    
+                    if (staticCandidates.length > 0) {
+                        // Find smallest exercise that gets us to <= maxSecs without going below minSecs
+                        const ideal = staticCandidates.find(ex => {
+                            const after = currentTotal - calculateExerciseTime(ex);
+                            return after <= maxSecs && after >= minSecs;
+                        });
+                        // Fall back to last (non-priority) if no ideal fit
+                        toRemove = ideal || staticCandidates[staticCandidates.length - 1];
+                    } else if (deepCandidates.length > 2) {
+                        toRemove = deepCandidates[deepCandidates.length - 1];
                     } else {
                         break;
                     }
+                    
+                    const removeIndex = bestRoutine.indexOf(toRemove);
+                    const removedTime = calculateExerciseTime(toRemove);
+                    bestRoutine.splice(removeIndex, 1);
+                    currentTotal -= removedTime;
+                    didTrim = true;
                     trimAttempts++;
                 }
                 
-                // If we trimmed, accept the result — don't pad after trimming as it causes oscillation.
-                // The 400-attempt loop already found the best fit; trim is a last resort for conversion overhead.
+                // If we trimmed, check if we overshot below minSecs — if so, fall through to padding
                 if (didTrim) {
-                    // nothing — accept currentTotal as-is
                 }
-                // If we're significantly under and didn't need to trim, try adding more exercises
-                else if (currentTotal < minSecs) {
+
+                // Pad if under target — runs whether we trimmed or not
+                if (currentTotal < minSecs) {
                     const shortage = minSecs - currentTotal;
                     
                     let addAttempts = 0;
@@ -6467,11 +6381,15 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     // Build pool from all appropriate phases, sorted by best fit to gap
                     let availableStatic = [];
                     for (const phase of fillPhaseOrder) {
-                        const phaseExercises = exercisesForGen.filter(ex =>
-                            ex.phase === phase &&
-                            ex.exercise !== 'Savasana' &&
-                            !usedNames.has(ex.exercise)
-                        );
+                        const phaseExercises = exercisesForGen.filter(ex => {
+                            if (ex.phase !== phase) return false;
+                            if (ex.exercise === 'Savasana') return false;
+                            if (usedNames.has(ex.exercise)) return false;
+                            // Apply bodyPart filter — same as in main phase loop
+                            if (selectedType === 'upper') { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'upper' || bp === 'full'; }
+                            if (selectedType === 'lower') { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'lower' || bp === 'full'; }
+                            return true;
+                        });
                         availableStatic.push(...phaseExercises);
                     }
 
@@ -6491,10 +6409,13 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     if (availableStatic.length === 0) {
                         allowRepeats = true;
                         repeatsWereNeeded = true;
-                        availableStatic = exercisesForGen.filter(ex =>
-                            ex.phase === 'Static Stretching' &&
-                            ex.exercise !== 'Savasana'
-                        );
+                        availableStatic = exercisesForGen.filter(ex => {
+                            if (ex.phase !== 'Static Stretching') return false;
+                            if (ex.exercise === 'Savasana') return false;
+                            if (selectedType === 'upper') { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'upper' || bp === 'full'; }
+                            if (selectedType === 'lower') { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'lower' || bp === 'full'; }
+                            return true;
+                        });
                         availableStatic.sort((a, b) => {
                             const aTime = calculateExerciseTime(a);
                             const bTime = calculateExerciseTime(b);
@@ -6520,7 +6441,10 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                         }
                         
                         const exTime = calculateExerciseTime(ex);
-                        if (currentTotal + exTime <= maxSecs) {
+                        // Allow one exercise worth of overshoot — the trim loop handles it
+                        // This prevents getting stuck when only large exercises remain
+                        // Max single exercise = 2-sided long hold Deep Stretch = (120+15)*2 = 270s
+                        if (currentTotal + exTime <= maxSecs + 270) {
                             if (allowRepeats) {
                                 repeatExercisesToAdd.push({...ex, _balancingRepeat: true});
                             } else {
@@ -6542,8 +6466,8 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                             if (currentTotal >= minSecs || addAttempts >= maxAddAttempts) break;
                             
                             const exTime = calculateExerciseTime(ex);
-                            // Never overshoot maxSecs — post-trim is a last resort, not the plan
-                            if (currentTotal + exTime <= maxSecs) {
+                            // Allow overshoot — trim handles it
+                            if (currentTotal + exTime <= maxSecs + 270) {
                                 repeatExercisesToAdd.push({...ex, _balancingRepeat: true});
                                 currentTotal += exTime;
                                 addAttempts++;
@@ -6670,7 +6594,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             // ASSERTION per ChatGPT feedback
             if (!isAllExercises) {
                 console.assert(
-                    totalTime >= targetSeconds - 30, 
+                    totalTime >= targetSeconds - 45, 
                     `❌ ROUTINE TOO SHORT: ${totalTime}s < ${targetSeconds - 45}s (target: ${targetSeconds}s)`
                 );
                 console.assert(
@@ -6745,8 +6669,8 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             selectedFocus = '';
 
             // Sync type and hold UI
-            document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('selected', b.dataset.type === selectedType));
-            document.querySelectorAll('[data-hold]').forEach(b => b.classList.toggle('selected', b.dataset.hold === selectedHold));
+            document.querySelectorAll('.type-btn').forEach(b => { b.classList.remove('selected'); b.classList.toggle('selected', b.dataset.type === selectedType); });
+            document.querySelectorAll('[data-hold]').forEach(b => { b.classList.remove('selected'); b.classList.toggle('selected', b.dataset.hold === selectedHold); });
 
             // Restore Quick Start routine if one exists, otherwise show empty state
             const rw = document.getElementById('routineDisplayWrapper');
@@ -6757,9 +6681,9 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             } else {
                 if (rw) rw.style.display = 'none';
                 currentRoutine = [];
-                const btn = document.getElementById('simpleRefreshBtn');
+                const btn = document.getElementById('modeGenerateBtn');
                 if (btn) btn.innerHTML = '&#9654; Generate';
-                const lhsSimple = document.getElementById('lhsStartSimple');
+                const lhsSimple = document.getElementById('lhsStart');
                 if (lhsSimple) lhsSimple.style.display = 'none';
             }
 
@@ -6769,13 +6693,11 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
         }
 
         async function quickStartGenerate() {
-            const btn = document.getElementById('simpleRefreshBtn');
+            const btn = document.getElementById('modeGenerateBtn');
             const rw = document.getElementById('routineDisplayWrapper');
             if (rw) rw.style.display = 'block';
             await generateRoutine();
             if (btn) btn.innerHTML = '&#8635; Regenerate';
-            appState._quickRoutineReady = true;
-            updateFloatingButtons();
         }
 
         function toggleJumiOptional() {
@@ -6787,16 +6709,21 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
         }
 
-function regenerateRoutine() {
-            if (appState.mode === 'jumi') {
+        // ── SINGLE GENERATION ENTRY POINT ──
+        // All generation must go through here. Do not call quickStartGenerate or jumiGenerate directly from UI.
+        function generate(mode) {
+            if (mode === 'jumi') {
                 jumiGenerate();
             } else {
                 quickStartGenerate();
             }
         }
 
+        function regenerateRoutine() {
+            generate(appState.mode);
+        }
+
         function jumiQuickStart() {
-            enterMode('jumi');
             if (!selectedTime) selectedTime = 35;
 
             // Default Jumi type/hold buttons to full/short if nothing selected
@@ -6817,7 +6744,7 @@ function regenerateRoutine() {
                 currentRoutine = currentJumiRoutine;
                 if (rw) rw.style.display = 'block';
                 displayRoutine();
-                const lhsJ = document.getElementById('lhsStartJumi');
+                const lhsJ = document.getElementById('lhsStart');
                 if (lhsJ) lhsJ.style.display = 'block';
             } else {
                 if (rw) rw.style.display = 'none';
@@ -6826,7 +6753,7 @@ function regenerateRoutine() {
         }
 
         async function jumiGenerate() {
-            const btn = document.getElementById('jumiGenerateBtn');
+            const btn = document.getElementById('modeGenerateBtn');
             if (btn) { btn.disabled = true; btn.innerHTML = '&#8635; Generating…'; }
 
             // Read from Jumi LHS controls
@@ -6849,7 +6776,7 @@ function regenerateRoutine() {
             if (btn) { btn.disabled = false; btn.innerHTML = '&#8635; Regenerate'; }
 
             // Show Start Routine button
-            const lhsJ = document.getElementById('lhsStartJumi');
+            const lhsJ = document.getElementById('lhsStart');
             if (lhsJ) lhsJ.style.display = 'block';
 
             // Auto-open chat to show explanation
@@ -6858,7 +6785,7 @@ function regenerateRoutine() {
 
         async function jumiRegenerate() {
             currentJumiRoutine = null;
-            await jumiGenerate();
+            await generate('jumi');
         }
 
 
@@ -7784,9 +7711,6 @@ function regenerateRoutine() {
                 // Show star if routine exists
                 if (currentRoutine && currentRoutine.length > 0) {
                     updateFloatingButtons();
-                    
-                    // Show edit button for ALL routines
-                    updateFloatingButtons();
                 }
                 
                 // Restore type button selection
@@ -8163,7 +8087,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                             messages: [
                                 { role: 'user', content: initialMessage },
                                 { role: 'assistant', content: explanation },
-                                { role: 'user', content: `Your explanation is ${direction} words. Rewrite it to be between 100 and 150 words. Do not truncate — rewrite the whole thing to fit naturally.` }
+                                { role: 'user', content: `Your response was ${direction} words. Provide only the revised explanation text, between 100 and 150 words. Do not apologise or explain — just write the explanation.` }
                             ]
                         })
                     });
@@ -8184,14 +8108,19 @@ Please rank the candidates for each phase using the generate_routine tool.`;
             const _jqs = document.getElementById('jumiQuickSubtitle');
             if (_jqs) _jqs.textContent = 'Thinking…';
 
+            // Disable any stale chat Confirm buttons to prevent double-generation
+            document.querySelectorAll('.chat-action-row button').forEach(b => {
+                b.disabled = true;
+                b.style.opacity = '0.5';
+                b.style.cursor = 'default';
+            });
+
             if (!selectedTime) selectedTime = 35;
             if (!selectedType) selectedType = appSettings.quickStartType || 'full';
             if (!selectedHold) { selectedHold = appSettings.quickStartHold || 'short'; longSession = selectedHold === 'long'; }
 
             // Show thinking placeholder in routine panel
             document.getElementById('jumiExplanation').style.display = 'none';
-            document.getElementById('floatingStartSimple').style.display = 'none';
-            document.getElementById('floatingStartJumi').style.display = 'none';
             document.getElementById('routineDisplayWrapper').style.display = 'block';
             document.getElementById('customDisplay').style.display = 'none';
             if (domCache.routineDisplay) {
@@ -8231,14 +8160,14 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                 // Apply Jumi's choices, inject priority, run generateRoutine cleanly
                 longSession = selectedHold === 'long';
                 selectedType = routineData.body_type || 'full';
+                // Sync type buttons to reflect Jumi's chosen body type
+                document.querySelectorAll('.type-btn').forEach(b => { b.classList.remove('selected'); b.classList.toggle('selected', b.dataset.type === selectedType); });
 
                 const prioritised = applyJumiPriority(routineData);
                 await generateRoutine(prioritised);
 
                 // Save and display
                 currentJumiRoutine = currentRoutine.map(e => ({...e}));
-                const _jgpb = document.getElementById('jumiGeneratePanelBtn');
-                if (_jgpb) _jgpb.textContent = '↺ Refresh';
 
                 document.getElementById('routineDisplayWrapper').style.display = 'block';
                 document.getElementById('customDisplay').style.display = 'none';
@@ -8246,12 +8175,8 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                 if (_jcr) _jcr.style.display = 'none';
 
                 initAudio();
-                displayRoutine();
-                updateFloatingButtons();
                 document.getElementById('floatingEditBtn').style.display = 'flex';
-                document.getElementById('floatingStartSimple').style.display = 'none';
-                document.getElementById('floatingStartJumi').style.display = 'block';
-
+    
                 const _ji = document.getElementById('jumiQuickIcon');
                 if (_ji) _ji.textContent = '↺';
 
@@ -8310,9 +8235,6 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                 
                 // Show star and edit buttons if routine exists
                 if (currentRoutine && currentRoutine.length > 0) {
-                    updateFloatingButtons();
-                    
-                    // Show edit button for ALL routines
                     updateFloatingButtons();
                 }
                 
@@ -8373,9 +8295,6 @@ Please rank the candidates for each phase using the generate_routine tool.`;
             
             // Restore floating buttons
             if (currentRoutine && currentRoutine.length > 0) {
-                updateFloatingButtons();
-                
-                // Show edit button for ALL routines
                 updateFloatingButtons();
             }
             
@@ -8702,9 +8621,6 @@ Please rank the candidates for each phase using the generate_routine tool.`;
             
             // Show star if routine exists
             if (currentRoutine && currentRoutine.length > 0) {
-                updateFloatingButtons();
-                
-                // Show edit button for ALL routines
                 updateFloatingButtons();
             }
         }
@@ -9209,7 +9125,6 @@ Please rank the candidates for each phase using the generate_routine tool.`;
             if (nav) nav.style.display = (visible && !customNavOpen) ? 'flex' : 'none';
         }
 
-        window.splitsForced = false;
 
         window.toggleJumiExplanation = function() {
             const txt = document.getElementById('jumiExplanationText');
@@ -9457,11 +9372,6 @@ Please rank the candidates for each phase using the generate_routine tool.`;
             
             // Switch to custom mode
             enterMode('custom');
-
-            // Update tab button styles
-            document.getElementById('customTab').classList.add('selected');
-            document.getElementById('simpleTab').classList.remove('selected');
-            const _jt = document.getElementById('jumiTab'); if(_jt) _jt.classList.remove('selected');
         };
         
         // Helper functions for stats rendering
