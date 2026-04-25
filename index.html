@@ -177,7 +177,7 @@
 
         .btn.selected,
         .btn.active {
-            background: #2a9d8f;
+            background: #1a6b8a;
             color: white;
             border-color: #be5a7c;
         }
@@ -265,14 +265,19 @@
 
         /* Routine Display - More Compact */
         .routine-empty {
-            text-align: center;
-            padding: 100px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
             color: #86868b;
         }
 
         .routine-empty-text {
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 11px;
+            font-weight: 500;
+            color: #c0c0cc;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
         }
 
         .routine-info {
@@ -1620,7 +1625,7 @@
                 <div id="cardsContainer" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
 
                     <!-- Quick Start -->
-                    <button id="trueQuickStartBtn" onclick="trueQuickStart()" style="display:flex; align-items:center; gap:10px; background:#2a9d8f; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:opacity 0.15s; box-shadow:0 4px 12px rgba(42,157,143,0.35);">
+                    <button id="trueQuickStartBtn" onclick="trueQuickStart()" style="display:flex; align-items:center; gap:10px; background:#1a6b8a; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; width:100%; transition:opacity 0.15s; box-shadow:0 4px 12px rgba(26,107,138,0.35);">
                         <span style="font-size:14px; color:white; flex-shrink:0;">&#9658;</span>
                         <div>
                             <div style="font-size:14px; font-weight:600; color:white; line-height:1.2;">Quick Start</div>
@@ -1750,7 +1755,7 @@
                     <div class="section-title" style="color:#86868b;">Tell Jumi</div>
                     <textarea id="jumiPromptInput" placeholder="I want to focus on shoulders today…" rows="3" style="width:100%;border:1.5px solid #d2d2d7;border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;resize:none;outline:none;line-height:1.5;box-sizing:border-box;color:#1d1d1f;"></textarea>
                 </div>
-                <button onclick="generate(appState.mode)" id="modeGenerateBtn" class="generate-btn" style="width:100%;margin-top:14px;padding:14px;background:#3a3a3c;color:white;border:none;border-radius:14px;box-shadow:none;display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:700;cursor:pointer;">&#9654; Generate</button>
+                <button onclick="generate(appState.mode)" id="modeGenerateBtn" class="generate-btn" style="width:100%;margin-top:14px;padding:14px;background:#1a6b8a;color:white;border:none;border-radius:14px;box-shadow:0 4px 12px rgba(26,107,138,0.35);display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:700;cursor:pointer;">&#9654; Generate</button>
                 <div id="lhsStart" style="display:none;margin-top:10px;">
                     <button onclick="startRoutine()" style="width:100%;background:linear-gradient(135deg,#34c759,#2da44e);color:white;border:none;padding:14px;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(52,199,89,0.35);">▶ Start Routine</button>
                 </div>
@@ -1877,9 +1882,13 @@
 
             <div id="routineDisplayWrapper" style="padding: 30px; overflow-y: auto; flex: 1; position: relative;">
             <!-- SIMPLE MODE DISPLAY -->
-            <div id="routineDisplay">
-                <div class="routine-empty">
-                    <div class="routine-empty-text">Select an option to get started</div>
+            <div id="routineDisplay" style="height:100%;min-height:100%;">
+                <div class="routine-empty" style="position:relative;overflow:hidden;height:100%;min-height:500px;">
+                    <div id="bubbleContainer" style="position:absolute;inset:-30px;pointer-events:none;z-index:0;"></div>
+                    <div style="position:relative;z-index:1;text-align:center;pointer-events:none;">
+                        <div style="font-size:36px;font-weight:800;letter-spacing:-2px;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px;opacity:0.25;">flex.</div>
+                        <div class="routine-empty-text">Select an option to get started</div>
+                    </div>
                 </div>
             </div>
             <!-- Floating Start button -->
@@ -3206,7 +3215,7 @@
         // ===== STATE VARIABLES =====
         window._exercises = [];
 
-        // Save exercises with redundant backup key — window-level so all scopes can call it
+
         window.saveExercises = function saveExercises() {
             const json = JSON.stringify(window._exercises);
             localStorage.setItem('flexibilityRoutineExercises', json);
@@ -3551,6 +3560,113 @@
         }
 
         // ===== INITIALIZATION =====
+        // ── BUBBLE SYSTEM ──
+        const BubbleSystem = (() => {
+            let active = false;
+            let container = null;
+            let W = 0, H = 0;
+            const timers = [];
+
+            function rand(min, max) { return min + Math.random() * (max - min); }
+
+            function makeBubble() {
+                if (!active) return;
+                container = document.getElementById('bubbleContainer');
+                if (!container) return;
+                W = container.offsetWidth || container.parentElement?.offsetWidth || 800;
+                H = container.offsetHeight || container.parentElement?.offsetHeight || 500;
+
+                const t = (Math.random() + Math.random()) / 2;
+                const size = 8 + t * 127;
+
+                const x = rand(size / 2, W - size / 2);
+                const popFraction = rand(0.15, 1.0);
+                const popY = H * popFraction;
+                const riseDuration = rand(6, 18);
+                const drift = rand(-30, 30);
+                const hue = rand(245, 275);
+                const sat = rand(35, 55);
+
+                const bubble = document.createElement('div');
+                bubble.style.cssText = `
+                    position:absolute; border-radius:50%; will-change:transform,opacity;
+                    width:${size}px; height:${size}px;
+                    left:${x - size / 2}px; bottom:-${size}px;
+                    background:radial-gradient(circle at 32% 32%,rgba(255,255,255,0.92) 0%,hsla(${hue},${sat}%,82%,0.4) 30%,hsla(${hue},${sat}%,72%,0.18) 60%,rgba(255,255,255,0.04) 100%);
+                    box-shadow:inset 0 0 ${size*0.5}px rgba(255,255,255,0.85),inset ${size*0.12}px ${size*0.08}px ${size*0.2}px rgba(255,255,255,0.7),0 0 ${size*0.25}px hsla(${hue},${sat}%,78%,0.18);
+                    border:1px solid hsla(${hue},${sat}%,82%,0.5);
+                `;
+                container.appendChild(bubble);
+
+                const riseMs = riseDuration * 1000;
+                const popMs = rand(500, 1100);
+
+                const riseFrames = [
+                    { transform: `translateX(0px) translateY(0px) scale(1)`, opacity: 0, offset: 0 },
+                    { transform: `translateX(0px) translateY(0px) scale(1)`, opacity: 0.9, offset: 0.05 },
+                    { transform: `translateX(${drift*0.4}px) translateY(-${popY*0.5}px) scale(1)`, opacity: 0.85, offset: 0.5 },
+                    { transform: `translateX(${drift}px) translateY(-${popY}px) scale(1)`, opacity: 0.8, offset: 1 },
+                ];
+
+                const riseAnim = bubble.animate(riseFrames, {
+                    duration: riseMs,
+                    easing: `cubic-bezier(${rand(0.3,0.5)},0,${rand(0.1,0.25)},1)`,
+                    fill: 'forwards',
+                });
+
+                riseAnim.onfinish = () => {
+                    if (!active) { bubble.remove(); return; }
+                    const popFrames = [
+                        { transform: `translateX(${drift}px) translateY(-${popY}px) scale(1)`, opacity: 0.8, offset: 0 },
+                        { transform: `translateX(${drift}px) translateY(-${popY+8}px) scale(1.2)`, opacity: 0.4, offset: 0.45 },
+                        { transform: `translateX(${drift}px) translateY(-${popY+14}px) scale(1.5)`, opacity: 0.1, offset: 0.8 },
+                        { transform: `translateX(${drift}px) translateY(-${popY+18}px) scale(1.65)`, opacity: 0, offset: 1 },
+                    ];
+                    const popAnim = bubble.animate(popFrames, { duration: popMs, easing: 'ease-out', fill: 'forwards' });
+                    popAnim.onfinish = () => {
+                        bubble.remove();
+                        if (active) timers.push(setTimeout(makeBubble, rand(800, 2500)));
+                    };
+                };
+            }
+
+            function start() {
+                if (active) stop(); // reset if already running
+                container = document.getElementById('bubbleContainer');
+                if (!container) return;
+                active = true;
+                for (let i = 0; i < 5; i++) {
+                    timers.push(setTimeout(makeBubble, rand(0, 6000)));
+                }
+            }
+
+            function stop() {
+                active = false;
+                timers.forEach(clearTimeout);
+                timers.length = 0;
+                if (container) container.innerHTML = '';
+            }
+
+            function showEmpty() {
+                const display = domCache.routineDisplay || document.getElementById('routineDisplay');
+                if (display) {
+                    display.style.height = '100%';
+                    display.style.minHeight = '100%';
+                    display.innerHTML = `
+                        <div class="routine-empty" style="position:relative;overflow:hidden;height:100%;min-height:500px;">
+                            <div id="bubbleContainer" style="position:absolute;inset:-30px;pointer-events:none;z-index:0;"></div>
+                            <div style="position:relative;z-index:1;text-align:center;pointer-events:none;">
+                                <div style="font-size:36px;font-weight:800;letter-spacing:-2px;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px;opacity:0.25;">flex.</div>
+                                <div class="routine-empty-text">Select an option to get started</div>
+                            </div>
+                        </div>`;
+                }
+                start();
+            }
+
+            return { start, stop, showEmpty };
+        })();
+
         document.addEventListener('DOMContentLoaded', async function() {
             // Initialize DOM cache
             domCache.init();
@@ -3643,6 +3759,9 @@
             const _jpi = document.getElementById('jumiPromptInput');
             if (_jpi) _jpi.value = '';
             console.log('App initialized with', exercises.length, 'exercises');
+
+
+            BubbleSystem.start();
             
             // Check for saved routine in progress and offer to resume
             checkForSavedRoutine();
@@ -3749,7 +3868,7 @@
                 if (rw) rw.style.display = 'block';
                 if (cd) cd.style.display = 'none';
                 if (ddd) ddd.style.opacity = '1';
-                if (genBtn) { genBtn.style.background = '#3a3a3c'; if (!appState._quickRoutineReady) genBtn.innerHTML = '&#9654; Generate'; else genBtn.innerHTML = '&#8635; Regenerate'; }
+                if (genBtn) { genBtn.style.background = '#1a6b8a'; genBtn.style.boxShadow = '0 4px 12px rgba(26,107,138,0.35)'; if (!appState._quickRoutineReady) genBtn.innerHTML = '&#9654; Generate'; else genBtn.innerHTML = '&#8635; Regenerate'; }
 
             } else if (mode === 'jumi') {
                 setActiveCard('jumiQuickBtn');
@@ -3779,6 +3898,12 @@
 
             applyModeColours(mode);
             updateFloatingButtons();
+
+            // Close starred modal when switching away from favourites
+            if (mode !== 'starred') {
+                const slm = document.getElementById('starredListModal');
+                if (slm) slm.style.display = 'none';
+            }
         }
 
         // ── FLOATING BUTTON STATE ──
@@ -6680,12 +6805,13 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 if (rw) rw.style.display = 'block';
                 displayRoutine();
             } else {
-                if (rw) rw.style.display = 'none';
+                if (rw) rw.style.display = 'block';
                 currentRoutine = [];
                 const btn = document.getElementById('modeGenerateBtn');
                 if (btn) btn.innerHTML = '&#9654; Generate';
                 const lhsSimple = document.getElementById('lhsStart');
                 if (lhsSimple) lhsSimple.style.display = 'none';
+                BubbleSystem.showEmpty();
             }
 
             // Hide Jumi explanation
@@ -6748,8 +6874,9 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 const lhsJ = document.getElementById('lhsStart');
                 if (lhsJ) lhsJ.style.display = 'block';
             } else {
-                if (rw) rw.style.display = 'none';
+                if (rw) rw.style.display = 'block';
                 updateFloatingButtons();
+                BubbleSystem.showEmpty();
             }
         }
 
@@ -6840,6 +6967,8 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
 
         // ===== DISPLAY ROUTINE =====
         function displayRoutine() {
+            BubbleSystem.stop();
+            if (domCache.routineDisplay) { domCache.routineDisplay.style.height = 'auto'; domCache.routineDisplay.style.minHeight = ''; }
             const display = domCache.routineDisplay;
             const totalTime = currentRoutine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0);
             const mins = Math.floor(Math.round(totalTime) / 60);
@@ -7037,6 +7166,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             routineAlreadySaved = false; // Reset save flag for new routine
             domCache.mainView.style.display = 'none';
             domCache.timerView.style.display = 'grid';
+            BubbleSystem.stop();
             setStarVisible(false);
             document.getElementById('floatingEditBtn').style.display = 'none';
             currentExerciseIndex = -1;
