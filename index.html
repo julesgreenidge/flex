@@ -55,7 +55,7 @@
         }
 
         .routine-column {
-            background: #f2f2f7;
+            background: #f0eef8; /* Option 4: purple tint — alt option 1: #f5f5f0 warm grey */
             padding: 30px 30px;
             overflow-y: auto;
             backdrop-filter: blur(20px);
@@ -387,7 +387,7 @@
 
         .exercise-card {
             padding: 14px 16px;
-            background: #f9f9fb;
+            background: white;
             margin-bottom: 8px;
             border-radius: 8px;
             border: 1px solid #e5e5e7;
@@ -3855,7 +3855,7 @@
             if (cc) { cc.style.display = 'none'; cc.style.flexDirection = ''; }
             if (cna) cna.style.display = 'none';
             if (selCol) selCol.style.overflow = 'auto';
-            if (routeCol) routeCol.style.background = 'rgba(255,255,255,0.95)';
+            if (routeCol) routeCol.style.background = '';
             const jp = document.getElementById('jumiPanel'); if (jp) jp.style.display = 'none';
             const je = document.getElementById('jumiExplanation'); if (je) je.style.display = 'none';
             if (mc) mc.style.display = 'none';
@@ -3949,20 +3949,18 @@
         // ── MODE COLOURS ──
         // Single source of truth for background and routine-info colours
         function applyModeColours(mode) {
-            const rw = document.getElementById('routineDisplayWrapper');
             const cd = document.getElementById('customDisplay');
             const routeCol = document.querySelector('.routine-column');
             const colours = {
-                quick:   { rw: 'rgba(255,255,255,0.95)', info: '#e8e8ed' },
-                jumi:    { rw: 'rgba(255,255,255,0.95)', info: '#e8e8ed' },
-                custom:  { rw: null, info: '#e8e8ed', cd: 'rgba(255,255,255,0.95)', col: 'rgba(255,255,255,0.95)' },
-                starred: { rw: 'rgba(255,255,255,0.95)', info: '#e8e8ed' },
+                quick:   { info: '#e8e8ed' },
+                jumi:    { info: '#e8e8ed' },
+                custom:  { info: '#e8e8ed', cd: 'rgba(255,255,255,0.95)', col: 'rgba(255,255,255,0.95)' },
+                starred: { info: '#e8e8ed' },
             };
             const c = colours[mode] || colours.quick;
-            if (rw && c.rw) rw.style.background = c.rw;
             if (cd && c.cd) cd.style.background = c.cd;
             if (routeCol && c.col) routeCol.style.background = c.col;
-            // Apply routine-info colour to both display areas
+            else if (routeCol) routeCol.style.background = '';
             document.querySelectorAll('.routine-info').forEach(el => { el.style.background = c.info; });
         }
 
