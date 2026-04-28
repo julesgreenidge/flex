@@ -62,6 +62,13 @@
             position: relative;
         }
 
+        .content-column {
+            background: white;
+            padding: 30px 30px;
+            overflow-y: auto;
+            backdrop-filter: blur(20px);
+            position: relative;
+        }
         h1 {
             font-size: 34px;
             font-weight: 700;
@@ -1158,7 +1165,7 @@
             left: 0;
             width: 100%;
             height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: transparent;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1574,6 +1581,65 @@
 <meta name="build-date" content="24 Apr 2026">
 </head>
 <body>
+    <!-- Shared purple background with continuous bubble animation -->
+    <div id="purpleBackground" style="position:fixed;inset:0;z-index:499;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);pointer-events:none;">
+        <div id="purpleBubbleContainer" style="position:absolute;inset:0;overflow:hidden;"></div>
+    </div>
+    <script>
+        window.PurpleBubbles = (function() {
+            let active = false;
+            const timers = [];
+            function rand(min, max) { return min + Math.random() * (max - min); }
+            function spawn() {
+                if (!active) return;
+                const container = document.getElementById('purpleBubbleContainer');
+                if (!container) return;
+                const W = window.innerWidth, H = window.innerHeight;
+                const t = (Math.random() + Math.random()) / 2;
+                const size = 8 + t * 172;
+                const x = rand(size / 2, W - size / 2);
+                const popY = H * rand(0.15, 1.0);
+                const hue = rand(245, 275);
+                const drift = rand(-30, 30);
+                const bubble = document.createElement('div');
+                bubble.style.cssText = `position:absolute;border-radius:50%;will-change:transform,opacity;width:${size}px;height:${size}px;left:${x-size/2}px;bottom:-${size}px;background:radial-gradient(circle at 32% 32%,rgba(255,255,255,0.5) 0%,hsla(${hue},60%,90%,0.25) 30%,hsla(${hue},50%,80%,0.1) 60%,rgba(255,255,255,0.02) 100%);box-shadow:inset 0 0 ${size*0.4}px rgba(255,255,255,0.4),0 0 ${size*0.2}px rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);`;
+                container.appendChild(bubble);
+                const riseMs = rand(6, 18) * 1000;
+                const popMs = rand(500, 1100);
+                const riseAnim = bubble.animate([
+                    { transform:`translateX(0) translateY(0) scale(1)`, opacity:0, offset:0 },
+                    { transform:`translateX(0) translateY(0) scale(1)`, opacity:0.8, offset:0.05 },
+                    { transform:`translateX(${drift*0.4}px) translateY(-${popY*0.5}px) scale(1)`, opacity:0.75, offset:0.5 },
+                    { transform:`translateX(${drift}px) translateY(-${popY}px) scale(1)`, opacity:0.7, offset:1 },
+                ], { duration:riseMs, easing:`cubic-bezier(${rand(0.3,0.5)},0,${rand(0.1,0.25)},1)`, fill:'forwards' });
+                riseAnim.onfinish = () => {
+                    if (!active) { bubble.remove(); return; }
+                    const popAnim = bubble.animate([
+                        { transform:`translateX(${drift}px) translateY(-${popY}px) scale(1)`, opacity:0.7 },
+                        { transform:`translateX(${drift}px) translateY(-${popY+8}px) scale(1.2)`, opacity:0.3 },
+                        { transform:`translateX(${drift}px) translateY(-${popY+16}px) scale(1.55)`, opacity:0 },
+                    ], { duration:popMs, easing:'ease-out', fill:'forwards' });
+                    popAnim.onfinish = () => { bubble.remove(); if (active) timers.push(setTimeout(spawn, rand(800, 2500))); };
+                };
+            }
+            return {
+                start() {
+                    if (active) return;
+                    active = true;
+                    for (let i = 0; i < 5; i++) timers.push(setTimeout(spawn, rand(0, 6000)));
+                },
+                stop() {
+                    active = false;
+                    timers.forEach(clearTimeout);
+                    timers.length = 0;
+                    const bg = document.getElementById('purpleBackground');
+                    if (bg) bg.style.display = 'none';
+                }
+            };
+        })();
+        PurpleBubbles.start();
+    </script>
+
     <!-- Splash Screen -->
     <div id="splashScreen" class="splash-screen">
         <div class="splash-content">
@@ -1587,7 +1653,7 @@
         <!-- Left Column: Exercise Selection -->
         <div class="selection-column">
             <!-- DURATION PICKER SCREEN — shown on every session load -->
-            <div id="durationPickerScreen" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:500; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; transition:opacity 0.4s ease, transform 0.4s ease; background:linear-gradient(160deg,#667eea 0%,#764ba2 100%);">
+            <div id="durationPickerScreen" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:500; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; transition:opacity 0.4s ease, transform 0.4s ease; background:transparent;">
                 <div style="width:100%; max-width:320px; padding:0 24px; box-sizing:border-box; text-align:center;">
                     <div style="font-size:52px; font-weight:800; color:white; letter-spacing:-2px; margin-bottom:32px;">flex.</div>
                     <div style="font-size:15px; font-weight:400; color:rgba(255,255,255,0.8); margin-bottom:36px;">How much time do you have?</div>
@@ -1897,7 +1963,7 @@
 
 
             <!-- CUSTOM MODE DISPLAY (hidden initially) -->
-            <div id="customDisplay" style="display: none; flex-direction: column; flex: 1; overflow-y: auto; padding: 30px;">
+            <div id="customDisplay" style="display: none; flex-direction: column; flex: 1; overflow-y: auto; padding: 30px; background: #f0eef8;">
                 <div id="customStats" style="flex-shrink: 0;">
                     <div class="routine-info">
                         <div class="info-grid" style="grid-template-columns: repeat(4, 1fr);">
@@ -2073,7 +2139,7 @@
             </div>
 
             <!-- RHS Content Column -->
-            <div class="routine-column" style="display: flex; flex-direction: column; padding: 0;">
+            <div class="content-column" style="display: flex; flex-direction: column; padding: 0;">
 
                 <!-- NAV BAR -->
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 1px solid #e5e5e7; background: rgba(255,255,255,0.95); flex-shrink: 0;">
@@ -3578,7 +3644,7 @@
                 H = container.offsetHeight || container.parentElement?.offsetHeight || 500;
 
                 const t = (Math.random() + Math.random()) / 2;
-                const size = 8 + t * 127;
+                const size = 8 + t * 172;
 
                 const x = rand(size / 2, W - size / 2);
                 const popFraction = rand(0.15, 1.0);
@@ -3949,18 +4015,15 @@
         // ── MODE COLOURS ──
         // Single source of truth for background and routine-info colours
         function applyModeColours(mode) {
-            const cd = document.getElementById('customDisplay');
             const routeCol = document.querySelector('.routine-column');
             const colours = {
                 quick:   { info: '#e8e8ed' },
                 jumi:    { info: '#e8e8ed' },
-                custom:  { info: '#e8e8ed', cd: 'rgba(255,255,255,0.95)', col: 'rgba(255,255,255,0.95)' },
+                custom:  { info: '#e8e8ed' },
                 starred: { info: '#e8e8ed' },
             };
             const c = colours[mode] || colours.quick;
-            if (cd && c.cd) cd.style.background = c.cd;
-            if (routeCol && c.col) routeCol.style.background = c.col;
-            else if (routeCol) routeCol.style.background = '';
+            if (routeCol) routeCol.style.background = '';
             document.querySelectorAll('.routine-info').forEach(el => { el.style.background = c.info; });
         }
 
@@ -4491,6 +4554,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                         picker.style.display = 'none';
                         main.style.opacity = '1';
                         main.style.pointerEvents = 'auto';
+                        PurpleBubbles.stop();
                         showJumiChatBtn();
                     }, 400);
                 };
@@ -4505,6 +4569,9 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                         b.style.opacity = '1';
                         b.style.transform = '';
                     });
+                    const bg = document.getElementById('purpleBackground');
+                    if (bg) bg.style.display = '';
+                    PurpleBubbles.start();
                     picker.style.display = 'flex';
                     picker.style.opacity = '0';
                     picker.style.transform = 'translateY(-20px)';
@@ -4797,8 +4864,9 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                             const sidesStr = ex.sides > 1 ? `${dur}s × ${ex.sides}` : `${dur}s`;
                             
                             html += `
-                                <div draggable="true" data-idx="${ex.idx}" class="ex-row" style="padding: 14px 16px; background: white; margin-bottom: 8px; border-radius: 8px; border: 1px solid #e5e5e7; display: flex; justify-content: space-between; align-items: center; cursor: move; transition: all 0.2s;">
-                                    <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                                <div draggable="true" data-idx="${ex.idx}" class="ex-row exercise-card" style="cursor:move;position:relative;overflow:hidden;display:flex;justify-content:space-between;align-items:center;">
+                                    <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:${color};border-radius:0;"></div>
+                                    <div style="display: flex; align-items: center; gap: 12px; flex: 1; padding-left: 10px;">
                                         <div style="color: #ccc; font-size: 16px; cursor: grab;">☰</div>
                                         <div style="flex: 1;">
                                             <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${ex.exercise}</div>
@@ -6805,12 +6873,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 displayRoutine();
             } else {
                 if (rw) rw.style.display = 'block';
-                currentRoutine = [];
-                const btn = document.getElementById('modeGenerateBtn');
-                if (btn) btn.innerHTML = '&#9654; Generate';
-                const lhsSimple = document.getElementById('lhsStart');
-                if (lhsSimple) lhsSimple.style.display = 'none';
-                BubbleSystem.showEmpty();
+                generate('quick');
             }
 
             // Hide Jumi explanation
@@ -7122,7 +7185,8 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                             <div class="phase-title">Final Rest</div>
                             <div class="phase-duration">${savMins}:${savSecs.toString().padStart(2, '0')}</div>
                         </div>
-                        <div class="exercise-card">
+                        <div class="exercise-card" style="position:relative;overflow:hidden;">
+                            <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--phase-finalrest);border-radius:0;"></div>
                             <div>
                                 <div class="exercise-name">${savasanaEx.exercise}</div>
                                 <div class="exercise-details">
@@ -10301,7 +10365,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
             </div>
 
             <!-- Right Column: Settings Content -->
-            <div class="routine-column" style="display: flex; flex-direction: column; padding: 0;">
+            <div class="content-column" style="display: flex; flex-direction: column; padding: 0;">
 
                 <!-- NAV BAR -->
                 <div id="settingsNavBar" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 1px solid #e5e5e7; background: rgba(255,255,255,0.95); flex-shrink: 0;">
