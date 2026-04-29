@@ -1626,7 +1626,7 @@
                 start() {
                     if (active) return;
                     active = true;
-                    for (let i = 0; i < 5; i++) timers.push(setTimeout(spawn, rand(0, 6000)));
+                    for (let i = 0; i < 5; i++) timers.push(setTimeout(spawn, rand(0, 2000)));
                 },
                 stop() {
                     active = false;
@@ -3653,7 +3653,7 @@
                 const x = rand(size / 2, W - size / 2);
                 const popFraction = rand(0.15, 1.0);
                 const popY = H * popFraction;
-                const riseDuration = rand(6, 18);
+                const riseDuration = rand(3, 8);
                 const drift = rand(-30, 30);
                 const hue = rand(245, 275);
                 const sat = rand(35, 55);
