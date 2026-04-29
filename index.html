@@ -350,7 +350,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
         
         .phase-header::before {
@@ -524,7 +524,7 @@
             letter-spacing: 1px;
             color: #667eea;
             margin-top: 24px;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             padding-bottom: 8px;
             border-bottom: 2px solid #e5e5e7;
         }
@@ -595,7 +595,7 @@
             letter-spacing: 0.5px;
             flex-shrink: 0;
             border-radius: 10px;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
 
         .exercise-list-scrollable {
@@ -645,7 +645,7 @@
             letter-spacing: 1px;
             font-weight: 700;
             opacity: 0.6;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
 
         .next-exercise-label {
@@ -661,7 +661,7 @@
             font-size: 42px;
             font-weight: 800;
             line-height: 1.1;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
 
         .next-exercise-name {
@@ -813,7 +813,7 @@
         .exercise-list-card.current .exercise-list-name {
             font-size: 42px;
             font-weight: 800;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             line-height: 1.1;
             word-wrap: break-word;
             overflow-wrap: break-word;
@@ -873,7 +873,7 @@
             width: min(80vh, 550px);
             height: min(80vh, 550px);
             margin-top: 12px;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
 
         /* Pulse animation for final 3 seconds */
@@ -945,7 +945,7 @@
         .timer-exercise-name {
             font-size: clamp(24px, 5vw, 34px);
             font-weight: 700;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             line-height: 1.2;
             min-height: 82px;
             display: flex;
@@ -1016,7 +1016,7 @@
 
         .segmented {
             display: flex;
-            background: #f2f2f7;
+            background: rgba(0,0,0,0.07);
             border-radius: 12px;
             padding: 3px;
             gap: 3px;
@@ -1040,8 +1040,8 @@
             border-left: none;
         }
         .segmented button.selected {
-            background: white;
-            color: #1d1d1f;
+            background: var(--seg-active, white);
+            color: var(--seg-active-text, #1d1d1f);
             border-left-color: transparent;
             box-shadow: 0 1px 4px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.06);
         }
@@ -1688,7 +1688,7 @@
 
 
             <!-- MODE GRID -->
-            <div id="quickStartSection" style="margin-bottom:12px;">
+            <div id="quickStartSection" style="margin-bottom:16px;">
                 <div id="cardsContainer" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
 
                     <!-- Quick Start -->
@@ -1729,12 +1729,8 @@
 
                 </div>
             </div>
-            <!-- Separator -->
-            <div style="display:flex; align-items:center; gap:10px; margin: 16px 0;">
-                <div style="flex:1; height:1px; background:#e5e5e7;"></div>
-            </div>
-
             <!-- SHARED TYPE/HOLD CONTROLS — visible for Quick Start and Jumi, hidden for Custom/Favourites -->
+            <div id="controlsContainer" style="border-radius:18px;padding:16px;margin-top:16px;transition:background 0.3s;">
             <div id="sharedTypeHold" style="display:none;">
                 <!-- Type -->
                 <div class="section">
@@ -1822,43 +1818,51 @@
                     <div class="section-title" style="color:#86868b;">Tell Jumi</div>
                     <textarea id="jumiPromptInput" placeholder="I want to focus on shoulders today…" rows="3" style="width:100%;border:1.5px solid #d2d2d7;border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;resize:none;outline:none;line-height:1.5;box-sizing:border-box;color:#1d1d1f;"></textarea>
                 </div>
-                <button onclick="generate(appState.mode)" id="modeGenerateBtn" class="generate-btn" style="width:100%;margin-top:14px;padding:14px;background:#1a6b8a;color:white;border:none;border-radius:14px;box-shadow:0 4px 12px rgba(26,107,138,0.35);display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:700;cursor:pointer;">&#9654; Generate</button>
-                <div id="lhsStart" style="display:none;margin-top:10px;">
-                    <button onclick="startRoutine()" style="width:100%;background:linear-gradient(135deg,#34c759,#2da44e);color:white;border:none;padding:14px;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(52,199,89,0.35);">▶ Start Routine</button>
-                </div>
             </div>
             <!-- END MODE CONTROLS -->
+            </div><!-- END CONTROLS CONTAINER -->
+            <button onclick="generate(appState.mode)" id="modeGenerateBtn" class="generate-btn" style="width:100%;margin-top:16px;padding:14px;background:#1a6b8a;color:white;border:none;border-radius:14px;box-shadow:0 4px 12px rgba(26,107,138,0.35);display:none;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:700;cursor:pointer;">&#9654; Generate</button>
+            <div id="lhsStart" style="display:none;margin-top:16px;">
+                <button onclick="startRoutine()" style="width:100%;background:linear-gradient(135deg,#34c759,#2da44e);color:white;border:none;padding:14px;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(52,199,89,0.35);">▶ Start Routine</button>
+            </div>
             
             <!-- CUSTOM MODE CONTROLS (hidden initially) -->
             <div id="customControls" style="display: none; height: 100%; flex-direction: column; overflow: hidden;">
                 <!-- Fixed header -->
-                <div style="flex-shrink: 0;">
-                    <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700;">Add Exercises</h3>
-                    
-                    <div style="margin-bottom: 16px;">
-                        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                            <input type="text" id="customSearch" placeholder="Search exercises..." style="flex: 1; padding: 8px 12px; border: 2px solid #d2d2d7; border-radius: 8px; font-size: 12px;">
-                            <button id="customAddFilter" style="background: #e0e0e0; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; cursor: pointer; white-space: nowrap;">+ Add Filter</button>
+                <div style="flex-shrink: 0; background:#e8eef5; border-radius:18px; padding:20px; margin-top:16px; margin-bottom:16px;">
+                    <div style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:#1a3a5c; margin-bottom:12px;">Add Exercises</div>
+
+                    <div style="margin-bottom: 0;">
+                        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <div style="flex:1; position:relative; display:flex; align-items:center;">
+                                <input type="text" id="customSearch" placeholder="Search exercises..." style="width:100%; padding: 13px 36px 13px 14px; border: none; border-radius: 14px; font-size: 14px; font-weight: 400; outline:none; background:white; color:#1d1d1f;" onfocus="this.style.boxShadow='0 0 0 2px #1a3a5c'" onblur="this.style.boxShadow='none'" oninput="document.getElementById('customSearchClear').style.display=this.value?'flex':'none'">
+                                <span id="customSearchClear" onclick="document.getElementById('customSearch').value='';document.getElementById('customSearchClear').style.display='none';const pc=document.getElementById('customPillsContainer');if(pc)pc.dataset.bodypart='';renderExerciseTable();document.getElementById('customSearch').focus();" style="position:absolute;right:10px;display:none;width:20px;height:20px;background:#c0c0cc;border-radius:50%;cursor:pointer;"><svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);" width="8" height="8" viewBox="0 0 8 8" fill="none"><line x1="1" y1="1" x2="7" y2="7" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="7" y1="1" x2="1" y2="7" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></span>
+                            </div>
                         </div>
-                        
-                        <div id="customFilterMenu" style="display: none; background: white; border: 2px solid #d2d2d7; border-radius: 6px; padding: 12px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+
+                        <div id="customFilterMenu" style="display: none; background: white; border: 2px solid #d2d2d7; border-radius: 6px; padding: 12px; margin-bottom: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
                             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
                                 <button id="filterMuscleBtn" style="background: white; border: 2px solid #d2d2d7; padding: 8px; border-radius: 6px; font-size: 11px; cursor: pointer;">Muscle</button>
                                 <button id="filterPhaseBtn" style="background: white; border: 2px solid #d2d2d7; padding: 8px; border-radius: 6px; font-size: 11px; cursor: pointer;">Phase</button>
                                 <button id="filterPositionBtn" style="background: white; border: 2px solid #d2d2d7; padding: 8px; border-radius: 6px; font-size: 11px; cursor: pointer;">Position</button>
                             </div>
                         </div>
-                        
+
                         <div id="customFilterChips" style="display: none; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;"></div>
                         <div id="customFilterDropdown" style="display: none; position: absolute; background: white; border: 2px solid #d2d2d7; border-radius: 6px; margin-top: 4px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 250px; max-height: 200px; overflow-y: auto; padding: 4px;"></div>
+
+                        <!-- Pills — rendered dynamically by renderCustomPills() in initCustomBuilder -->
+                        <div id="customSearchEmpty" style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
+                            <div id="customPillsContainer" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+                        </div>
                     </div>
                 </div>
-                
-                <!-- Scrollable table area -->
-                <div style="flex: 1; overflow-y: auto; background: white; margin-bottom: 16px;">
+
+                <!-- Scrollable table area — hidden when no search -->
+                <div id="customExerciseTableWrap" style="display:none; flex: 1; min-height: 0; overflow-y: auto; background: white; margin-bottom: 16px; border-radius: 10px;">
                     <table id="customExerciseTable" style="width: 100%; border-collapse: collapse;"></table>
                 </div>
-                
+
                 <!-- Fixed bottom button bar -->
                 <div style="flex-shrink: 0; padding-top: 16px; border-top: 2px solid #e0e0e0;">
                     <button id="customAddSelected" style="width: 100%; background: #1a3a5c; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; height: 36px; white-space: nowrap;">Add Selected to Routine</button>
@@ -3926,6 +3930,7 @@
             const je = document.getElementById('jumiExplanation'); if (je) je.style.display = 'none';
             if (mc) mc.style.display = 'none';
             if (sth) sth.style.display = 'none';
+            if (genBtn) genBtn.style.display = 'none';
             if (tjs) tjs.style.display = 'none';
 
             if (mode === 'quick') {
@@ -3935,7 +3940,7 @@
                 if (rw) rw.style.display = 'block';
                 if (cd) cd.style.display = 'none';
                 if (ddd) ddd.style.opacity = '1';
-                if (genBtn) { genBtn.style.background = '#1a6b8a'; genBtn.style.boxShadow = '0 4px 12px rgba(26,107,138,0.35)'; if (!appState._quickRoutineReady) genBtn.innerHTML = '&#9654; Generate'; else genBtn.innerHTML = '&#8635; Regenerate'; }
+                if (genBtn) { genBtn.style.display = 'flex'; genBtn.style.background = '#1a6b8a'; genBtn.style.boxShadow = '0 4px 12px rgba(26,107,138,0.35)'; if (!appState._quickRoutineReady) genBtn.innerHTML = '&#9654; Generate'; else genBtn.innerHTML = '&#8635; Regenerate'; }
 
             } else if (mode === 'jumi') {
                 setActiveCard('jumiQuickBtn');
@@ -3945,7 +3950,7 @@
                 if (rw) rw.style.display = 'block';
                 if (cd) cd.style.display = 'none';
                 if (ddd) ddd.style.opacity = '1';
-                if (genBtn) { genBtn.style.background = 'linear-gradient(135deg,#667eea,#764ba2)'; if (!appState.jumiRoutine || !appState.jumiRoutine.length) genBtn.innerHTML = '✦ Generate'; else genBtn.innerHTML = '&#8635; Regenerate'; }
+                if (genBtn) { genBtn.style.display = 'flex'; genBtn.style.background = 'linear-gradient(135deg,#667eea,#764ba2)'; genBtn.style.boxShadow = '0 4px 12px rgba(102,126,234,0.35)'; if (!appState.jumiRoutine || !appState.jumiRoutine.length) genBtn.innerHTML = '✦ Generate'; else genBtn.innerHTML = '&#8635; Regenerate'; }
 
             } else if (mode === 'custom') {
                 setActiveCard('customCardBtn');
@@ -4016,14 +4021,44 @@
         // Single source of truth for background and routine-info colours
         function applyModeColours(mode) {
             const routeCol = document.querySelector('.routine-column');
+            const container = document.getElementById('controlsContainer');
             const colours = {
-                quick:   { info: '#e8e8ed' },
-                jumi:    { info: '#e8e8ed' },
-                custom:  { info: '#e8e8ed' },
-                starred: { info: '#e8e8ed' },
+                quick:   { info: '#e8e8ed', container: '#e8f2f5', segActive: '#1a6b8a', segActiveText: 'white', showContainer: true },
+                jumi:    { info: '#e8e8ed', container: '#f0eef8', segActive: 'linear-gradient(135deg,#667eea,#764ba2)', segActiveText: 'white', showContainer: true },
+                custom:  { info: '#e8e8ed', container: 'transparent', segActive: '#1a3a5c', segActiveText: 'white', showContainer: false },
+                starred: { info: '#e8e8ed', container: 'transparent', segActive: 'white', segActiveText: '#1d1d1f', showContainer: false },
             };
             const c = colours[mode] || colours.quick;
             if (routeCol) routeCol.style.background = '';
+            if (container) {
+                container.style.background = c.container;
+                container.style.display = c.showContainer ? 'block' : 'none';
+                container.style.setProperty('--seg-active', c.segActive || 'white');
+                container.style.setProperty('--seg-active-text', c.segActiveText || '#1d1d1f');
+            }
+            // Update section-title label colour to match mode
+            const titleColour = mode === 'quick' ? '#1a6b8a' : mode === 'jumi' ? '#764ba2' : '#86868b';
+            document.querySelectorAll('#controlsContainer .section-title').forEach(el => {
+                if (!el.getAttribute('data-custom-colour')) el.style.color = titleColour;
+            });
+            // Update focus/toggle accent colour per mode
+            const accent = mode === 'quick' ? '#1a6b8a' : '#667eea';
+            const accentRgb = mode === 'quick' ? '26,107,138' : '102,126,234';
+            const accentEncoded = mode === 'quick' ? '%231a6b8a' : '%23667eea';
+            const toggleGradient = mode === 'quick' ? '#1a6b8a' : 'linear-gradient(135deg, #667eea, #764ba2)';
+            // Inject a dynamic style block for mode-specific select/toggle colours
+            let modeStyle = document.getElementById('modeAccentStyle');
+            if (!modeStyle) {
+                modeStyle = document.createElement('style');
+                modeStyle.id = 'modeAccentStyle';
+                document.head.appendChild(modeStyle);
+            }
+            modeStyle.textContent = `
+                select:hover { border-color: ${accent}; }
+                select:focus { border-color: ${accent}; box-shadow: 0 0 0 3px rgba(${accentRgb}, 0.15); }
+                select { background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='${accentEncoded}' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"); }
+                .toggle-switch input:checked + .toggle-track { background: ${toggleGradient}; }
+            `;
             document.querySelectorAll('.routine-info').forEach(el => { el.style.background = c.info; });
         }
 
@@ -4627,15 +4662,77 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 customHistoryIdx = 0;
                 customFilters = { muscle: [], phase: [], position: [] };
                 
+                renderCustomPills();
                 renderExerciseTable();
                 renderRoutineBuilder();
             }
+
+            window.renderCustomPills = function() {
+                const container = document.getElementById('customPillsContainer');
+                if (!container) return;
+
+                // Fixed pills
+                // Helper to shuffle and pick n items
+                const pick = (arr, n) => arr.slice().sort(() => Math.random() - 0.5).slice(0, n);
+
+                // Randomised phases
+                const randPhases = pick(['Warm-Up', 'Foam Roller', 'Mobility', 'Cool Down'], 2);
+
+                // Randomised lower body muscles (excl Hips)
+                const lowerMuscles = [...new Set(exercises.filter(e => e.bodyPart === 'lower' && e.target !== 'Hips').map(e => e.target))];
+                const randLower = pick(lowerMuscles, 2);
+
+                // Randomised upper body muscles (excl Spine)
+                const upperMuscles = [...new Set(exercises.filter(e => e.bodyPart === 'upper' && e.target !== 'Spine').map(e => e.target))];
+                const randUpper = pick(upperMuscles, 2);
+
+                // Pills in exact order: All, Upper Body, Lower Body, Static, 2 phases, Hips, 2 lower, Spine, 2 upper
+                const allPills = [
+                    { label: 'All exercises', search: '__all__', solid: true },
+                    { label: 'Upper Body', search: 'Upper Body', bodyPart: 'upper' },
+                    { label: 'Lower Body', search: 'Lower Body', bodyPart: 'lower' },
+                    { label: 'Static Stretching', search: 'Static Stretching' },
+                    ...randPhases.map(p => ({ label: p, search: p })),
+                    { label: 'Hips', search: 'Hips' },
+                    ...randLower.map(m => ({ label: m, search: m })),
+                    { label: 'Spine', search: 'Spine' },
+                    ...randUpper.map(m => ({ label: m, search: m })),
+                ];
+
+                container.innerHTML = allPills.map(p => {
+                    const bg = p.solid ? '#1a3a5c' : 'rgba(26,58,92,0.12)';
+                    const color = p.solid ? 'white' : '#1a3a5c';
+                    // All pills set search value and show ×; bodyPart pills also set dataset
+                    const bpAttr = p.bodyPart ? `document.getElementById('customPillsContainer').dataset.bodypart='${p.bodyPart}';` : `document.getElementById('customPillsContainer').dataset.bodypart='';`;
+                    const showClear = (p.search && p.search.trim() && p.search !== '__all__') ? 'flex' : p.search === '__all__' ? 'flex' : 'none';
+                    const onclick = `document.getElementById('customSearch').value='${p.search || ''}';document.getElementById('customSearchClear').style.display='${showClear}';${bpAttr}renderExerciseTable();`;
+                    return `<span onclick="${onclick}" style="background:${bg};border-radius:20px;padding:5px 11px;font-size:10px;font-weight:600;color:${color};cursor:pointer;white-space:nowrap;">${p.label}</span>`;
+                }).join('');
+            };
             
             window.renderExerciseTable = function() {
-                let filtered = [...exercises];
+                let filtered = exercises.filter(ex => ex.exercise !== 'Savasana');
                 
                 const search = document.getElementById('customSearch').value.toLowerCase();
-                if (search) {
+                const pillsContainer = document.getElementById('customPillsContainer');
+                const bodyPartFilter = pillsContainer ? (pillsContainer.dataset.bodypart || '') : '';
+                const hasFilters = customFilters.muscle.length > 0 || customFilters.phase.length > 0 || customFilters.position.length > 0;
+                const emptyState = document.getElementById('customSearchEmpty');
+                const tableWrap = document.getElementById('customExerciseTableWrap');
+
+                // Show empty state when no active filter of any kind
+                if (!bodyPartFilter && (!search || !search.trim() || search === '__all__') && !hasFilters && search !== '__all__') {
+                    if (emptyState) emptyState.style.display = 'flex';
+                    if (tableWrap) tableWrap.style.display = 'none';
+                    return;
+                }
+                if (emptyState) emptyState.style.display = 'none';
+                if (tableWrap) tableWrap.style.display = 'block';
+
+                // BodyPart filter from pill — takes priority over text search
+                if (bodyPartFilter) {
+                    filtered = filtered.filter(ex => (ex.bodyPart || '').toLowerCase() === bodyPartFilter || ex.bodyPart === 'full');
+                } else if (search && search.trim() && search !== '__all__') {
                     filtered = filtered.filter(ex =>
                         ex.exercise.toLowerCase().includes(search) ||
                         ex.target.toLowerCase().includes(search) ||
@@ -4678,7 +4775,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     const color = phaseColorMap[phase];
                     html += `
                         <tr>
-                            <td colspan="5" style="padding: 8px 0 4px 0;">
+                            <td colspan="5" style="padding: 16px 0 6px 0;">
                                 <div style="display: flex; align-items: center; gap: 12px;">
                                     <div style="height: 3px; background: ${color}; width: 40px; border-radius: 2px;"></div>
                                     <div style="font-weight: 600; font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${phase}</div>
@@ -4697,7 +4794,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                         
                         html += `
                             <tr>
-                                <td colspan="5" style="padding: 0 0 4px 0;">
+                                <td colspan="5" style="padding: 0 0 8px 0;">
                                     <div draggable="true" 
                                          data-exercise="${exData}"
                                          style="padding: 7px 10px; background: white; border-radius: 8px; border: 1.5px solid #c7c7cc; display: flex; align-items: center; gap: 10px; cursor: move; transition: all 0.2s;"
@@ -4728,7 +4825,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                         </td>
                     </tr>
                 `) {
-                    document.getElementById('customExerciseTable').innerHTML = '<tr><td colspan="5" style="padding: 20px; text-align: center; color: #999;">No exercises match filters</td></tr>';
+                    document.getElementById('customExerciseTable').innerHTML = '<tr><td colspan="5" style="padding: 20px; text-align: center; color: #999;">No exercises match — try a different search</td></tr>';
                     return;
                 }
                 
@@ -4841,7 +4938,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     
                     html += `
                         <div style="margin-bottom: 32px; ${pIdx === 0 ? 'margin-top: 0;' : 'margin-top: 8px;'}">
-                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
                                 <div style="height: 3px; background: ${color}; width: 40px; border-radius: 2px;"></div>
                                 <div style="font-weight: 600; font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${phase}</div>
                                 <div style="height: 3px; background: ${color}; flex: 1; border-radius: 2px;"></div>
@@ -5239,14 +5336,15 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             
             document.getElementById('customSearch').addEventListener('input', renderExerciseTable);
             
-            document.getElementById('customAddFilter').addEventListener('click', function() {
+            const _caf = document.getElementById('customAddFilter');
+            if (_caf) _caf.addEventListener('click', function() {
                 const menu = document.getElementById('customFilterMenu');
-                menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+                if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
             });
             
-            document.getElementById('filterMuscleBtn').addEventListener('click', () => showFilterDropdown('muscle'));
-            document.getElementById('filterPhaseBtn').addEventListener('click', () => showFilterDropdown('phase'));
-            document.getElementById('filterPositionBtn').addEventListener('click', () => showFilterDropdown('position'));
+            const _fmb = document.getElementById('filterMuscleBtn'); if (_fmb) _fmb.addEventListener('click', () => showFilterDropdown('muscle'));
+            const _fpb = document.getElementById('filterPhaseBtn'); if (_fpb) _fpb.addEventListener('click', () => showFilterDropdown('phase'));
+            const _fposb = document.getElementById('filterPositionBtn'); if (_fposb) _fposb.addEventListener('click', () => showFilterDropdown('position'));
             
             function showFilterDropdown(type) {
                 document.getElementById('customFilterMenu').style.display = 'none';
@@ -5377,14 +5475,6 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     
                     let insertIndex = findInsertPosition(phase);
                     customRoutine.splice(insertIndex, 0, ...exercises.map(ex => ({...ex})));
-                });
-
-                // Auto-deduplicate — keep first occurrence of each exercise name
-                const seen = new Set();
-                customRoutine = customRoutine.filter(ex => {
-                    if (seen.has(ex.exercise)) return false;
-                    seen.add(ex.exercise);
-                    return true;
                 });
 
                 // Mark as custom mode as soon as exercises are added
@@ -10308,7 +10398,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
     <!-- Custom Modal for confirms/alerts -->
     <div id="customModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center;">
         <div style="background: white; border-radius: 12px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);">
-            <div id="modalTitle" style="font-size: 18px; font-weight: 700; margin-bottom: 12px; color: #1d1d1f;"></div>
+            <div id="modalTitle" style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #1d1d1f;"></div>
             <div id="modalMessage" style="font-size: 14px; color: #666; margin-bottom: 24px; white-space: pre-line;"></div>
             <div id="modalButtons" style="display: flex; gap: 12px; justify-content: flex-end;"></div>
         </div>
