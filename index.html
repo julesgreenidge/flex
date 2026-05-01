@@ -55,7 +55,7 @@
         }
 
         .routine-column {
-            background: #f0eef8; /* Option 4: purple tint — alt option 1: #f5f5f0 warm grey */
+            background: white;
             padding: 30px 30px;
             overflow-y: auto;
             backdrop-filter: blur(20px);
@@ -405,6 +405,43 @@
             transition: all 0.2s;
             cursor: default;
             box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.04);
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 4px 16px rgba(52,199,89,0.35); }
+            50%       { transform: scale(1.03); box-shadow: 0 8px 28px rgba(52,199,89,0.6); }
+        }
+
+        .pulse {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%   { background-position: -300% center; }
+            100% { background-position: 300% center; }
+        }
+
+        .shimmer {
+            background-size: 300% auto !important;
+            animation: shimmer 20s linear infinite;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(60px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        #controlsContainer.slide-in, #customControls.slide-in {
+            animation: slideUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        @keyframes cardFadeUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .exercise-card.animate-in {
+            animation: cardFadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
 
         .exercise-card:hover {
@@ -1016,7 +1053,7 @@
 
         .segmented {
             display: flex;
-            background: rgba(0,0,0,0.07);
+            background: rgba(0,0,0,0.04);
             border-radius: 12px;
             padding: 3px;
             gap: 3px;
@@ -1677,8 +1714,8 @@
             <div id="mainUI" style="opacity:0; pointer-events:none; transition:opacity 0.4s ease;">
                 <div style="margin-bottom:28px; display:flex; align-items:center; justify-content:space-between;">
                     <h1 style="margin:0; font-size:40px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1;">flex.</h1>
-                    <button onclick="showDurationPicker()" style="display:flex; align-items:center; gap:6px; background:linear-gradient(135deg,#667eea,#764ba2); border:none; border-radius:20px; padding:6px 14px; cursor:pointer; transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-                        <span id="selectedDurationDisplay" style="font-size:15px; font-weight:700; color:white; letter-spacing:-0.3px;"></span>
+                    <button onclick="showDurationPicker()" style="display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#667eea,#764ba2); border:none; border-radius:24px; padding:10px 18px; cursor:pointer; transition:opacity 0.15s; box-shadow:0 4px 14px rgba(102,126,234,0.35);" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                        <span id="selectedDurationDisplay" style="font-size:18px; font-weight:800; color:white; letter-spacing:-0.5px;"></span>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </button>
                 </div>
@@ -1730,7 +1767,7 @@
                 </div>
             </div>
             <!-- SHARED TYPE/HOLD CONTROLS — visible for Quick Start and Jumi, hidden for Custom/Favourites -->
-            <div id="controlsContainer" style="border-radius:18px;padding:16px;margin-top:16px;transition:background 0.3s;">
+            <div id="controlsContainer" style="border-radius:18px;padding:16px;margin-top:16px;transition:background 0.3s, opacity 0.18s ease;">
             <div id="sharedTypeHold" style="display:none;">
                 <!-- Type -->
                 <div class="section">
@@ -1802,7 +1839,7 @@
 
             <!-- LHS Start button for Jumi and Favourites modes -->
             <div id="lhsStartJumiFav" style="display:none; margin-top:10px;">
-                <button onclick="startRoutine()" style="width:100%; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:14px; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 4px 16px rgba(52,199,89,0.35);">▶ Start Routine</button>
+                <button id="lhsStartJumiFavBtn" onclick="startRoutine()" style="width:100%; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:14px; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 4px 16px rgba(52,199,89,0.35);">▶ Start Routine</button>
             </div>
 
             <!-- JUMI PANEL — stub for explanation storage -->
@@ -1823,13 +1860,13 @@
             </div><!-- END CONTROLS CONTAINER -->
             <button onclick="generate(appState.mode)" id="modeGenerateBtn" class="generate-btn" style="width:100%;margin-top:16px;padding:14px;background:#1a6b8a;color:white;border:none;border-radius:14px;box-shadow:0 4px 12px rgba(26,107,138,0.35);display:none;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:700;cursor:pointer;">&#9654; Generate</button>
             <div id="lhsStart" style="display:none;margin-top:16px;">
-                <button onclick="startRoutine()" style="width:100%;background:linear-gradient(135deg,#34c759,#2da44e);color:white;border:none;padding:14px;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(52,199,89,0.35);">▶ Start Routine</button>
+                <button id="lhsStartBtn" onclick="startRoutine()" style="width:100%;background:linear-gradient(135deg,#34c759,#2da44e);color:white;border:none;padding:14px;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(52,199,89,0.35);">▶ Start Routine</button>
             </div>
             
             <!-- CUSTOM MODE CONTROLS (hidden initially) -->
             <div id="customControls" style="display: none; height: 100%; flex-direction: column; overflow: hidden;">
                 <!-- Fixed header -->
-                <div style="flex-shrink: 0; background:#e8eef5; border-radius:18px; padding:20px; margin-top:16px; margin-bottom:16px;">
+                <div style="flex-shrink: 0; background:#d8e8f0; border-radius:18px; padding:20px; margin-top:16px; margin-bottom:16px;">
                     <div style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:#1a3a5c; margin-bottom:12px;">Add Exercises</div>
 
                     <div style="margin-bottom: 0;">
@@ -1852,7 +1889,7 @@
                         <div id="customFilterDropdown" style="display: none; position: absolute; background: white; border: 2px solid #d2d2d7; border-radius: 6px; margin-top: 4px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 250px; max-height: 200px; overflow-y: auto; padding: 4px;"></div>
 
                         <!-- Pills — rendered dynamically by renderCustomPills() in initCustomBuilder -->
-                        <div id="customSearchEmpty" style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
+                        <div id="customSearchEmpty" style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
                             <div id="customPillsContainer" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
                         </div>
                     </div>
@@ -1867,8 +1904,8 @@
                 <div style="flex-shrink: 0; padding-top: 16px; border-top: 2px solid #e0e0e0;">
                     <button id="customAddSelected" style="width: 100%; background: #1a3a5c; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; height: 36px; white-space: nowrap;">Add Selected to Routine</button>
                     <div id="lhsStartCustom" style="display:none; margin-top:8px; gap:8px;">
-                        <button onclick="startCustomRoutine('short')" style="flex:1; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:10px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(52,199,89,0.35);">▶ Short Hold</button>
-                        <button onclick="startCustomRoutine('long')" style="flex:1; background:linear-gradient(135deg,#2da44e,#34c759); color:white; border:none; padding:10px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(52,199,89,0.35);">▶ Long Hold</button>
+                        <button id="lhsStartCustomShort" onclick="startCustomRoutine('short')" style="flex:1; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:10px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(52,199,89,0.35);">▶ Short Hold</button>
+                        <button id="lhsStartCustomLong" onclick="startCustomRoutine('long')" style="flex:1; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:10px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(52,199,89,0.35);">▶ Long Hold</button>
                     </div>
                 </div>
             </div>
@@ -1967,7 +2004,7 @@
 
 
             <!-- CUSTOM MODE DISPLAY (hidden initially) -->
-            <div id="customDisplay" style="display: none; flex-direction: column; flex: 1; overflow-y: auto; padding: 30px; background: #f0eef8;">
+            <div id="customDisplay" style="display: none; flex-direction: column; flex: 1; overflow-y: auto; padding: 30px; background: white;">
                 <div id="customStats" style="flex-shrink: 0;">
                     <div class="routine-info">
                         <div class="info-grid" style="grid-template-columns: repeat(4, 1fr);">
@@ -2221,6 +2258,8 @@
                             const h = appSettings.quickStartHold || 'short';
                             const tLabel = t === 'full' ? 'Full body' : t === 'upper' ? 'Upper body' : 'Lower body';
                             sub.textContent = tLabel + ' · ' + (h === 'long' ? 'long hold' : 'short hold');
+                            const jumiSub = document.getElementById('jumiQuickSubtitle');
+                            if (jumiSub) jumiSub.textContent = tLabel + ' · ' + (h === 'long' ? 'long hold' : 'short hold');
                         }
                     }
                 }, 500); // Match CSS transition duration
@@ -2611,6 +2650,8 @@
                     const _h = appSettings.quickStartHold || 'short';
                     const _tLabel = _t === 'full' ? 'Full body' : _t === 'upper' ? 'Upper body' : 'Lower body';
                     _sub.textContent = _tLabel + ' · ' + (_h === 'long' ? 'long hold' : 'short hold');
+                    const _jumiSub = document.getElementById('jumiQuickSubtitle');
+                    if (_jumiSub) _jumiSub.textContent = _tLabel + ' · ' + (_h === 'long' ? 'long hold' : 'short hold');
                 }
                 
                 document.getElementById('settingsView').style.display = 'none';
@@ -3248,6 +3289,19 @@
 
         // Current settings
         let appSettings = loadSettings();
+        // Initialise card subtitles from settings
+        (function() {
+            const typeLabels = { full: 'Full body', upper: 'Upper body', lower: 'Lower body' };
+            const t = appSettings.quickStartType || 'full';
+            const h = appSettings.quickStartHold || 'short';
+            const label = (typeLabels[t] || 'Full body') + ' · ' + (h === 'long' ? 'long hold' : 'short hold');
+            document.addEventListener('DOMContentLoaded', function() {
+                const qsSub = document.getElementById('qsSubtitle');
+                const jumiSub = document.getElementById('jumiQuickSubtitle');
+                if (qsSub) qsSub.textContent = label;
+                if (jumiSub) jumiSub.textContent = label;
+            });
+        })();
         // Ensure finalBongSound is a valid value — default to 'bowl' if not
         const validFinalSounds = ['bowl','bell','chime','deep-tone','resonance','fanfare','sunrise','cascade','harmony','ting'];
         if (!validFinalSounds.includes(appSettings.finalBongSound)) {
@@ -3307,7 +3361,10 @@
             quickRoutine: null,
             _quickRoutineReady: false,
             _starredRoutineLoaded: false,
+            _animateNextDisplay: false,
             splitsForced: false,
+            jumiType: 'full',   // Jumi's own type selection, independent of Quick Start
+            jumiHold: 'short',  // Jumi's own hold selection, independent of Quick Start
         };
         // Convenience aliases
         Object.defineProperty(window, 'selectedTime',       { get: () => appState.time,        set: v => { appState.time = v; } });
@@ -3940,7 +3997,10 @@
                 if (rw) rw.style.display = 'block';
                 if (cd) cd.style.display = 'none';
                 if (ddd) ddd.style.opacity = '1';
-                if (genBtn) { genBtn.style.display = 'flex'; genBtn.style.background = '#1a6b8a'; genBtn.style.boxShadow = '0 4px 12px rgba(26,107,138,0.35)'; if (!appState._quickRoutineReady) genBtn.innerHTML = '&#9654; Generate'; else genBtn.innerHTML = '&#8635; Regenerate'; }
+                if (genBtn) { genBtn.style.display = 'flex'; genBtn.style.background = '#1a6b8a'; genBtn.style.boxShadow = '0 4px 12px rgba(26,107,138,0.35)'; if (!appState._quickRoutineReady) { genBtn.innerHTML = '&#9654; Generate'; genBtn.classList.remove('shimmer'); } else { genBtn.innerHTML = '&#8635; Regenerate'; genBtn.style.background = '#1a6b8a'; genBtn.classList.remove('shimmer'); } }
+                // Restore Quick Start's own type/hold selection
+                document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('selected', b.dataset.type === (selectedType || 'full')));
+                document.querySelectorAll('.hold-btn').forEach(b => b.classList.toggle('selected', b.dataset.hold === (selectedHold || 'short')));
 
             } else if (mode === 'jumi') {
                 setActiveCard('jumiQuickBtn');
@@ -3950,13 +4010,22 @@
                 if (rw) rw.style.display = 'block';
                 if (cd) cd.style.display = 'none';
                 if (ddd) ddd.style.opacity = '1';
-                if (genBtn) { genBtn.style.display = 'flex'; genBtn.style.background = 'linear-gradient(135deg,#667eea,#764ba2)'; genBtn.style.boxShadow = '0 4px 12px rgba(102,126,234,0.35)'; if (!appState.jumiRoutine || !appState.jumiRoutine.length) genBtn.innerHTML = '✦ Generate'; else genBtn.innerHTML = '&#8635; Regenerate'; }
+                if (genBtn) { genBtn.style.display = 'flex'; genBtn.style.background = 'linear-gradient(135deg,#667eea,#764ba2)'; genBtn.style.boxShadow = '0 4px 12px rgba(102,126,234,0.35)'; if (!appState.jumiRoutine || !appState.jumiRoutine.length) { genBtn.innerHTML = '✦ Generate'; genBtn.classList.remove('shimmer'); } else { genBtn.innerHTML = '&#8635; Regenerate'; genBtn.style.background = 'linear-gradient(135deg,#667eea,#764ba2)'; genBtn.classList.remove('shimmer'); } }
+                // Restore Jumi's own type/hold selection on the shared segmented controls
+                document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('selected', b.dataset.type === appState.jumiType));
+                document.querySelectorAll('.hold-btn').forEach(b => b.classList.toggle('selected', b.dataset.hold === appState.jumiHold));
 
             } else if (mode === 'custom') {
                 setActiveCard('customCardBtn');
                 if (rw) rw.style.display = 'none';
                 if (cd) cd.style.display = 'flex';
-                if (cc) { cc.style.display = 'flex'; cc.style.flexDirection = 'column'; cc.style.height = '100%'; cc.style.overflow = 'hidden'; }
+                if (cc) {
+                    cc.style.display = 'flex';
+                    cc.style.flexDirection = 'column';
+                    cc.style.height = '100%';
+                    cc.style.overflow = 'hidden';
+
+                }
                 if (cna) cna.style.display = 'flex';
                 if (selCol) selCol.style.overflow = 'hidden';
                 if (ddd) ddd.style.opacity = '0.35';
@@ -4009,7 +4078,8 @@
             } else if (hasRoutine) {
                 if (feb) feb.style.display = 'flex';
                 setStarVisible(true);
-                if ((mode === 'quick' || mode === 'jumi') && lhsStart) lhsStart.style.display = 'block';
+                if ((mode === 'quick' || mode === 'jumi') && lhsStart) { lhsStart.style.display = 'block'; const _sBtnlhsStartBtn = document.getElementById('lhsStartBtn');
+            if (_sBtnlhsStartBtn) { _sBtnlhsStartBtn.classList.remove('shimmer'); _sBtnlhsStartBtn.classList.add('pulse'); } }
                 if (mode === 'starred' && lhsJumiFav) lhsJumiFav.style.display = 'block';
             } else {
                 if (feb) feb.style.display = 'none';
@@ -4021,18 +4091,22 @@
         // Single source of truth for background and routine-info colours
         function applyModeColours(mode) {
             const routeCol = document.querySelector('.routine-column');
+            const selCol = document.querySelector('.selection-column');
             const container = document.getElementById('controlsContainer');
             const colours = {
-                quick:   { info: '#e8e8ed', container: '#e8f2f5', segActive: '#1a6b8a', segActiveText: 'white', showContainer: true },
-                jumi:    { info: '#e8e8ed', container: '#f0eef8', segActive: 'linear-gradient(135deg,#667eea,#764ba2)', segActiveText: 'white', showContainer: true },
-                custom:  { info: '#e8e8ed', container: 'transparent', segActive: '#1a3a5c', segActiveText: 'white', showContainer: false },
-                starred: { info: '#e8e8ed', container: 'transparent', segActive: 'white', segActiveText: '#1d1d1f', showContainer: false },
+                quick:   { info: 'rgba(26,107,138,0.15)', container: '#d8edf3', segActive: '#1a6b8a', segActiveText: 'white', showContainer: true,  lhsBg: '#f5fafb' },
+                jumi:    { info: 'rgba(118,75,162,0.15)', container: '#e0dcf8', segActive: 'linear-gradient(135deg,#667eea,#764ba2)', segActiveText: 'white', showContainer: true,  lhsBg: '#f7f5ff' },
+                custom:  { info: 'rgba(26,58,92,0.15)', container: '#c2d4e0', segActive: '#1a3a5c', segActiveText: 'white', showContainer: false, lhsBg: '#f0f5f8' },
+                starred: { info: 'rgba(139,58,90,0.15)', container: 'transparent', segActive: 'white', segActiveText: '#1d1d1f', showContainer: false, lhsBg: '#fdf5f8' },
             };
             const c = colours[mode] || colours.quick;
             if (routeCol) routeCol.style.background = '';
+            // Tint the whole LHS per mode
+            if (selCol) selCol.style.background = c.lhsBg;
             if (container) {
                 container.style.background = c.container;
                 container.style.display = c.showContainer ? 'block' : 'none';
+
                 container.style.setProperty('--seg-active', c.segActive || 'white');
                 container.style.setProperty('--seg-active-text', c.segActiveText || '#1d1d1f');
             }
@@ -4493,8 +4567,11 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             document.querySelectorAll('[data-hold]').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const previousHold = selectedHold;
-                    selectedHold = this.getAttribute('data-hold');
-                    longSession = (selectedHold === 'long');
+                    const newHold = this.getAttribute('data-hold');
+                    if (appState.mode !== 'jumi') {
+                        selectedHold = newHold;
+                        longSession = (selectedHold === 'long');
+                    }
                     
                     
                     // Check if we should update
@@ -4503,9 +4580,17 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     } else {
                     }
                     
-                    // Update button states
                     document.querySelectorAll('[data-hold]').forEach(b => b.classList.remove('selected'));
                     this.classList.add('selected');
+                    const typeLabels = { full: 'Full body', upper: 'Upper body', lower: 'Lower body' };
+                    if (appState.mode === 'jumi') {
+                        appState.jumiHold = newHold;
+                        const jumiSub = document.getElementById('jumiQuickSubtitle');
+                        if (jumiSub) jumiSub.textContent = (typeLabels[appState.jumiType] || 'Full body') + ' · ' + (appState.jumiHold === 'long' ? 'long hold' : 'short hold');
+                    } else {
+                        const sub = document.getElementById('qsSubtitle');
+                        if (sub) sub.textContent = (typeLabels[selectedType] || 'Full body') + ' · ' + (selectedHold === 'long' ? 'long hold' : 'short hold');
+                    }
                     
                     // If ANY routine is displayed AND hold actually changed, update its durations
                     if (currentRoutine && currentRoutine.length > 0 && previousHold && previousHold !== selectedHold) {
@@ -4700,7 +4785,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 ];
 
                 container.innerHTML = allPills.map(p => {
-                    const bg = p.solid ? '#1a3a5c' : 'rgba(26,58,92,0.12)';
+                    const bg = p.solid ? '#1a3a5c' : 'rgba(255,255,255,0.7)';
                     const color = p.solid ? 'white' : '#1a3a5c';
                     // All pills set search value and show ×; bodyPart pills also set dataset
                     const bpAttr = p.bodyPart ? `document.getElementById('customPillsContainer').dataset.bodypart='${p.bodyPart}';` : `document.getElementById('customPillsContainer').dataset.bodypart='';`;
@@ -4918,6 +5003,9 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 const lhsStartCustom = document.getElementById('lhsStartCustom');
                 if (lhsStartCustom) {
                     lhsStartCustom.style.display = meaningfulCount > 0 ? 'flex' : 'none';
+                    if (meaningfulCount > 0) { const _sBtnlhsStartCustomShort = document.getElementById('lhsStartCustomShort');
+            if (_sBtnlhsStartCustomShort) { _sBtnlhsStartCustomShort.classList.remove('shimmer'); _sBtnlhsStartCustomShort.classList.add('pulse'); }const _sBtnlhsStartCustomLong = document.getElementById('lhsStartCustomLong');
+            if (_sBtnlhsStartCustomLong) { _sBtnlhsStartCustomLong.classList.remove('shimmer'); _sBtnlhsStartCustomLong.classList.add('pulse'); } }
                 }
 
                 if (customRoutine.length === 0) {
@@ -5558,7 +5646,16 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     
                     document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
                     this.classList.add('selected');
-                    selectedType = this.dataset.type;
+                    const typeLabels = { full: 'Full body', upper: 'Upper body', lower: 'Lower body' };
+                    if (appState.mode === 'jumi') {
+                        appState.jumiType = this.dataset.type;
+                        const jumiSub = document.getElementById('jumiQuickSubtitle');
+                        if (jumiSub) jumiSub.textContent = (typeLabels[appState.jumiType] || 'Full body') + ' · ' + (appState.jumiHold === 'long' ? 'long hold' : 'short hold');
+                    } else {
+                        selectedType = this.dataset.type;
+                        const sub = document.getElementById('qsSubtitle');
+                        if (sub) sub.textContent = (typeLabels[selectedType] || 'Full body') + ' · ' + (selectedHold === 'long' ? 'long hold' : 'short hold');
+                    }
                     updateFocusDropdown(); // Update focus options based on selected type
                     // Show/hide splits section — not relevant for upper body
                     const splitsSection = document.getElementById('splitsSection');
@@ -6903,6 +7000,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             }
             updateFloatingButtons();
 
+            appState._animateNextDisplay = true;
             displayRoutine();
         }
 
@@ -6976,7 +7074,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             const rw = document.getElementById('routineDisplayWrapper');
             if (rw) rw.style.display = 'block';
             await generateRoutine();
-            if (btn) btn.innerHTML = '&#8635; Regenerate';
+            if (btn) { btn.innerHTML = '&#8635; Regenerate'; btn.classList.remove('shimmer'); }
         }
 
         function toggleJumiOptional() {
@@ -7022,9 +7120,11 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             if (currentJumiRoutine && currentJumiRoutine.length > 0) {
                 currentRoutine = currentJumiRoutine;
                 if (rw) rw.style.display = 'block';
+                appState._animateNextDisplay = true;
                 displayRoutine();
                 const lhsJ = document.getElementById('lhsStart');
-                if (lhsJ) lhsJ.style.display = 'block';
+                if (lhsJ) { lhsJ.style.display = 'block'; const _sBtnlhsStartBtn = document.getElementById('lhsStartBtn');
+            if (_sBtnlhsStartBtn) { _sBtnlhsStartBtn.classList.remove('shimmer'); _sBtnlhsStartBtn.classList.add('pulse'); } }
             } else {
                 if (rw) rw.style.display = 'block';
                 updateFloatingButtons();
@@ -7036,24 +7136,19 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             const btn = document.getElementById('modeGenerateBtn');
             if (btn) { btn.disabled = true; btn.innerHTML = '&#8635; Generating…'; }
 
-            // Read from Jumi LHS controls
+            // Read type/hold from Jumi's independent state
             const _savedDur = localStorage.getItem('globalDuration');
             if (_savedDur) selectedTime = _savedDur === '999' ? 999 : parseInt(_savedDur);
             else if (!selectedTime) selectedTime = 35;
 
-            // Read type from type-btn
-            const activeType = document.querySelector('.type-btn.selected');
-            selectedType = activeType ? activeType.dataset.type : 'full';
-
-            // Read hold from hold-btn
-            const activeHold = document.querySelector('.hold-btn.selected');
-            selectedHold = activeHold ? activeHold.dataset.hold : 'short';
+            selectedType = appState.jumiType || 'full';
+            selectedHold = appState.jumiHold || 'short';
             longSession = selectedHold === 'long';
 
             const prompt = (document.getElementById('jumiPromptInput') || {}).value || '';
             await generateJumiRoutine(prompt);
 
-            if (btn) { btn.disabled = false; btn.innerHTML = '&#8635; Regenerate'; }
+            if (btn) { btn.disabled = false; btn.innerHTML = '&#8635; Regenerate'; btn.classList.remove('shimmer'); }
 
             // Show Start Routine button
             const lhsJ = document.getElementById('lhsStart');
@@ -7119,6 +7214,8 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
 
         // ===== DISPLAY ROUTINE =====
         function displayRoutine() {
+            const _doAnimate = appState._animateNextDisplay;
+            appState._animateNextDisplay = false;
             BubbleSystem.stop();
             if (domCache.routineDisplay) { domCache.routineDisplay.style.height = 'auto'; domCache.routineDisplay.style.minHeight = ''; }
             const display = domCache.routineDisplay;
@@ -7159,6 +7256,8 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             });
 
             const phaseDisplayOrder = ['Warm-Up', 'Foam Roller', 'Mobility', 'Static Stretching', 'Active Stretch', 'Deep Stretch', 'Splits', 'Cool Down', 'Final Rest'];
+            const totalCards = currentRoutine.length;
+            let cardIndex = 0;
             
             phaseDisplayOrder.forEach(phase => {
                 const exs = byPhase[phase];
@@ -7241,8 +7340,12 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     
                     const hasAlternatives = availableAlternatives.length > 0;
                     
+                    const delay = cardIndex * 120;
+                    cardIndex++;
+                    const _animClass = _doAnimate ? ' animate-in' : '';
+                    const _animDelay = _doAnimate ? `animation-delay:${delay.toFixed(0)}ms;` : '';
                     html += `
-                        <div class="exercise-card" style="position:relative;overflow:hidden;">
+                        <div class="exercise-card${_animClass}" style="position:relative;overflow:hidden;${_animDelay}">
                             <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--phase-${phaseClass});border-radius:0;"></div>
                             <div>
                                 <div class="exercise-name">${ex.exercise}</div>
@@ -7275,7 +7378,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                             <div class="phase-title">Final Rest</div>
                             <div class="phase-duration">${savMins}:${savSecs.toString().padStart(2, '0')}</div>
                         </div>
-                        <div class="exercise-card" style="position:relative;overflow:hidden;">
+                        <div class="exercise-card${_doAnimate ? ' animate-in' : ''}" style="position:relative;overflow:hidden;${_doAnimate ? `animation-delay:${cardIndex * 120}ms;` : ''}">
                             <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--phase-finalrest);border-radius:0;"></div>
                             <div>
                                 <div class="exercise-name">${savasanaEx.exercise}</div>
@@ -8866,6 +8969,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                 }
                 
                 localStorage.setItem('routineHistory', JSON.stringify(history));
+                localStorage.removeItem('jumiContextCache'); // invalidate Jumi context cache
                 console.log('✅ Routine saved to history. New history length:', history.length);
             } catch (e) {
                 console.error('❌ Failed to save routine to history:', e);
