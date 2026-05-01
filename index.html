@@ -5742,7 +5742,11 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
 
             document.getElementById('clearJumiCacheBtn').addEventListener('click', async function() {
                 localStorage.removeItem('jumiContextCache');
-                await customAlert('Jumi memory refreshed — she\'ll rebuild her understanding of your history next time you chat.');
+                const table = buildChatContext();
+                // Show Cool Down section for debugging
+                const lines = table.split('\n');
+                const cdLines = lines.filter(l => l.includes('Cool Down'));
+                await customAlert('Jumi memory refreshed.\n\nCool Down entries in context:\n' + (cdLines.length ? cdLines.join('\n') : 'none found'));
             });
             
             // Stats navigation handlers
