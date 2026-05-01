@@ -1053,7 +1053,7 @@
 
         .segmented {
             display: flex;
-            background: rgba(0,0,0,0.04);
+            background: rgba(0,0,0,0.12);
             border-radius: 12px;
             padding: 3px;
             gap: 3px;
@@ -1068,7 +1068,7 @@
             padding: 9px 4px;
             font-size: 13px;
             font-weight: 600;
-            color: #6e6e73;
+            color: #3a3a3a;
             cursor: pointer;
             transition: all 0.18s;
             white-space: nowrap;
@@ -1714,7 +1714,7 @@
             <div id="mainUI" style="opacity:0; pointer-events:none; transition:opacity 0.4s ease;">
                 <div style="margin-bottom:28px; display:flex; align-items:center; justify-content:space-between;">
                     <h1 style="margin:0; font-size:40px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1;">flex.</h1>
-                    <button onclick="showDurationPicker()" style="display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#667eea,#764ba2); border:none; border-radius:24px; padding:10px 18px; cursor:pointer; transition:opacity 0.15s; box-shadow:0 4px 14px rgba(102,126,234,0.35);" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                    <button id="durationPill" onclick="showDurationPicker()" style="display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#667eea,#764ba2); border:none; border-radius:24px; padding:10px 18px; cursor:pointer; transition:background 0.3s, box-shadow 0.3s; box-shadow:0 4px 14px rgba(102,126,234,0.35);" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
                         <span id="selectedDurationDisplay" style="font-size:18px; font-weight:800; color:white; letter-spacing:-0.5px;"></span>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </button>
@@ -1866,13 +1866,13 @@
             <!-- CUSTOM MODE CONTROLS (hidden initially) -->
             <div id="customControls" style="display: none; height: 100%; flex-direction: column; overflow: hidden;">
                 <!-- Fixed header -->
-                <div style="flex-shrink: 0; background:#d8e8f0; border-radius:18px; padding:20px; margin-top:16px; margin-bottom:16px;">
+                <div style="flex-shrink: 0; background:white; border-radius:18px; padding:20px; margin-top:16px; margin-bottom:16px; border:2px solid #c2d4e0;">
                     <div style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:#1a3a5c; margin-bottom:12px;">Add Exercises</div>
 
                     <div style="margin-bottom: 0;">
                         <div style="display: flex; gap: 8px; margin-bottom: 8px;">
                             <div style="flex:1; position:relative; display:flex; align-items:center;">
-                                <input type="text" id="customSearch" placeholder="Search exercises..." style="width:100%; padding: 13px 36px 13px 14px; border: none; border-radius: 14px; font-size: 14px; font-weight: 400; outline:none; background:white; color:#1d1d1f;" onfocus="this.style.boxShadow='0 0 0 2px #1a3a5c'" onblur="this.style.boxShadow='none'" oninput="document.getElementById('customSearchClear').style.display=this.value?'flex':'none'">
+                                <input type="text" id="customSearch" placeholder="Search exercises..." style="width:100%; padding: 13px 36px 13px 14px; border: 1.5px solid #c2d4e0; border-radius: 14px; font-size: 14px; font-weight: 400; outline:none; background:white; color:#1d1d1f;" onfocus="this.style.boxShadow='0 0 0 2px #1a3a5c'" onblur="this.style.boxShadow='none'" oninput="document.getElementById('customSearchClear').style.display=this.value?'flex':'none'">
                                 <span id="customSearchClear" onclick="document.getElementById('customSearch').value='';document.getElementById('customSearchClear').style.display='none';const pc=document.getElementById('customPillsContainer');if(pc)pc.dataset.bodypart='';renderExerciseTable();document.getElementById('customSearch').focus();" style="position:absolute;right:10px;display:none;width:20px;height:20px;background:#c0c0cc;border-radius:50%;cursor:pointer;"><svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);" width="8" height="8" viewBox="0 0 8 8" fill="none"><line x1="1" y1="1" x2="7" y2="7" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="7" y1="1" x2="1" y2="7" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></span>
                             </div>
                         </div>
@@ -4095,28 +4095,46 @@
             const selCol = document.querySelector('.selection-column');
             const container = document.getElementById('controlsContainer');
             const colours = {
-                quick:   { info: 'rgba(26,107,138,0.15)', container: '#d8edf3', segActive: '#1a6b8a', segActiveText: 'white', showContainer: true,  lhsBg: '#f5fafb' },
-                jumi:    { info: 'rgba(118,75,162,0.15)', container: '#e0dcf8', segActive: 'linear-gradient(135deg,#667eea,#764ba2)', segActiveText: 'white', showContainer: true,  lhsBg: '#f7f5ff' },
-                custom:  { info: 'rgba(26,58,92,0.15)', container: '#c2d4e0', segActive: '#1a3a5c', segActiveText: 'white', showContainer: false, lhsBg: '#f0f5f8' },
-                starred: { info: 'rgba(139,58,90,0.15)', container: 'transparent', segActive: 'white', segActiveText: '#1d1d1f', showContainer: false, lhsBg: '#fdf5f8' },
+                quick:   { info: 'rgba(26,107,138,0.15)', container: 'white', containerBorder: '2px solid #b8dae6', segTrack: '#d8edf3', segActive: '#1a6b8a', segActiveText: 'white', showContainer: true,  lhsBg: '#f5fafb', navBg: '#1a6b8a', pillBg: '#1a6b8a', pillShadow: 'rgba(26,107,138,0.35)' },
+                jumi:    { info: 'rgba(118,75,162,0.15)', container: 'white', containerBorder: '2px solid #c4bef0', segTrack: '#e0dcf8', segActive: 'linear-gradient(135deg,#667eea,#764ba2)', segActiveText: 'white', showContainer: true,  lhsBg: '#f7f5ff', navBg: 'linear-gradient(135deg,#667eea,#764ba2)', pillBg: 'linear-gradient(135deg,#667eea,#764ba2)', pillShadow: 'rgba(102,126,234,0.35)' },
+                custom:  { info: 'rgba(26,58,92,0.15)', container: 'white', containerBorder: '2px solid #c2d4e0', segTrack: '#d0e4f0', segActive: '#1a3a5c', segActiveText: 'white', showContainer: false, lhsBg: '#f0f5f8', navBg: '#1a3a5c', pillBg: '#1a3a5c', pillShadow: 'rgba(26,58,92,0.35)' },
+                starred: { info: 'rgba(139,58,90,0.15)', container: 'transparent', containerBorder: 'none', segTrack: '#e8d0d8', segActive: 'white', segActiveText: '#1d1d1f', showContainer: false, lhsBg: '#fdf5f8', navBg: '#8b3a5a', pillBg: '#8b3a5a', pillShadow: 'rgba(139,58,90,0.35)' },
             };
             const c = colours[mode] || colours.quick;
             if (routeCol) routeCol.style.background = '';
             // Tint the whole LHS per mode
             if (selCol) selCol.style.background = c.lhsBg;
+            // Colour the main nav bar
+            const mainNav = document.getElementById('mainNavBar');
+            if (mainNav) {
+                mainNav.style.background = c.navBg;
+                mainNav.style.borderBottom = 'none';
+                mainNav.querySelectorAll('.nav-btn').forEach(btn => {
+                    btn.style.color = 'white';
+                    btn.querySelectorAll('svg').forEach(svg => svg.style.color = 'white');
+                });
+            }
             if (container) {
                 container.style.background = c.container;
+                container.style.border = c.containerBorder || 'none';
                 container.style.display = c.showContainer ? 'block' : 'none';
-
                 container.style.setProperty('--seg-active', c.segActive || 'white');
                 container.style.setProperty('--seg-active-text', c.segActiveText || '#1d1d1f');
+                container.querySelectorAll('.segmented').forEach(seg => {
+                    seg.style.background = c.segTrack || 'rgba(0,0,0,0.12)';
+                });
             }
             // Update section-title label colour to match mode
             const titleColour = mode === 'quick' ? '#1a6b8a' : mode === 'jumi' ? '#764ba2' : '#86868b';
             document.querySelectorAll('#controlsContainer .section-title').forEach(el => {
                 if (!el.getAttribute('data-custom-colour')) el.style.color = titleColour;
             });
-            // Update focus/toggle accent colour per mode
+            // Update duration pill colour
+            const pill = document.getElementById('durationPill');
+            if (pill) {
+                pill.style.background = c.pillBg;
+                pill.style.boxShadow = `0 4px 14px ${c.pillShadow}`;
+            }
             const accent = mode === 'quick' ? '#1a6b8a' : '#667eea';
             const accentRgb = mode === 'quick' ? '26,107,138' : '102,126,234';
             const accentEncoded = mode === 'quick' ? '%231a6b8a' : '%23667eea';
@@ -4786,13 +4804,14 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 ];
 
                 container.innerHTML = allPills.map(p => {
-                    const bg = p.solid ? '#1a3a5c' : 'rgba(255,255,255,0.7)';
+                    const bg = p.solid ? '#1a3a5c' : 'white';
                     const color = p.solid ? 'white' : '#1a3a5c';
                     // All pills set search value and show ×; bodyPart pills also set dataset
                     const bpAttr = p.bodyPart ? `document.getElementById('customPillsContainer').dataset.bodypart='${p.bodyPart}';` : `document.getElementById('customPillsContainer').dataset.bodypart='';`;
                     const showClear = (p.search && p.search.trim() && p.search !== '__all__') ? 'flex' : p.search === '__all__' ? 'flex' : 'none';
                     const onclick = `document.getElementById('customSearch').value='${p.search || ''}';document.getElementById('customSearchClear').style.display='${showClear}';${bpAttr}renderExerciseTable();`;
-                    return `<span onclick="${onclick}" style="background:${bg};border-radius:20px;padding:5px 11px;font-size:10px;font-weight:600;color:${color};cursor:pointer;white-space:nowrap;">${p.label}</span>`;
+                    const border = p.solid ? 'none' : '1.5px solid #c2d4e0';
+                    return `<span onclick="${onclick}" style="background:${bg};border:${border};border-radius:20px;padding:5px 11px;font-size:10px;font-weight:600;color:${color};cursor:pointer;white-space:nowrap;">${p.label}</span>`;
                 }).join('');
             };
             
@@ -8981,12 +9000,13 @@ Please rank the candidates for each phase using the generate_routine tool.`;
             }
         }
         
-        function showStats() {
+function showStats() {
             // Don't generate sample stats - use real history only
             const history = localStorage.getItem('routineHistory');
             document.getElementById('mainView').style.display = 'none';
             document.getElementById('timerView').style.display = 'none';
             document.getElementById('statsView').style.display = 'block';
+            applyNavColour();
             
             // Hide floating buttons in stats view
             setStarVisible(false);
