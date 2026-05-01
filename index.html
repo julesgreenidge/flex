@@ -2172,13 +2172,11 @@
                 </div>
 
                 <!-- Reset Button at bottom -->
-                <div style="margin-top: auto; padding-top: 24px; display:flex; flex-direction:column; gap:10px;">
+                <div style="margin-top: auto; padding-top: 24px;">
                     <button id="clearHistoryBtn" class="btn-reset">
                         Clear History
                     </button>
-                    <button id="clearJumiCacheBtn" class="btn-reset" style="background:#f0eef8; color:#764ba2; border:1.5px solid #764ba2;">
-                        Refresh Jumi Memory
-                    </button>
+
                 </div>
             </div>
 
@@ -5740,14 +5738,6 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 }
             });
 
-            document.getElementById('clearJumiCacheBtn').addEventListener('click', async function() {
-                localStorage.removeItem('jumiContextCache');
-                const table = buildChatContext();
-                // Show Cool Down section for debugging
-                const lines = table.split('\n');
-                const cdLines = lines.filter(l => l.includes('Cool Down'));
-                await customAlert('Jumi memory refreshed.\n\nCool Down entries in context:\n' + (cdLines.length ? cdLines.join('\n') : 'none found'));
-            });
             
             // Stats navigation handlers
             document.getElementById('statsSummaryBtn').addEventListener('click', function() {
