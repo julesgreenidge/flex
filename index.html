@@ -2348,20 +2348,128 @@
                 }
             }
 
+            // Helper: select a pill within a group (radio behaviour)
+            function selectPill(pillClass, value) {
+                document.querySelectorAll('.' + pillClass).forEach(p => {
+                    const selected = p.dataset.value === value;
+                    p.style.background = selected ? '#667eea' : 'white';
+                    p.style.borderColor = selected ? '#667eea' : '#e5e5e7';
+                    p.style.color = selected ? 'white' : '#3a3a3a';
+                    p.style.fontWeight = selected ? '600' : '500';
+                });
+            }
+
+            // Helper: set hidden radio value
+            function setRadioSelected(name, value) {
+                document.querySelectorAll(`input[name="${name}"]`).forEach(r => r.checked = r.value === value);
+            }
+
             document.getElementById('settingsQuickStartBtn').addEventListener('click', function() {
                 activateSettingsTab('settingsQuickStartBtn', 'settingsQuickStartContent');
+                // Sync pills from current settings
+                selectPill('qs-type-pill', appSettings.quickStartType || 'full');
+                selectPill('qs-hold-pill', appSettings.quickStartHold || 'short');
+                setRadioSelected('quickStartType', appSettings.quickStartType || 'full');
+                setRadioSelected('quickStartHold', appSettings.quickStartHold || 'short');
             });
 
-            document.getElementById('settingsExerciseDurationBtn').addEventListener('click', function() {
-                activateSettingsTab('settingsExerciseDurationBtn', 'settingsExerciseDurationContent');
+            // QS pill click handlers
+            document.getElementById('settingsQuickStartContent').addEventListener('click', function(e) {
+                const typePill = e.target.closest('.qs-type-pill');
+                const holdPill = e.target.closest('.qs-hold-pill');
+                if (typePill) {
+                    selectPill('qs-type-pill', typePill.dataset.value);
+                    setRadioSelected('quickStartType', typePill.dataset.value);
+                }
+                if (holdPill) {
+                    selectPill('qs-hold-pill', holdPill.dataset.value);
+                    setRadioSelected('quickStartHold', holdPill.dataset.value);
+                }
             });
 
             document.getElementById('settingsSoundBtn').addEventListener('click', function() {
                 activateSettingsTab('settingsSoundBtn', 'settingsSoundContent');
+                // Sync pills from current settings
+                selectPill('sound-pill', appSettings.beepSound || 'beep');
+                document.querySelectorAll('.sound-pill[data-group="beepSoundSelect"]').forEach(p => {
+                    const selected = p.dataset.value === (appSettings.beepSound || 'beep');
+                    p.style.background = selected ? '#667eea' : 'white';
+                    p.style.borderColor = selected ? '#667eea' : '#e5e5e7';
+                    p.style.color = selected ? 'white' : '#3a3a3a';
+                    p.style.fontWeight = selected ? '600' : '500';
+                });
+                document.querySelectorAll('.sound-pill[data-group="transitionSound"]').forEach(p => {
+                    const selected = p.dataset.value === (appSettings.transitionSound || 'longbeep');
+                    p.style.background = selected ? '#667eea' : 'white';
+                    p.style.borderColor = selected ? '#667eea' : '#e5e5e7';
+                    p.style.color = selected ? 'white' : '#3a3a3a';
+                    p.style.fontWeight = selected ? '600' : '500';
+                });
+                document.querySelectorAll('.sound-pill[data-group="finalBongSound"]').forEach(p => {
+                    const selected = p.dataset.value === (appSettings.finalBongSound || 'bowl');
+                    p.style.background = selected ? '#667eea' : 'white';
+                    p.style.borderColor = selected ? '#667eea' : '#e5e5e7';
+                    p.style.color = selected ? 'white' : '#3a3a3a';
+                    p.style.fontWeight = selected ? '600' : '500';
+                });
+                setRadioSelected('beepSoundSelect', appSettings.beepSound || 'beep');
+                setRadioSelected('transitionSound', appSettings.transitionSound || 'longbeep');
+                setRadioSelected('finalBongSound', appSettings.finalBongSound || 'bowl');
+                const bss = document.getElementById('beepStartSeconds');
+                if (bss) bss.value = appSettings.beepStartSeconds || 3;
+            });
+
+            // Sound pill click handlers — select pill, set radio, play preview
+            document.getElementById('settingsSoundContent').addEventListener('click', function(e) {
+                const pill = e.target.closest('.sound-pill');
+                if (!pill) return;
+                const group = pill.dataset.group;
+                const value = pill.dataset.value;
+                // Deselect all pills in same group, select this one
+                document.querySelectorAll(`.sound-pill[data-group="${group}"]`).forEach(p => {
+                    const selected = p.dataset.value === value;
+                    p.style.background = selected ? '#667eea' : 'white';
+                    p.style.borderColor = selected ? '#667eea' : '#e5e5e7';
+                    p.style.color = selected ? 'white' : '#3a3a3a';
+                    p.style.fontWeight = selected ? '600' : '500';
+                });
+                setRadioSelected(group, value);
+                // Play preview
+                if (group === 'beepSoundSelect') playBeepPreview(value);
+                else if (group === 'transitionSound') playTransitionPreview(value);
+                else if (group === 'finalBongSound') playFinalBongPreview(value);
             });
 
             document.getElementById('settingsFrontSplitsBtn').addEventListener('click', function() {
                 activateSettingsTab('settingsFrontSplitsBtn', 'settingsFrontSplitsContent');
+                // Sync pills from current settings
+                const freq = String(appSettings.splitsFrequency ?? 0.1);
+                document.querySelectorAll('.splits-freq-pill').forEach(p => {
+                    const selected = p.dataset.value === freq;
+                    p.style.background = selected ? '#667eea' : 'white';
+                    p.style.borderColor = selected ? '#667eea' : '#e5e5e7';
+                    p.style.color = selected ? 'white' : '#3a3a3a';
+                    p.style.fontWeight = selected ? '600' : '500';
+                });
+                setRadioSelected('splitsFrequency', freq);
+            });
+
+            // Front Splits pill click handler
+            document.getElementById('settingsFrontSplitsContent').addEventListener('click', function(e) {
+                const pill = e.target.closest('.splits-freq-pill');
+                if (!pill) return;
+                document.querySelectorAll('.splits-freq-pill').forEach(p => {
+                    const selected = p.dataset.value === pill.dataset.value;
+                    p.style.background = selected ? '#667eea' : 'white';
+                    p.style.borderColor = selected ? '#667eea' : '#e5e5e7';
+                    p.style.color = selected ? 'white' : '#3a3a3a';
+                    p.style.fontWeight = selected ? '600' : '500';
+                });
+                setRadioSelected('splitsFrequency', pill.dataset.value);
+            });
+
+            document.getElementById('settingsExerciseDurationBtn').addEventListener('click', function() {
+                activateSettingsTab('settingsExerciseDurationBtn', 'settingsExerciseDurationContent');
             });
 
             document.getElementById('settingsCustomExercisesBtn').addEventListener('click', function() {
@@ -2369,15 +2477,13 @@
                 populateExLibMuscleDropdown();
                 renderExerciseLibraryTable();
                 document.getElementById('exerciseNavBtns').style.display = 'flex';
-                // Wire up filter listeners (safe to call multiple times — removes old before adding)
-                ['exLibSearch','exLibPhase','exLibMuscle','exLibBody'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (!el) return;
-                    const evt = id === 'exLibSearch' ? 'input' : 'change';
-                    if (el._filterHandler) el.removeEventListener(evt, el._filterHandler);
-                    el._filterHandler = () => renderExerciseLibraryTable();
-                    el.addEventListener(evt, el._filterHandler);
-                });
+                // Wire up search listener
+                const exLibSearchEl = document.getElementById('exLibSearch');
+                if (exLibSearchEl) {
+                    if (exLibSearchEl._filterHandler) exLibSearchEl.removeEventListener('input', exLibSearchEl._filterHandler);
+                    exLibSearchEl._filterHandler = () => renderExerciseLibraryTable();
+                    exLibSearchEl.addEventListener('input', exLibSearchEl._filterHandler);
+                }
             });
 
             const capFirst = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
@@ -2391,70 +2497,117 @@
                     allMuscles.map(m => `<option value="${m}"${m === current ? ' selected' : ''}>${m}</option>`).join('');
             }
 
+            // Track which phase groups are expanded
+            const exLibExpandedPhases = new Set();
+
             function renderExerciseLibraryTable() {
                 const container = document.getElementById('exerciseLibraryTable');
                 if (!container) return;
 
-                // Read filter values
-                const search = (document.getElementById('exLibSearch') || {}).value || '';
-                const filterPhase = (document.getElementById('exLibPhase') || {}).value || '';
-                const filterMuscle = (document.getElementById('exLibMuscle') || {}).value || '';
-                const filterBody = (document.getElementById('exLibBody') || {}).value || '';
+                const search = ((document.getElementById('exLibSearch') || {}).value || '').toLowerCase().trim();
 
-                // Filter exercises
-                let filtered = exercises.filter(e => {
-                    if (filterPhase && e.phase !== filterPhase) return false;
-                    if (filterMuscle && e.target !== filterMuscle) return false;
-                    if (filterBody && (e.bodyPart || '').toLowerCase() !== filterBody.toLowerCase()) return false;
-                    if (search) {
-                        const s = search.toLowerCase();
-                        if (!e.exercise.toLowerCase().includes(s) && !e.target.toLowerCase().includes(s) && !(e.position || '').toLowerCase().includes(s)) return false;
-                    }
-                    return true;
-                });
+                const phaseColours = {
+                    'Warm-Up': '#7c3aed', 'Foam Roller': '#c2410c', 'Mobility': '#059669',
+                    'Static Stretching': '#4338ca', 'Active Stretch': '#9b2c52', 'Deep Stretch': '#ca8a04',
+                    'Splits': '#d946ef', 'Cool Down': '#db2777', 'Final Rest': '#1e1b4b'
+                };
 
-                // Group by phase, sort by target then exercise within each phase
-                const phases = [...new Set(exercises.map(e => e.phase))];
+                const phaseOrder = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
+
+                // Update count line
+                const countEl = document.getElementById('exLibCount');
+                if (countEl) countEl.textContent = `${exercises.length} exercises across ${phaseOrder.filter(p => exercises.some(e => e.phase === p)).length} phases`;
+
+                const cardStyle = (colour) => `display:flex;align-items:center;background:white;border:1px solid #e5e5e7;border-radius:10px;margin-bottom:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);`;
+
+                const makeCard = (ex, colour) => {
+                    const globalIdx = exercises.indexOf(ex);
+                    const isCustom = ex._custom;
+                    return `<div data-idx="${globalIdx}" draggable="true"
+                        ondragstart="exDragStart(event,${globalIdx})"
+                        ondragover="exDragOver(event)"
+                        ondrop="exDrop(event,${globalIdx})"
+                        ondragend="exDragEnd(event)"
+                        style="${cardStyle(colour)}">
+                        <div style="width:4px;background:${colour};align-self:stretch;flex-shrink:0;"></div>
+                        <span style="color:#c7c7cc;font-size:14px;cursor:grab;padding:0 10px;flex-shrink:0;">⠿</span>
+                        <div style="flex:1;padding:8px 4px 8px 0;min-width:0;">
+                            <div style="font-size:13px;font-weight:600;color:#1d1d1f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ex.exercise}${isCustom ? ' <span style="font-size:10px;background:#f0eef8;color:#667eea;padding:1px 6px;border-radius:10px;font-weight:600;">custom</span>' : ''}</div>
+                            <div style="font-size:11px;color:#86868b;margin-top:1px;">${ex.target} · ${ex.position} · ${ex.sides}x</div>
+                        </div>
+                        <div style="display:flex;gap:4px;padding:0 10px;flex-shrink:0;">
+                            <button data-action="edit" data-idx="${globalIdx}" style="padding:5px 14px;font-size:11px;border-radius:20px;font-weight:600;color:#667eea;border:1.5px solid #c4bef0;background:white;cursor:pointer;font-family:inherit;">Edit</button>
+                            <button data-action="copy" data-idx="${globalIdx}" style="padding:5px 14px;font-size:11px;border-radius:20px;font-weight:600;color:#86868b;border:1.5px solid #e5e5e7;background:white;cursor:pointer;font-family:inherit;">Copy</button>
+                            <button data-action="delete" data-idx="${globalIdx}" style="padding:5px 14px;font-size:11px;border-radius:20px;font-weight:600;color:#ff3b30;border:1.5px solid #ffcdd2;background:white;cursor:pointer;font-family:inherit;">Del</button>
+                        </div>
+                    </div>`;
+                };
+
                 let html = '';
-                html += `<div style="display:grid;grid-template-columns:24px 2fr 1fr 1fr 50px 60px 1fr;gap:0;padding:6px 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#86868b;border-bottom:2px solid #e8e8ed;margin-bottom:4px;">
-                    <div></div><div>Exercise</div><div>Target</div><div>Position</div><div>Sides</div><div>Body</div><div></div>
-                </div>`;
 
-                phases.forEach(phase => {
-                    const phaseExercises = filtered
-                        .filter(e => e.phase === phase)
-                        .sort((a, b) => {
-                            const tCmp = (a.target || '').localeCompare(b.target || '');
-                            return tCmp !== 0 ? tCmp : (a.position || '').localeCompare(b.position || '');
+                if (search) {
+                    // Search mode — flat results grouped by phase with dividers
+                    const filtered = exercises.filter(e => {
+                        const s = search;
+                        return e.exercise.toLowerCase().includes(s) || e.target.toLowerCase().includes(s) || (e.position || '').toLowerCase().includes(s);
+                    });
+
+                    if (filtered.length === 0) {
+                        html = `<div style="text-align:center;padding:48px 24px;color:#86868b;">
+                            <div style="font-size:24px;margin-bottom:12px;">🔍</div>
+                            <div style="font-size:15px;font-weight:600;color:#1d1d1f;margin-bottom:6px;">No results</div>
+                            <div style="font-size:13px;">No exercises match "${search}"</div>
+                        </div>`;
+                    } else {
+                        html += `<div style="font-size:12px;color:#86868b;margin-bottom:14px;">${filtered.length} result${filtered.length !== 1 ? 's' : ''} for "${search}"</div>`;
+                        phaseOrder.forEach(phase => {
+                            const phaseExercises = filtered.filter(e => e.phase === phase)
+                                .sort((a,b) => a.exercise.localeCompare(b.exercise));
+                            if (!phaseExercises.length) return;
+                            const colour = phaseColours[phase] || '#667eea';
+                            html += `<div style="display:flex;align-items:center;gap:10px;margin:16px 0 8px;">
+                                <div style="width:28px;height:2px;background:${colour};border-radius:2px;flex-shrink:0;"></div>
+                                <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#86868b;">${phase}</span>
+                                <div style="flex:1;height:2px;background:${colour};opacity:0.2;border-radius:2px;"></div>
+                            </div>`;
+                            phaseExercises.forEach(ex => { html += makeCard(ex, colour); });
                         });
-                    if (phaseExercises.length === 0) return;
-                    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#86868b;margin:14px 0 4px;padding-top:10px;border-top:1.5px solid #e8e8ed;">${phase}</div>`;
-                    phaseExercises.forEach(ex => {
-                        const globalIdx = exercises.indexOf(ex);
-                        html += `<div data-idx="${globalIdx}" draggable="true"
-                            ondragstart="exDragStart(event,${globalIdx})"
-                            ondragover="exDragOver(event)"
-                            ondrop="exDrop(event,${globalIdx})"
-                            ondragend="exDragEnd(event)"
-                            style="display:grid;grid-template-columns:24px 2fr 1fr 1fr 50px 60px 1fr;gap:0;align-items:center;padding:7px 8px;border-bottom:1px solid #f0f0f5;font-size:13px;color:#1d1d1f;">
-                            <span style="color:#c7c7cc;font-size:16px;cursor:grab;line-height:1;">⠿</span>
-                            <div style="font-weight:500;padding-right:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ex.exercise}</div>
-                            <div style="color:#86868b;padding-right:8px;">${ex.target}</div>
-                            <div style="color:#86868b;padding-right:8px;">${ex.position}</div>
-                            <div style="color:#86868b;">${ex.sides}</div>
-                            <div style="color:#86868b;">${capFirst(ex.bodyPart)}</div>
-                            <div style="display:flex;gap:5px;justify-content:flex-end;">
-                                <button data-action="edit" data-idx="${globalIdx}" class="btn" style="padding:6px 10px;font-size:12px;border-radius:8px;">Edit</button>
-                                <button data-action="copy" data-idx="${globalIdx}" class="btn" style="padding:6px 10px;font-size:12px;border-radius:8px;">Copy</button>
-                                <button data-action="delete" data-idx="${globalIdx}" class="btn" style="padding:6px 10px;font-size:12px;border-radius:8px;border-color:#ff3b30;color:#ff3b30;">Del</button>
+                    }
+                } else {
+                    // Default mode — collapsible phase groups
+                    phaseOrder.forEach(phase => {
+                        const phaseExercises = exercises.filter(e => e.phase === phase)
+                            .sort((a,b) => a.exercise.localeCompare(b.exercise));
+                        if (!phaseExercises.length) return;
+                        const colour = phaseColours[phase] || '#667eea';
+                        const isOpen = exLibExpandedPhases.has(phase);
+                        html += `<div style="border:1.5px solid #ebebf0;border-radius:12px;overflow:hidden;margin-bottom:8px;">
+                            <div data-phase-toggle="${phase}" style="display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;background:white;">
+                                <div style="width:8px;height:8px;border-radius:50%;background:${colour};flex-shrink:0;"></div>
+                                <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#1d1d1f;flex:1;">${phase}</div>
+                                <div style="font-size:12px;color:#86868b;">${phaseExercises.length} exercises</div>
+                                <div style="color:#c7c7cc;font-size:11px;transform:rotate(${isOpen ? '180' : '0'}deg);transition:transform 0.2s;">▼</div>
                             </div>
+                            ${isOpen ? `<div style="border-top:1px solid #f0f0f5;">
+                                ${phaseExercises.map(ex => makeCard(ex, colour)).join('')}
+                            </div>` : ''}
                         </div>`;
                     });
-                });
+                }
 
                 container.innerHTML = html;
 
-                // Event delegation — clean up old listener then attach fresh one
+                // Phase toggle clicks
+                container.querySelectorAll('[data-phase-toggle]').forEach(el => {
+                    el.addEventListener('click', () => {
+                        const phase = el.dataset.phaseToggle;
+                        if (exLibExpandedPhases.has(phase)) exLibExpandedPhases.delete(phase);
+                        else exLibExpandedPhases.add(phase);
+                        renderExerciseLibraryTable();
+                    });
+                });
+
+                // Event delegation for edit/copy/delete
                 if (container._clickHandler) container.removeEventListener('click', container._clickHandler);
                 container._clickHandler = function(e) {
                     const btn = e.target.closest('[data-action]');
@@ -2600,7 +2753,7 @@
 
             document.getElementById('settingsGoalsBtn').addEventListener('click', function() {
                 activateSettingsTab('settingsGoalsBtn', 'settingsGoalsContent');
-                // Load saved goals
+                // Load saved goals into hidden checkboxes
                 const saved = JSON.parse(localStorage.getItem('jumiGoals') || '{}');
                 ['maintenance','relaxation','posture','recovery','mobility','flexibility','alignment','frontsplits','sidesplits'].forEach(id => {
                     const el = document.getElementById('goal_' + id);
@@ -2608,6 +2761,29 @@
                 });
                 const custom = document.getElementById('goal_custom');
                 if (custom) custom.value = saved.custom || '';
+                // Sync pill selected states from checkboxes
+                document.querySelectorAll('.goal-pill').forEach(pill => {
+                    const cb = document.getElementById(pill.dataset.goal);
+                    const selected = cb && cb.checked;
+                    pill.style.background = selected ? '#667eea' : 'white';
+                    pill.style.borderColor = selected ? '#667eea' : '#e5e5e7';
+                    pill.style.color = selected ? 'white' : '#3a3a3a';
+                    pill.style.fontWeight = selected ? '600' : '500';
+                });
+            });
+
+            // Pill click handlers — toggle pill and sync to hidden checkbox
+            document.getElementById('goalPillsContainer').addEventListener('click', function(e) {
+                const pill = e.target.closest('.goal-pill');
+                if (!pill) return;
+                const cb = document.getElementById(pill.dataset.goal);
+                if (!cb) return;
+                cb.checked = !cb.checked;
+                const selected = cb.checked;
+                pill.style.background = selected ? '#667eea' : 'white';
+                pill.style.borderColor = selected ? '#667eea' : '#e5e5e7';
+                pill.style.color = selected ? 'white' : '#3a3a3a';
+                pill.style.fontWeight = selected ? '600' : '500';
             });
 
             window.saveGoals = function() {
@@ -2752,6 +2928,19 @@
                     appSettings.transitionSound = DEFAULT_SETTINGS.transitionSound;
                     appSettings.finalBongSound = DEFAULT_SETTINGS.finalBongSound;
                     saveSettings(appSettings);
+                    // Update pills to reflect reset
+                    document.querySelectorAll('.sound-pill[data-group="beepSoundSelect"]').forEach(p => {
+                        const sel = p.dataset.value === DEFAULT_SETTINGS.beepSound;
+                        p.style.background = sel ? '#667eea' : 'white'; p.style.borderColor = sel ? '#667eea' : '#e5e5e7'; p.style.color = sel ? 'white' : '#3a3a3a'; p.style.fontWeight = sel ? '600' : '500';
+                    });
+                    document.querySelectorAll('.sound-pill[data-group="transitionSound"]').forEach(p => {
+                        const sel = p.dataset.value === DEFAULT_SETTINGS.transitionSound;
+                        p.style.background = sel ? '#667eea' : 'white'; p.style.borderColor = sel ? '#667eea' : '#e5e5e7'; p.style.color = sel ? 'white' : '#3a3a3a'; p.style.fontWeight = sel ? '600' : '500';
+                    });
+                    document.querySelectorAll('.sound-pill[data-group="finalBongSound"]').forEach(p => {
+                        const sel = p.dataset.value === DEFAULT_SETTINGS.finalBongSound;
+                        p.style.background = sel ? '#667eea' : 'white'; p.style.borderColor = sel ? '#667eea' : '#e5e5e7'; p.style.color = sel ? 'white' : '#3a3a3a'; p.style.fontWeight = sel ? '600' : '500';
+                    });
                 }
             });
         });
@@ -10640,573 +10829,349 @@ function showStats() {
 
                 <!-- Quick Start Content -->
                 <div id="settingsQuickStartContent" class="settings-content-panel" style="display:none;">
-                    <h2 style="margin-bottom: 24px;">Quick Start</h2>
-                    <div class="section" style="margin-bottom:24px;">
-                        <div class="section-title" style="margin-bottom:8px;">Type</div>
-                        <div style="display:flex; flex-direction:column; gap:8px;">
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px;">
-                                <input type="radio" name="quickStartType" value="full" style="accent-color:#667eea;"> Full Body
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px;">
-                                <input type="radio" name="quickStartType" value="upper" style="accent-color:#667eea;"> Upper Body
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px;">
-                                <input type="radio" name="quickStartType" value="lower" style="accent-color:#667eea;"> Lower Body
-                            </label>
-                        </div>
+                    <!-- Hidden radios — keep for getRadioValue() JS compatibility -->
+                    <input type="radio" name="quickStartType" value="full" style="display:none;">
+                    <input type="radio" name="quickStartType" value="upper" style="display:none;">
+                    <input type="radio" name="quickStartType" value="lower" style="display:none;">
+                    <input type="radio" name="quickStartHold" value="short" style="display:none;">
+                    <input type="radio" name="quickStartHold" value="long" style="display:none;">
+
+                    <h2 style="margin-bottom:6px; font-size:24px; font-weight:800; letter-spacing:-0.5px; color:#1d1d1f;">Quick Start</h2>
+                    <p style="font-size:14px; color:#86868b; margin-bottom:28px; line-height:1.5;">Set the default routine that launches when you tap Quick Start.</p>
+
+                    <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Type</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:32px;">
+                        <div class="qs-type-pill" data-value="full" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Full Body</div>
+                        <div class="qs-type-pill" data-value="upper" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Upper Body</div>
+                        <div class="qs-type-pill" data-value="lower" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Lower Body</div>
                     </div>
 
-                    <div class="section" style="margin-bottom:24px;">
-                        <div class="section-title" style="margin-bottom:8px;">Hold</div>
-                        <div style="display:flex; flex-direction:column; gap:8px;">
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px;">
-                                <input type="radio" name="quickStartHold" value="short" style="accent-color:#667eea;"> Short Hold
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px;">
-                                <input type="radio" name="quickStartHold" value="long" style="accent-color:#667eea;"> Long Hold
-                            </label>
-                        </div>
+                    <div style="height:1px; background:#f0f0f5; margin-bottom:28px;"></div>
+
+                    <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Hold</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                        <div class="qs-hold-pill" data-value="short" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Short Hold</div>
+                        <div class="qs-hold-pill" data-value="long" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Long Hold</div>
                     </div>
                 </div>
 
                 <!-- Exercise Duration Content -->
                 <div id="settingsExerciseDurationContent" class="settings-content-panel">
-                    <h2 style="margin-bottom: 24px;">Exercise Duration</h2>
+                    <h2 style="margin-bottom:6px; font-size:24px; font-weight:800; letter-spacing:-0.5px; color:#1d1d1f;">Exercise Duration</h2>
+                    <p style="font-size:14px; color:#86868b; margin-bottom:28px; line-height:1.5;">Set how long each phase lasts. Short Hold is for quicker sessions, Long Hold for deeper work.</p>
 
-                    <!-- Phase Duration Section -->
-                    <div class="section" style="margin-bottom: 30px;">
-                        <table class="phase-duration-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 40%;">Phase</th>
-                                    <th style="width: 30%;">Short Hold</th>
-                                    <th style="width: 30%;">Long Hold</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Warm-up</td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="warmupShortDuration" class="settings-input-table" min="5" max="120" step="5" value="30">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="warmupLongDuration" class="settings-input-table" min="5" max="180" step="5" value="30">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Foam Roller</td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="foamrollerShortDuration" class="settings-input-table" min="5" max="120" step="5" value="30">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="foamrollerLongDuration" class="settings-input-table" min="5" max="180" step="5" value="30">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Mobility</td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="mobilityShortDuration" class="settings-input-table" min="5" max="120" step="5" value="30">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="mobilityLongDuration" class="settings-input-table" min="5" max="180" step="5" value="30">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Static Stretching</td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="staticstretchingShortDuration" class="settings-input-table" min="15" max="120" step="5" value="45">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="staticstretchingLongDuration" class="settings-input-table" min="30" max="180" step="5" value="75">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Active Stretch</td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="activestretchShortDuration" class="settings-input-table" min="15" max="120" step="5" value="45">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="activestretchLongDuration" class="settings-input-table" min="30" max="180" step="5" value="75">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Deep Stretch</td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="deepstretchShortDuration" class="settings-input-table" min="15" max="120" step="5" value="90">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="deepstretchLongDuration" class="settings-input-table" min="30" max="180" step="5" value="120">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Splits</td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="splitsShortDuration" class="settings-input-table" min="15" max="120" step="5" value="45">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="splitsLongDuration" class="settings-input-table" min="30" max="180" step="5" value="75">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Cool-down</td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="cooldownShortDuration" class="settings-input-table" min="5" max="120" step="5" value="45">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="cooldownLongDuration" class="settings-input-table" min="5" max="180" step="5" value="45">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Final Rest (Savasana)</td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="finalrestShortDuration" class="settings-input-table" min="60" max="600" step="15" value="120">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="settings-input-group">
-                                            <input type="number" id="finalrestLongDuration" class="settings-input-table" min="60" max="600" step="15" value="120">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr style="background: #f5f5f7;">
-                                    <td style="font-weight: 700; padding-top: 20px; padding-bottom: 12px;">Rest</td>
-                                    <td style="padding-top: 20px; padding-bottom: 12px;">
-                                        <div class="settings-input-group">
-                                            <input type="number" id="shortHoldRest" class="settings-input-table" min="5" max="60" step="5" value="15">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                    <td style="padding-top: 20px; padding-bottom: 12px;">
-                                        <div class="settings-input-group">
-                                            <input type="number" id="longHoldRest" class="settings-input-table" min="5" max="60" step="5" value="15">
-                                            <span class="settings-unit-small">s</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Phase Durations</div>
+
+                    <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.04); margin-bottom:12px;">
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; padding:14px 20px 10px; border-bottom:1px solid #f0f0f5;">
+                            <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#667eea;">Phase</div>
+                            <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#667eea; text-align:center;">Short Hold</div>
+                            <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#667eea; text-align:center;">Long Hold</div>
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#7c3aed;flex-shrink:0;display:inline-block;"></span>Warm-Up</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="warmupShortDuration" class="settings-input-table" min="5" max="120" step="5" value="30" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="warmupLongDuration" class="settings-input-table" min="5" max="180" step="5" value="30" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#c2410c;flex-shrink:0;display:inline-block;"></span>Foam Roller</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="foamrollerShortDuration" class="settings-input-table" min="5" max="120" step="5" value="30" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="foamrollerLongDuration" class="settings-input-table" min="5" max="180" step="5" value="30" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#059669;flex-shrink:0;display:inline-block;"></span>Mobility</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="mobilityShortDuration" class="settings-input-table" min="5" max="120" step="5" value="30" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="mobilityLongDuration" class="settings-input-table" min="5" max="180" step="5" value="30" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#4338ca;flex-shrink:0;display:inline-block;"></span>Static Stretching</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="staticstretchingShortDuration" class="settings-input-table" min="15" max="120" step="5" value="45" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="staticstretchingLongDuration" class="settings-input-table" min="30" max="180" step="5" value="75" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#9b2c52;flex-shrink:0;display:inline-block;"></span>Active Stretch</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="activestretchShortDuration" class="settings-input-table" min="15" max="120" step="5" value="45" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="activestretchLongDuration" class="settings-input-table" min="30" max="180" step="5" value="75" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#ca8a04;flex-shrink:0;display:inline-block;"></span>Deep Stretch</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="deepstretchShortDuration" class="settings-input-table" min="15" max="120" step="5" value="90" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="deepstretchLongDuration" class="settings-input-table" min="30" max="180" step="5" value="120" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#d946ef;flex-shrink:0;display:inline-block;"></span>Splits</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="splitsShortDuration" class="settings-input-table" min="15" max="120" step="5" value="45" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="splitsLongDuration" class="settings-input-table" min="30" max="180" step="5" value="75" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#db2777;flex-shrink:0;display:inline-block;"></span>Cool Down</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="cooldownShortDuration" class="settings-input-table" min="5" max="120" step="5" value="45" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="cooldownLongDuration" class="settings-input-table" min="5" max="180" step="5" value="45" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#1e1b4b;flex-shrink:0;display:inline-block;"></span>Final Rest</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="finalrestShortDuration" class="settings-input-table" min="60" max="600" step="15" value="120" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="finalrestLongDuration" class="settings-input-table" min="60" max="600" step="15" value="120" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; background:#f7f5ff;">
+                            <div style="font-size:14px; color:#667eea; font-weight:700;">Rest between exercises</div>
+                            <div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="shortHoldRest" class="settings-input-table" min="5" max="60" step="5" value="15" style="width:56px;padding:7px 8px;border:1.5px solid #c4bef0;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div>
+                            <div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="longHoldRest" class="settings-input-table" min="5" max="60" step="5" value="15" style="width:56px;padding:7px 8px;border:1.5px solid #c4bef0;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div>
+                        </div>
                     </div>
 
-                    <!-- Reset Button for Exercise Duration -->
-                    <div style="margin-top: 24px;">
-                        <button id="resetExerciseDurationBtn" class="btn" style="padding: 10px 20px; font-weight: 600; background: #e5e5e7; border: 2px solid #d2d2d7; color: #1d1d1f;">Reset Exercise Duration to Defaults</button>
-                    </div>
+                    <button id="resetExerciseDurationBtn" class="btn" style="padding:10px 18px; font-weight:600; background:transparent; border:1.5px solid #d0c8f0; color:#86868b; border-radius:10px; font-size:13px; cursor:pointer;">Reset to Defaults</button>
                 </div>
 
                 <!-- Sound Content -->
                 <div id="settingsSoundContent" class="settings-content-panel" style="display: none;">
-                    <h2 style="margin-bottom: 24px;">Sounds</h2>
+                    <!-- Hidden radios — keep for getRadioValue() JS compatibility -->
+                    <input type="radio" name="beepSoundSelect" value="beep" style="display:none;">
+                    <input type="radio" name="beepSoundSelect" value="click" style="display:none;">
+                    <input type="radio" name="beepSoundSelect" value="woodblock" style="display:none;">
+                    <input type="radio" name="beepSoundSelect" value="bell" style="display:none;">
+                    <input type="radio" name="beepSoundSelect" value="ping" style="display:none;">
+                    <input type="radio" name="beepSoundSelect" value="tick" style="display:none;">
+                    <input type="radio" name="beepSoundSelect" value="blip" style="display:none;">
+                    <input type="radio" name="beepSoundSelect" value="pop" style="display:none;">
+                    <input type="radio" name="beepSoundSelect" value="snap" style="display:none;">
+                    <input type="radio" name="beepSoundSelect" value="tone" style="display:none;">
+                    <input type="radio" name="transitionSound" value="longbeep" style="display:none;">
+                    <input type="radio" name="transitionSound" value="bell" style="display:none;">
+                    <input type="radio" name="transitionSound" value="ting" style="display:none;">
+                    <input type="radio" name="transitionSound" value="chime" style="display:none;">
+                    <input type="radio" name="transitionSound" value="bowl" style="display:none;">
+                    <input type="radio" name="transitionSound" value="drone" style="display:none;">
+                    <input type="radio" name="transitionSound" value="sweep" style="display:none;">
+                    <input type="radio" name="transitionSound" value="whoosh" style="display:none;">
+                    <input type="radio" name="transitionSound" value="rise" style="display:none;">
+                    <input type="radio" name="transitionSound" value="shimmer" style="display:none;">
+                    <input type="radio" name="transitionSound" value="chord" style="display:none;">
+                    <input type="radio" name="finalBongSound" value="bowl" style="display:none;">
+                    <input type="radio" name="finalBongSound" value="bell" style="display:none;">
+                    <input type="radio" name="finalBongSound" value="chime" style="display:none;">
+                    <input type="radio" name="finalBongSound" value="ting" style="display:none;">
+                    <input type="radio" name="finalBongSound" value="fanfare" style="display:none;">
+                    <input type="radio" name="finalBongSound" value="deep-tone" style="display:none;">
+                    <input type="radio" name="finalBongSound" value="cascade" style="display:none;">
+                    <input type="radio" name="finalBongSound" value="sunrise" style="display:none;">
+                    <input type="radio" name="finalBongSound" value="resonance" style="display:none;">
+                    <input type="radio" name="finalBongSound" value="harmony" style="display:none;">
 
-                    <!-- Sound Options Section -->
-                    <div class="section" style="margin-bottom: 30px;">
-                        <div style="display: flex; flex-direction: column; gap: 24px; max-width: 600px;">
+                    <h2 style="margin-bottom:6px; font-size:24px; font-weight:800; letter-spacing:-0.5px; color:#1d1d1f;">Sounds</h2>
+                    <p style="font-size:14px; color:#86868b; margin-bottom:28px; line-height:1.5;">Choose the sounds played during your routine. Tap a pill to select and preview.</p>
 
-                            <div>
-                                <div class="section-title" style="margin-bottom: 10px;">Countdown Beep</div>
-                                <div style="display: flex; flex-direction: column; gap: 2px;">
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="beepSoundSelect" value="beep" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playBeepPreview('beep')">
-                                Short Beep (Default)
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="beepSoundSelect" value="click" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playBeepPreview('click')">
-                                Soft Click
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="beepSoundSelect" value="woodblock" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playBeepPreview('woodblock')">
-                                Wood Block
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="beepSoundSelect" value="bell" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playBeepPreview('bell')">
-                                Bell
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="beepSoundSelect" value="ping" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playBeepPreview('ping')">
-                                Ping
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="beepSoundSelect" value="tick" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playBeepPreview('tick')">
-                                Tick
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="beepSoundSelect" value="blip" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playBeepPreview('blip')">
-                                Blip
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="beepSoundSelect" value="pop" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playBeepPreview('pop')">
-                                Pop
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="beepSoundSelect" value="snap" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playBeepPreview('snap')">
-                                Snap
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="beepSoundSelect" value="tone" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playBeepPreview('tone')">
-                                Tone
-                            </label>
-                                </div>
-                            </div>
-
-                            <hr style="border: none; border-top: 1px solid #e5e5e7; margin: 4px 0;">
-
-                            <div>
-                                <div class="section-title" style="margin-bottom: 10px;">Transition Sound</div>
-                                <div style="display: flex; flex-direction: column; gap: 2px;">
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="transitionSound" value="longbeep" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playTransitionPreview('longbeep')">
-                                Long Beep (Default)
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="transitionSound" value="bell" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playTransitionPreview('bell')">
-                                Bell
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="transitionSound" value="ting" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playTransitionPreview('ting')">
-                                Ting
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="transitionSound" value="chime" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playTransitionPreview('chime')">
-                                Chime
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="transitionSound" value="bowl" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playTransitionPreview('bowl')">
-                                Singing Bowl
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="transitionSound" value="drone" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playTransitionPreview('drone')">
-                                Drone
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="transitionSound" value="sweep" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playTransitionPreview('sweep')">
-                                Sweep
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="transitionSound" value="whoosh" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playTransitionPreview('whoosh')">
-                                Whoosh
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="transitionSound" value="rise" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playTransitionPreview('rise')">
-                                Rise
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="transitionSound" value="shimmer" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playTransitionPreview('shimmer')">
-                                Shimmer
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="transitionSound" value="chord" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playTransitionPreview('chord')">
-                                Chord
-                            </label>
-                                </div>
-                            </div>
-
-                            <hr style="border: none; border-top: 1px solid #e5e5e7; margin: 4px 0;">
-
-                            <div>
-                                <div class="section-title" style="margin-bottom: 10px;">Final Sound</div>
-                                <div style="display: flex; flex-direction: column; gap: 2px;">
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="finalBongSound" value="bowl" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playFinalBongPreview('bowl')">
-                                Singing Bowl (Default)
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="finalBongSound" value="bell" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playFinalBongPreview('bell')">
-                                Bell
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="finalBongSound" value="chime" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playFinalBongPreview('chime')">
-                                Chime
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="finalBongSound" value="ting" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playFinalBongPreview('ting')">
-                                Ting
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="finalBongSound" value="fanfare" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playFinalBongPreview('fanfare')">
-                                Fanfare
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="finalBongSound" value="deep-tone" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playFinalBongPreview('deep-tone')">
-                                Deep Tone
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="finalBongSound" value="cascade" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playFinalBongPreview('cascade')">
-                                Cascade
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="finalBongSound" value="sunrise" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playFinalBongPreview('sunrise')">
-                                Sunrise
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="finalBongSound" value="resonance" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playFinalBongPreview('resonance')">
-                                Resonance
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                                <input type="radio" name="finalBongSound" value="harmony" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;" onclick="playFinalBongPreview('harmony')">
-                                Harmony
-                            </label>
-                                </div>
-                            </div>
-
-                            <hr style="border: none; border-top: 1px solid #e5e5e7; margin: 4px 0;">
-
-                            <div style="display: flex; align-items: center; gap: 16px;">
-                                <label class="settings-label" style="width: 210px; flex-shrink: 0; font-weight: 400;">Start Countdown Beep At</label>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <input type="number" id="beepStartSeconds" class="settings-input" style="width: 70px;" min="1" max="10" step="1" value="3">
-                                    <span class="settings-unit" style="white-space: nowrap;">seconds remaining</span>
-                                </div>
-                            </div>
-
-                        </div>
+                    <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Countdown Beep</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:32px;">
+                        <div class="sound-pill" data-group="beepSoundSelect" data-value="beep"      data-preview="beep"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Short Beep</div>
+                        <div class="sound-pill" data-group="beepSoundSelect" data-value="click"     data-preview="click"     style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Soft Click</div>
+                        <div class="sound-pill" data-group="beepSoundSelect" data-value="woodblock" data-preview="woodblock" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Wood Block</div>
+                        <div class="sound-pill" data-group="beepSoundSelect" data-value="bell"      data-preview="bell"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Bell</div>
+                        <div class="sound-pill" data-group="beepSoundSelect" data-value="ping"      data-preview="ping"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Ping</div>
+                        <div class="sound-pill" data-group="beepSoundSelect" data-value="tick"      data-preview="tick"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Tick</div>
+                        <div class="sound-pill" data-group="beepSoundSelect" data-value="blip"      data-preview="blip"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Blip</div>
+                        <div class="sound-pill" data-group="beepSoundSelect" data-value="pop"       data-preview="pop"       style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Pop</div>
+                        <div class="sound-pill" data-group="beepSoundSelect" data-value="snap"      data-preview="snap"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Snap</div>
+                        <div class="sound-pill" data-group="beepSoundSelect" data-value="tone"      data-preview="tone"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Tone</div>
                     </div>
 
-                    <!-- Reset Button for Sound -->
-                    <div style="margin-top: 24px;">
-                        <button id="resetSoundBtn" class="btn" style="padding: 10px 20px; font-weight: 600; background: #e5e5e7; border: 2px solid #d2d2d7; color: #1d1d1f;">Reset Sound to Defaults</button>
+                    <div style="height:1px; background:#f0f0f5; margin-bottom:28px;"></div>
+
+                    <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Transition Sound</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:32px;">
+                        <div class="sound-pill" data-group="transitionSound" data-value="longbeep" data-preview="longbeep" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Long Beep</div>
+                        <div class="sound-pill" data-group="transitionSound" data-value="bell"     data-preview="bell"     style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Bell</div>
+                        <div class="sound-pill" data-group="transitionSound" data-value="ting"     data-preview="ting"     style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Ting</div>
+                        <div class="sound-pill" data-group="transitionSound" data-value="chime"    data-preview="chime"    style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Chime</div>
+                        <div class="sound-pill" data-group="transitionSound" data-value="bowl"     data-preview="bowl"     style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Singing Bowl</div>
+                        <div class="sound-pill" data-group="transitionSound" data-value="drone"    data-preview="drone"    style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Drone</div>
+                        <div class="sound-pill" data-group="transitionSound" data-value="sweep"    data-preview="sweep"    style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Sweep</div>
+                        <div class="sound-pill" data-group="transitionSound" data-value="whoosh"   data-preview="whoosh"   style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Whoosh</div>
+                        <div class="sound-pill" data-group="transitionSound" data-value="rise"     data-preview="rise"     style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Rise</div>
+                        <div class="sound-pill" data-group="transitionSound" data-value="shimmer"  data-preview="shimmer"  style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Shimmer</div>
+                        <div class="sound-pill" data-group="transitionSound" data-value="chord"    data-preview="chord"    style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Chord</div>
                     </div>
+
+                    <div style="height:1px; background:#f0f0f5; margin-bottom:28px;"></div>
+
+                    <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Final Sound</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:32px;">
+                        <div class="sound-pill" data-group="finalBongSound" data-value="bowl"      data-preview="bowl"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Singing Bowl</div>
+                        <div class="sound-pill" data-group="finalBongSound" data-value="bell"      data-preview="bell"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Bell</div>
+                        <div class="sound-pill" data-group="finalBongSound" data-value="chime"     data-preview="chime"     style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Chime</div>
+                        <div class="sound-pill" data-group="finalBongSound" data-value="ting"      data-preview="ting"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Ting</div>
+                        <div class="sound-pill" data-group="finalBongSound" value="fanfare"       data-value="fanfare"     data-preview="fanfare"     style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Fanfare</div>
+                        <div class="sound-pill" data-group="finalBongSound" data-value="deep-tone" data-preview="deep-tone" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Deep Tone</div>
+                        <div class="sound-pill" data-group="finalBongSound" data-value="cascade"   data-preview="cascade"   style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Cascade</div>
+                        <div class="sound-pill" data-group="finalBongSound" data-value="sunrise"   data-preview="sunrise"   style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Sunrise</div>
+                        <div class="sound-pill" data-group="finalBongSound" data-value="resonance" data-preview="resonance" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Resonance</div>
+                        <div class="sound-pill" data-group="finalBongSound" data-value="harmony"   data-preview="harmony"   style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Harmony</div>
+                    </div>
+
+                    <div style="height:1px; background:#f0f0f5; margin-bottom:28px;"></div>
+
+                    <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Countdown Start</div>
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:28px;">
+                        <span style="font-size:14px; color:#1d1d1f;">Start beep at</span>
+                        <input type="number" id="beepStartSeconds" class="settings-input" style="width:70px; border:1.5px solid #e5e5e7; border-radius:10px; padding:8px 10px; font-size:14px; text-align:center; outline:none;" min="1" max="10" step="1" value="3">
+                        <span style="font-size:14px; color:#86868b;">seconds remaining</span>
+                    </div>
+
+                    <button id="resetSoundBtn" class="btn" style="padding:10px 18px; font-weight:600; background:transparent; border:1.5px solid #d0c8f0; color:#86868b; border-radius:10px; font-size:13px; cursor:pointer;">Reset to Defaults</button>
                 </div>
 
                 <!-- Front Splits Content -->
                 <div id="settingsFrontSplitsContent" class="settings-content-panel" style="display: none;">
-                    <h2 style="margin-bottom: 24px;">Front Splits</h2>
-                    <div class="section-title" style="margin-bottom: 10px;">Frequency</div>
-                    <div style="display: flex; flex-direction: column; gap: 2px;">
-                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                        <input type="radio" name="splitsFrequency" value="1" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;">
-                        Always
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                        <input type="radio" name="splitsFrequency" value="0.5" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;">
-                        1 in 2
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                        <input type="radio" name="splitsFrequency" value="0.33" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;">
-                        1 in 3
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                        <input type="radio" name="splitsFrequency" value="0.2" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;">
-                        1 in 5
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                        <input type="radio" name="splitsFrequency" value="0.1" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;">
-                        1 in 10
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                        <input type="radio" name="splitsFrequency" value="0.05" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;">
-                        1 in 20
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                        <input type="radio" name="splitsFrequency" value="0.04" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;">
-                        1 in 25
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                        <input type="radio" name="splitsFrequency" value="0.02" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;">
-                        1 in 50
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                        <input type="radio" name="splitsFrequency" value="0.01" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;">
-                        1 in 100
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer;">
-                        <input type="radio" name="splitsFrequency" value="0" style="cursor: pointer; accent-color: #667eea; width: 15px; height: 15px; flex-shrink: 0;">
-                        Never
-                    </label>
+                    <!-- Hidden radios — keep for getRadioValue() JS compatibility -->
+                    <input type="radio" name="splitsFrequency" value="1" style="display:none;">
+                    <input type="radio" name="splitsFrequency" value="0.5" style="display:none;">
+                    <input type="radio" name="splitsFrequency" value="0.33" style="display:none;">
+                    <input type="radio" name="splitsFrequency" value="0.2" style="display:none;">
+                    <input type="radio" name="splitsFrequency" value="0.1" style="display:none;">
+                    <input type="radio" name="splitsFrequency" value="0.05" style="display:none;">
+                    <input type="radio" name="splitsFrequency" value="0.04" style="display:none;">
+                    <input type="radio" name="splitsFrequency" value="0.02" style="display:none;">
+                    <input type="radio" name="splitsFrequency" value="0.01" style="display:none;">
+                    <input type="radio" name="splitsFrequency" value="0" style="display:none;">
+
+                    <h2 style="margin-bottom:6px; font-size:24px; font-weight:800; letter-spacing:-0.5px; color:#1d1d1f;">Front Splits</h2>
+                    <p style="font-size:14px; color:#86868b; margin-bottom:28px; line-height:1.5;">How often should front splits exercises appear in your routines?</p>
+
+                    <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Frequency</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                        <div class="splits-freq-pill" data-value="0.5"  style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">1 in 2</div>
+                        <div class="splits-freq-pill" data-value="0.33" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">1 in 3</div>
+                        <div class="splits-freq-pill" data-value="0.2"  style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">1 in 5</div>
+                        <div class="splits-freq-pill" data-value="0.1"  style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">1 in 10</div>
+                        <div class="splits-freq-pill" data-value="0.05" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">1 in 20</div>
+                        <div class="splits-freq-pill" data-value="0.04" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">1 in 25</div>
+                        <div class="splits-freq-pill" data-value="0.02" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">1 in 50</div>
+                        <div class="splits-freq-pill" data-value="0.01" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">1 in 100</div>
+                        <div style="width:100%;"></div>
+                        <div class="splits-freq-pill" data-value="1"    style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Always</div>
+                        <div class="splits-freq-pill" data-value="0"    style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Never</div>
                     </div>
                 </div>
 
                 <!-- Exercises Content -->
                 <div id="settingsCustomExercisesContent" class="settings-content-panel" style="display: none;">
-                    <h2 style="margin:0 0 16px; color:#1d1d1f;">Exercises</h2>
+                    <h2 style="margin:0 0 4px; font-size:24px; font-weight:800; letter-spacing:-0.5px; color:#1d1d1f;">Exercises</h2>
+                    <p id="exLibCount" style="font-size:13px; color:#86868b; margin-bottom:20px;"></p>
                     <div id="csvUploadStatus" style="margin-bottom:10px; font-size:13px; color:#86868b;"></div>
-                    <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
-                        <input type="text" id="exLibSearch" placeholder="Search…" style="flex:2;min-width:0;padding:7px 10px;border:1.5px solid #d2d2d7;border-radius:8px;font-size:13px;outline:none;">
-                        <select id="exLibPhase" style="flex:1;min-width:0;padding:7px 6px;border:1.5px solid #d2d2d7;border-radius:8px;font-size:12px;outline:none;background:white;">
-                            <option value="">All Phases</option>
-                            <option>Warm-Up</option><option>Foam Roller</option><option>Mobility</option>
-                            <option>Static Stretching</option><option>Splits</option><option>Cool Down</option><option>Final Rest</option>
-                        </select>
-                        <select id="exLibMuscle" style="flex:1;min-width:0;padding:7px 6px;border:1.5px solid #d2d2d7;border-radius:8px;font-size:12px;outline:none;background:white;">
-                            <option value="">All Muscles</option>
-                        </select>
-                        <select id="exLibBody" style="flex:1;min-width:0;padding:7px 6px;border:1.5px solid #d2d2d7;border-radius:8px;font-size:12px;outline:none;background:white;">
-                            <option value="">All Body</option>
-                            <option value="upper">Upper</option><option value="lower">Lower</option><option value="full">Full</option>
-                        </select>
+                    <div style="display:flex; gap:10px; margin-bottom:20px; align-items:center;">
+                        <div style="flex:1; position:relative;">
+                            <input type="text" id="exLibSearch" placeholder="Search exercises…" style="width:100%; padding:11px 40px 11px 14px; border:1.5px solid #e5e5e7; border-radius:12px; font-size:14px; outline:none; font-family:inherit; color:#1d1d1f; background:white;" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e5e5e7'">
+                            <svg style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#c7c7cc;pointer-events:none;" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        </div>
+                        <button onclick="openAddExerciseModal()" style="display:flex;align-items:center;gap:7px;background:#667eea;color:white;border:none;padding:11px 18px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Add Exercise
+                        </button>
                     </div>
-                    <div id="exerciseLibraryTable" style="overflow-x:auto;"></div>
+                    <div id="exerciseLibraryTable"></div>
                 </div>
 
                 <!-- Backup Content -->
                 <div id="settingsGoalsContent" class="settings-content-panel" style="display: none;">
-                    <h2 style="margin-top:0; margin-bottom:8px; color:#1d1d1f;">Goals</h2>
-                    <p style="font-size:14px; color:#86868b; margin-bottom:20px;">Tell Jumi what you're working towards. It will use these to personalise your routines, exercise durations, and explanations. Leave blank for general flexibility maintenance.</p>
-                    
-                    <div style="margin-bottom:20px;">
-                        <div style="font-size:13px; font-weight:600; color:#1d1d1f; margin-bottom:10px;">Common goals</div>
-                        <div style="display:flex; flex-direction:column; gap:8px;">
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
-                                <input type="checkbox" id="goal_maintenance" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
-                                General maintenance
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
-                                <input type="checkbox" id="goal_relaxation" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
-                                Relaxation
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
-                                <input type="checkbox" id="goal_posture" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
-                                Improve posture
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
-                                <input type="checkbox" id="goal_recovery" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
-                                Sport/running recovery
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
-                                <input type="checkbox" id="goal_mobility" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
-                                Improve mobility
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
-                                <input type="checkbox" id="goal_flexibility" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
-                                Improve flexibility
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
-                                <input type="checkbox" id="goal_alignment" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
-                                Alignment and control
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
-                                <input type="checkbox" id="goal_frontsplits" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
-                                Achieve front splits
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#1d1d1f;">
-                                <input type="checkbox" id="goal_sidesplits" style="width:16px; height:16px; accent-color:#667eea; cursor:pointer;">
-                                Achieve side splits
-                            </label>
-                        </div>
+                    <!-- Hidden checkboxes — keep for saveGoals() JS compatibility -->
+                    <input type="checkbox" id="goal_maintenance" style="display:none;">
+                    <input type="checkbox" id="goal_relaxation" style="display:none;">
+                    <input type="checkbox" id="goal_posture" style="display:none;">
+                    <input type="checkbox" id="goal_recovery" style="display:none;">
+                    <input type="checkbox" id="goal_mobility" style="display:none;">
+                    <input type="checkbox" id="goal_flexibility" style="display:none;">
+                    <input type="checkbox" id="goal_alignment" style="display:none;">
+                    <input type="checkbox" id="goal_frontsplits" style="display:none;">
+                    <input type="checkbox" id="goal_sidesplits" style="display:none;">
+
+                    <h2 style="margin-top:0; margin-bottom:6px; font-size:24px; font-weight:800; letter-spacing:-0.5px; color:#1d1d1f;">Goals</h2>
+                    <p style="font-size:14px; color:#86868b; margin-bottom:28px; line-height:1.5;">Tell Jumi what you're working towards — Jumi will personalise your routines, exercise choices, and explanations around these.</p>
+
+                    <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">What are you working on?</div>
+                    <div id="goalPillsContainer" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:32px;">
+                        <div class="goal-pill" data-goal="goal_maintenance" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">General maintenance</div>
+                        <div class="goal-pill" data-goal="goal_relaxation" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Relaxation</div>
+                        <div class="goal-pill" data-goal="goal_flexibility" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Improve flexibility</div>
+                        <div class="goal-pill" data-goal="goal_posture" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Improve posture</div>
+                        <div class="goal-pill" data-goal="goal_mobility" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Improve mobility</div>
+                        <div class="goal-pill" data-goal="goal_frontsplits" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Achieve front splits</div>
+                        <div class="goal-pill" data-goal="goal_sidesplits" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Achieve side splits</div>
+                        <div class="goal-pill" data-goal="goal_recovery" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Sport / running recovery</div>
+                        <div class="goal-pill" data-goal="goal_alignment" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Alignment and control</div>
                     </div>
 
-                    <div style="margin-bottom:20px;">
-                        <div style="font-size:13px; font-weight:600; color:#1d1d1f; margin-bottom:8px;">Anything else</div>
-                        <textarea id="goal_custom" placeholder="e.g. I want to be able to touch my toes by summer, or I have tight hip flexors from sitting at a desk all day…" style="width:100%; height:100px; border:1.5px solid #d2d2d7; border-radius:12px; padding:12px; font-size:14px; font-family:inherit; color:#1d1d1f; resize:vertical; outline:none; box-sizing:border-box;" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#d2d2d7'"></textarea>
-                    </div>
+                    <div style="height:1px; background:#f0f0f5; margin-bottom:28px;"></div>
 
-                    <button onclick="saveGoals()" style="background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; padding:12px 28px; border-radius:12px; font-size:14px; font-weight:600; cursor:pointer;">Save Goals</button>
-                    <span id="goalsSavedMsg" style="display:none; margin-left:12px; font-size:13px; color:#34c759;">✅ Saved</span>
+                    <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:8px;">Anything else?</div>
+                    <div style="font-size:13px; color:#86868b; margin-bottom:12px;">Injuries, specific areas to focus on, things to avoid — anything Jumi should know.</div>
+                    <textarea id="goal_custom" placeholder="e.g. I have tight hip flexors from sitting at a desk all day, and my left knee gets sore if I hold lunges too long…" style="width:100%; height:110px; border:1.5px solid #e5e5e7; border-radius:14px; padding:14px 16px; font-size:14px; font-family:inherit; color:#1d1d1f; resize:none; outline:none; box-sizing:border-box; line-height:1.6; margin-bottom:24px;" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e5e5e7'"></textarea>
+
+                    <button onclick="saveGoals()" style="width:100%; background:#667eea; color:white; border:none; padding:15px; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; letter-spacing:-0.2px;">Save Goals</button>
+                    <div id="goalsSavedMsg" style="display:none; margin-top:12px; font-size:13px; color:#34c759; text-align:center;">✅ Saved</div>
                 </div>
 
                 <div id="settingsBackupContent" class="settings-content-panel" style="display: none;">
-                    <h2 style="margin-bottom: 24px;">Backup</h2>
+                    <h2 style="margin:0 0 6px; font-size:24px; font-weight:800; letter-spacing:-0.5px; color:#1d1d1f;">Backup</h2>
+                    <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">Save or restore your starred routines, history, and exercise library.</p>
 
-                    <div class="section" style="margin-bottom: 30px;">
-                        <p style="font-size: 14px; color: #86868b; margin-bottom: 16px;">Download or restore your starred routines and history.</p>
-                        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                            <button onclick="exportData()" class="btn" style="background: #667eea; color: white; padding: 10px 18px; font-weight: 600;">⬇ Download Backup</button>
-                            <label for="importDataFile" class="btn" style="background: #34c759; color: white; padding: 10px 18px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center;">⬆ Restore Backup</label>
-                            <input type="file" id="importDataFile" accept=".json" onchange="importData(this)" style="display: none;">
-                            <button onclick="exportHistoryCSV()" class="btn" style="background: #e5e5e7; color: #1d1d1f; padding: 10px 18px; font-weight: 600;">⬇ History CSV</button>
+                    <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:12px;">Export</div>
+                    <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.04); margin-bottom:20px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid #f0f0f5;">
+                            <div>
+                                <div style="font-size:14px; font-weight:500; color:#1d1d1f;">Download Backup</div>
+                                <div style="font-size:12px; color:#86868b; margin-top:2px;">Starred routines, history &amp; exercises as JSON</div>
+                            </div>
+                            <button onclick="exportData()" style="padding:8px 18px; background:#667eea; color:white; border:none; border-radius:20px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; flex-shrink:0;">⬇ Download</button>
                         </div>
-                        <div id="backupStatus" style="margin-top: 12px; font-size: 13px;"></div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 18px;">
+                            <div>
+                                <div style="font-size:14px; font-weight:500; color:#1d1d1f;">History CSV</div>
+                                <div style="font-size:12px; color:#86868b; margin-top:2px;">Export session history as a spreadsheet</div>
+                            </div>
+                            <button onclick="exportHistoryCSV()" style="padding:8px 18px; background:white; color:#86868b; border:1.5px solid #e5e5e7; border-radius:20px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; flex-shrink:0;">⬇ Export</button>
+                        </div>
                     </div>
+
+                    <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:12px;">Import</div>
+                    <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.04); margin-bottom:16px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 18px;">
+                            <div>
+                                <div style="font-size:14px; font-weight:500; color:#1d1d1f;">Restore Backup</div>
+                                <div style="font-size:12px; color:#86868b; margin-top:2px;">Restore from a previously downloaded JSON file</div>
+                            </div>
+                            <label for="importDataFile" style="padding:8px 18px; background:#34c759; color:white; border:none; border-radius:20px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; flex-shrink:0;">⬆ Restore</label>
+                            <input type="file" id="importDataFile" accept=".json" onchange="importData(this)" style="display: none;">
+                        </div>
+                    </div>
+
+                    <div id="backupStatus" style="font-size:13px; color:#86868b;"></div>
                 </div>
+
                 <!-- Keyboard Shortcuts Content -->
                 <div id="settingsKeyboardContent" class="settings-content-panel" style="display: none;">
-                    <h2 style="margin-bottom: 24px;">Keyboard Shortcuts</h2>
-                    <div style="display: flex; flex-direction: column; gap: 12px; max-width: 420px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: #f5f5f7; border-radius: 10px;">
-                            <span style="font-size: 15px; color: #1d1d1f;">Pause / Resume</span>
-                            <kbd style="background: white; border: 1px solid #d2d2d7; border-radius: 6px; padding: 4px 10px; font-size: 13px; color: #1d1d1f; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">Space</kbd>
+                    <h2 style="margin:0 0 6px; font-size:24px; font-weight:800; letter-spacing:-0.5px; color:#1d1d1f;">Keyboard Shortcuts</h2>
+                    <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">Use these shortcuts during a routine session.</p>
+
+                    <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:12px;">During a routine</div>
+                    <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.04); margin-bottom:20px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:13px 18px; border-bottom:1px solid #f0f0f5;">
+                            <span style="font-size:14px; color:#1d1d1f; font-weight:500;">Pause / Resume</span>
+                            <kbd style="background:#f7f5ff; border:1.5px solid #c4bef0; border-radius:8px; padding:5px 12px; font-size:13px; color:#667eea; font-weight:600; font-family:inherit;">Space</kbd>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: #f5f5f7; border-radius: 10px;">
-                            <span style="font-size: 15px; color: #1d1d1f;">Next exercise</span>
-                            <kbd style="background: white; border: 1px solid #d2d2d7; border-radius: 6px; padding: 4px 10px; font-size: 13px; color: #1d1d1f; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">→</kbd>
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:13px 18px; border-bottom:1px solid #f0f0f5;">
+                            <span style="font-size:14px; color:#1d1d1f; font-weight:500;">Next exercise</span>
+                            <kbd style="background:#f7f5ff; border:1.5px solid #c4bef0; border-radius:8px; padding:5px 12px; font-size:13px; color:#667eea; font-weight:600; font-family:inherit;">→</kbd>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: #f5f5f7; border-radius: 10px;">
-                            <span style="font-size: 15px; color: #1d1d1f;">Previous exercise</span>
-                            <kbd style="background: white; border: 1px solid #d2d2d7; border-radius: 6px; padding: 4px 10px; font-size: 13px; color: #1d1d1f; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">←</kbd>
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:13px 18px; border-bottom:1px solid #f0f0f5;">
+                            <span style="font-size:14px; color:#1d1d1f; font-weight:500;">Previous exercise</span>
+                            <kbd style="background:#f7f5ff; border:1.5px solid #c4bef0; border-radius:8px; padding:5px 12px; font-size:13px; color:#667eea; font-weight:600; font-family:inherit;">←</kbd>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: #f5f5f7; border-radius: 10px;">
-                            <span style="font-size: 15px; color: #1d1d1f;">Add 15s to timer</span>
-                            <kbd style="background: white; border: 1px solid #d2d2d7; border-radius: 6px; padding: 4px 10px; font-size: 13px; color: #1d1d1f; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">↑</kbd>
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:13px 18px; border-bottom:1px solid #f0f0f5;">
+                            <span style="font-size:14px; color:#1d1d1f; font-weight:500;">Add 15s to timer</span>
+                            <kbd style="background:#f7f5ff; border:1.5px solid #c4bef0; border-radius:8px; padding:5px 12px; font-size:13px; color:#667eea; font-weight:600; font-family:inherit;">↑</kbd>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: #f5f5f7; border-radius: 10px;">
-                            <span style="font-size: 15px; color: #1d1d1f;">Remove 15s from timer</span>
-                            <kbd style="background: white; border: 1px solid #d2d2d7; border-radius: 6px; padding: 4px 10px; font-size: 13px; color: #1d1d1f; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">↓</kbd>
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:13px 18px;">
+                            <span style="font-size:14px; color:#1d1d1f; font-weight:500;">Remove 15s from timer</span>
+                            <kbd style="background:#f7f5ff; border:1.5px solid #c4bef0; border-radius:8px; padding:5px 12px; font-size:13px; color:#667eea; font-weight:600; font-family:inherit;">↓</kbd>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: #f5f5f7; border-radius: 10px; gap: 16px;">
-                            <span style="font-size: 15px; color: #1d1d1f;">Control music (Mac)</span>
-                            <span style="display: flex; gap: 10px; align-items: center; flex-shrink: 0;">
-                                <span style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
-                                    <kbd style="background: white; border: 1px solid #d2d2d7; border-radius: 6px; padding: 4px 10px; font-size: 13px; color: #1d1d1f; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">F7</kbd>
-                                    <span style="font-size: 14px; color: #86868b;">⏮</span>
-                                </span>
-                                <span style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
-                                    <kbd style="background: white; border: 1px solid #d2d2d7; border-radius: 6px; padding: 4px 10px; font-size: 13px; color: #1d1d1f; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">F8</kbd>
-                                    <span style="font-size: 14px; color: #86868b;">⏯</span>
-                                </span>
-                                <span style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
-                                    <kbd style="background: white; border: 1px solid #d2d2d7; border-radius: 6px; padding: 4px 10px; font-size: 13px; color: #1d1d1f; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">F9</kbd>
-                                    <span style="font-size: 14px; color: #86868b;">⏭</span>
-                                </span>
-                            </span>
+                    </div>
+
+                    <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:12px;">Music (Mac only)</div>
+                    <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:13px 18px;">
+                            <span style="font-size:14px; color:#1d1d1f; font-weight:500;">Control music</span>
+                            <div style="display:flex; gap:10px; align-items:center;">
+                                <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                                    <kbd style="background:#f7f5ff; border:1.5px solid #c4bef0; border-radius:8px; padding:5px 12px; font-size:13px; color:#667eea; font-weight:600; font-family:inherit;">F7</kbd>
+                                    <span style="font-size:13px; color:#86868b;">⏮</span>
+                                </div>
+                                <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                                    <kbd style="background:#f7f5ff; border:1.5px solid #c4bef0; border-radius:8px; padding:5px 12px; font-size:13px; color:#667eea; font-weight:600; font-family:inherit;">F8</kbd>
+                                    <span style="font-size:13px; color:#86868b;">⏯</span>
+                                </div>
+                                <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                                    <kbd style="background:#f7f5ff; border:1.5px solid #c4bef0; border-radius:8px; padding:5px 12px; font-size:13px; color:#667eea; font-weight:600; font-family:inherit;">F9</kbd>
+                                    <span style="font-size:13px; color:#86868b;">⏭</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Version Content -->
                 <div id="settingsVersionContent" class="settings-content-panel" style="display: none;">
-                    <h2 style="margin-bottom: 8px;">Version</h2>
-                    <div style="font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">4.1</div>
-                    <div style="font-size: 14px; color: #86868b; margin-bottom: 4px;">flex.</div>
-                    <div id="buildDateDisplay" style="font-size: 12px; color: #aeaeb2;"></div>
+                    <h2 style="margin:0 0 6px; font-size:24px; font-weight:800; letter-spacing:-0.5px; color:#1d1d1f;">Version</h2>
+                    <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
+
+                    <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px; text-align:center;">
+                        <div style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">4.1</div>
+                        <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
+                        <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
+                    </div>
                 </div>
             </div>
         </div>
