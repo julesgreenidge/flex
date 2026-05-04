@@ -2552,7 +2552,7 @@
                         <div style="display:flex;gap:4px;padding:0 10px;flex-shrink:0;">
                             <button data-action="edit" data-idx="${globalIdx}" style="padding:5px 14px;font-size:11px;border-radius:20px;font-weight:600;color:#667eea;border:1.5px solid #c4bef0;background:white;cursor:pointer;font-family:inherit;">Edit</button>
                             <button data-action="copy" data-idx="${globalIdx}" style="padding:5px 14px;font-size:11px;border-radius:20px;font-weight:600;color:#86868b;border:1.5px solid #e5e5e7;background:white;cursor:pointer;font-family:inherit;">Copy</button>
-                            <button data-action="delete" data-idx="${globalIdx}" style="padding:5px 14px;font-size:11px;border-radius:20px;font-weight:600;color:#ff3b30;border:1.5px solid #ffcdd2;background:white;cursor:pointer;font-family:inherit;">Del</button>
+                            <button data-action="delete" data-idx="${globalIdx}" style="padding:5px 14px;font-size:11px;border-radius:20px;font-weight:600;color:#ff3b30;border:1.5px solid #ffcdd2;background:white;cursor:pointer;font-family:inherit;">Delete</button>
                         </div>
                     </div>`;
                 };
@@ -9848,10 +9848,10 @@ function showStats() {
                         </div>
                     </div>
                     <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end;">
-                        <button onclick="quickStartStarredRoutine(${index})" class="btn" style="padding:5px 10px; font-size:12px; border-radius:8px; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none;">▶ Start</button>
-                        <button onclick="loadStarredRoutine(${index})" class="btn" style="padding:5px 10px; font-size:12px; border-radius:8px;">Load</button>
-                        <button onclick="setActiveCard('customCardBtn'); editStarredRoutine(${index})" class="btn" style="padding:5px 10px; font-size:12px; border-radius:8px;">Edit</button>
-                        <button onclick="deleteStarredRoutine(${index})" class="btn" style="padding:5px 10px; font-size:12px; border-radius:8px; border-color:#ff3b30; color:#ff3b30;">Delete</button>
+                        <button onclick="quickStartStarredRoutine(${index})" style="padding:5px 16px; font-size:12px; border-radius:20px; background:#34c759; color:white; border:none; font-weight:600; cursor:pointer; font-family:inherit;">▶ Start</button>
+                        <button onclick="loadStarredRoutine(${index})" style="padding:5px 16px; font-size:12px; border-radius:20px; font-weight:600; color:#667eea; border:1.5px solid #c4bef0; background:white; cursor:pointer; font-family:inherit;">Load</button>
+                        <button onclick="setActiveCard('customCardBtn'); editStarredRoutine(${index})" style="padding:5px 16px; font-size:12px; border-radius:20px; font-weight:600; color:#86868b; border:1.5px solid #e5e5e7; background:white; cursor:pointer; font-family:inherit;">Edit</button>
+                        <button onclick="deleteStarredRoutine(${index})" style="padding:5px 16px; font-size:12px; border-radius:20px; font-weight:600; color:#ff3b30; border:1.5px solid #ffcdd2; background:white; cursor:pointer; font-family:inherit;">Delete</button>
                     </div>
                 </div>`;
             });
