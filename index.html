@@ -1890,7 +1890,7 @@
             <div id="customControls" style="display: none; height: 100%; flex-direction: column; overflow: hidden;">
                 <!-- Fixed header -->
                 <div style="flex-shrink: 0; background:white; border-radius:18px; padding:20px; margin-top:16px; margin-bottom:16px; border:2px solid #c2d4e0;">
-                    <div style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:#1a3a5c; margin-bottom:12px;">Add Exercises</div>
+                    <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#1a3a5c; margin-bottom:12px;">Add Exercises</div>
 
                     <div style="margin-bottom: 0;">
                         <div style="display: flex; gap: 8px; margin-bottom: 8px;">
@@ -1982,8 +1982,6 @@
                             </svg>
                             Favourite
                         </button>
-                        <div style="width: 1px; height: 20px; background: #d0d0d0; margin: 0 2px;"></div>
-                        <button id="customCancel" class="nav-btn">Cancel</button>
                     </div>
                 </div>
                 <div class="nav-group">
@@ -5847,10 +5845,6 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     saveCustomState();
                     renderRoutineBuilder();
                 }
-            });
-            
-            document.getElementById('customCancel').addEventListener('click', function() {
-                enterMode('quick');
             });
             
             
@@ -9834,7 +9828,7 @@ function showStats() {
                 const typeText = routine.type === 'full' ? 'Full Body' : routine.type === 'upper' ? 'Upper Body' : routine.type === 'lower' ? 'Lower Body' : '—';
                 const holdText = routine.hold === 'long' ? 'Long Hold' : 'Short Hold';
                 let durationText;
-                if (routine.time === 999 && routine.routine) {
+                if (routine.routine && routine.routine.length > 0) {
                     const totalSeconds = routine.routine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0) + 15;
                     durationText = Math.round(totalSeconds / 60) + 'm';
                 } else {
