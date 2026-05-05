@@ -8713,9 +8713,20 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                 const displayPhase = PHASE_MAP[phaseKey];
 
                 // Find the full exercise objects for these candidates
+                // Try name + phase first, fall back to name only
                 const candidateObjs = candidates.map(c => {
                     const name = typeof c === 'string' ? c : c.exercise;
-                    return exercises.find(e => e.exercise === name && e.phase === displayPhase) || { exercise: name, target: '' };
+                    let found = exercises.find(e => e.exercise === name && e.phase === displayPhase);
+                    if (!found) {
+                        found = exercises.find(e => e.exercise === name);
+                        if (found) {
+                            console.warn(`[Jumi priority] Phase mismatch for "${name}": expected "${displayPhase}", found in "${found.phase}". Using name-only match.`);
+                        } else {
+                            console.warn(`[Jumi priority] No match found for "${name}" in phase "${displayPhase}". Priority bias skipped for this exercise.`);
+                            return { exercise: name, target: '', _noMatch: true };
+                        }
+                    }
+                    return found;
                 }).filter(Boolean);
 
                 // Score each candidate: +1 per "increase" priority match, -1 per "reduce" priority match
