@@ -1864,14 +1864,14 @@
             <div id="lhsStartJumiFav" style="display:none; margin-top:10px;">
                 <button id="lhsStartJumiFavBtn" onclick="startRoutine()" style="width:100%; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:14px; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 4px 16px rgba(52,199,89,0.35);">▶ Start Routine</button>
             </div>
+            <!-- Jumi priorities display — shows after generation -->
+            <div id="jumiPrioritiesDisplay" style="display:none; margin-top:10px; padding:10px 12px; background:#f7f5ff; border:1px solid #c4bef0; border-radius:10px; font-size:12px; color:#4a3a7a; line-height:1.7;"></div>
 
             <!-- JUMI PANEL — stub for explanation storage -->
             <div id="jumiPanel" style="display:none !important;">
                 <div id="jumiExplanation" style="display:none;">
                     <div id="jumiExplanationText" style="display:none;"></div>
                 </div>
-                <!-- Jumi priority debug panel — toggle during testing -->
-                <div id="jumiPriorityDebug" style="display:none; margin-top:8px; padding:10px 12px; background:#f7f5ff; border:1px solid #c4bef0; border-radius:10px; font-size:11px; font-family:monospace; color:#4a3a7a; line-height:1.6;"></div>
             </div>
 
             <!-- MODE CONTROLS — single panel for quick and jumi -->
@@ -2023,6 +2023,8 @@
                 </div>
             </div>
             <!-- Floating Start button -->
+            <!-- Jumi priority debug panel — visible during testing when priorities active -->
+            <div id="jumiPriorityDebug" style="display:none; margin:0 30px 20px; padding:10px 14px; background:#f7f5ff; border:1px solid #c4bef0; border-radius:10px; font-size:11px; font-family:monospace; color:#4a3a7a; line-height:1.8;"></div>
             </div><!-- end padding wrapper -->
 
 
@@ -8911,6 +8913,8 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
             document.getElementById('jumiExplanation').style.display = 'none';
             const _debugEl = document.getElementById('jumiPriorityDebug');
             if (_debugEl) _debugEl.style.display = 'none';
+            const _priDisplay = document.getElementById('jumiPrioritiesDisplay');
+            if (_priDisplay) _priDisplay.style.display = 'none';
             document.getElementById('routineDisplayWrapper').style.display = 'block';
             document.getElementById('customDisplay').style.display = 'none';
             if (domCache.routineDisplay) {
@@ -8976,8 +8980,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                 const { result: biasedRoutineData, debugInfo: priorityDebug } = applyPriorityBias(routineData, scopedPriorities);
                 if (scopedPriorities.length > 0) {
                     console.info('[Jumi priority debug]', JSON.stringify(priorityDebug, null, 2));
-                    appState._lastJumiPriorityDebug = priorityDebug; // expose for UI toggle
-                    // Render debug panel
+                    appState._lastJumiPriorityDebug = priorityDebug;
                     const debugEl = document.getElementById('jumiPriorityDebug');
                     if (debugEl) {
                         const lines = [`Priorities: ${priorityDebug.priorities.join(' | ')}`];
@@ -8989,6 +8992,19 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                         debugEl.innerHTML = lines.join('<br>');
                         debugEl.style.display = 'block';
                     }
+                }
+
+                // Show priorities in LHS
+                const priDisplay = document.getElementById('jumiPrioritiesDisplay');
+                if (priDisplay) {
+                    if (jumiPriorities.length > 0) {
+                        const raw = jumiPriorities.map(p => `${p.action === 'increase' ? '↑' : '↓'} ${p.target}`).join('  ·  ');
+                        const scoped = scopedPriorities.map(p => `${p.action === 'increase' ? '↑' : '↓'} ${p.target}`).join('  ·  ');
+                        priDisplay.innerHTML = `<strong>Priorities:</strong> ${raw}${scopedPriorities.length < jumiPriorities.length ? `<br><span style="color:#86868b;font-size:11px;">Scoped to: ${scoped || 'none (all filtered out)'}</span>` : ''}`;
+                    } else {
+                        priDisplay.innerHTML = `<span style="color:#86868b;">No priorities returned by Jumi</span>`;
+                    }
+                    priDisplay.style.display = 'block';
                 }
                 const prioritised = applyJumiPriority(biasedRoutineData);
                 await generateRoutine(prioritised);
