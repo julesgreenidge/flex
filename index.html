@@ -8668,12 +8668,7 @@ Prefer specific, intentional choices over safe, generic ones.
 
 OUTPUT:
 
-Use the generate_routine tool for your ranked exercise candidates.
-
-Also output a JSON block in your text reply with 1-2 structured priorities that drove your ranking decisions. Use exactly this format (no other text):
-{"priorities":[{"action":"increase","target":"Hamstrings"},{"action":"reduce","target":"Spine"}]}
-
-Action must be "increase" or "reduce". Target must be one of: Hips, Hamstrings, Quads, Glutes, Spine, Shoulders, Calves, Adductors, Abductors, Back, Ankles, Chest, Obliques. Maximum 2 priorities.
+Use the generate_routine tool. Always include 1-2 priorities in the priorities field — these are the explicit decisions that drove your exercise selection. Choose targets from the fixed enum only.
 Use snake_case phase keys: warm_up, foam_roller, mobility, static_stretching, active_stretch, deep_stretch, cool_down.
 
 CANDIDATE POOLS (rank these, do not add others):
@@ -8810,13 +8805,20 @@ Please rank the candidates for each phase using the generate_routine tool.`;
 
             return { result, debugInfo };
         }
-        async function getJumiExplanation(routine, goals, userPrompt, contextTable, priorities) {
+        async function getJumiExplanation(routine, goals, userPrompt, contextTable, priorities, coverage) {
             const exerciseList = routine.map(e => `${e.exercise} (${e.phase}, ${e.target})`).join(', ');
             const focusNote = userPrompt ? ` The user's focus today was: "${userPrompt}".` : '';
             const historyNote = contextTable ? `\n\nTRAINING HISTORY (translate into natural language — never reference column names):\n${contextTable}` : '';
-            const priorityNote = priorities && priorities.length > 0
-                ? `\n\nJUMI'S DECISIONS for this session: ${priorities.map(p => `${p.action === 'increase' ? 'increase' : 'reduce'} ${p.target}`).join('; ')}. These drove the exercise selection. Your explanation must be grounded in these decisions. Do not invent additional reasoning or priorities beyond what is listed here.`
-                : '';
+
+            let priorityNote = '';
+            if (priorities && priorities.length > 0) {
+                const coverageLines = priorities.map(p => {
+                    const count = coverage ? (coverage[p.target] || 0) : null;
+                    const countStr = count !== null ? ` (${count} exercise${count !== 1 ? 's' : ''} selected)` : '';
+                    return `${p.action === 'increase' ? 'increase' : 'reduce'} ${p.target}${countStr}`;
+                }).join('; ');
+                priorityNote = `\n\nJUMI'S DECISIONS for this session: ${coverageLines}. Your explanation must be grounded in these decisions and the actual coverage shown. Do not invent additional reasoning. If coverage is 0 for an increase priority, acknowledge it plainly rather than claiming it happened.`;
+            }
             const system = `You are Jumi, a long-term flexibility and mobility coach. Use British English throughout.
 
 Your job is not to describe this routine. Your job is to justify why this routine exists for this specific user on this specific day, given their training history.
@@ -8944,8 +8946,8 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                 const routineData = data.routine || null;
                 const replyText = (data.reply || '').trim();
 
-                // Extract structured priorities from reply
-                const jumiPriorities = parsePriorities(replyText);
+                // Priorities now come directly from the tool call via coach.js
+                const jumiPriorities = Array.isArray(data.priorities) ? data.priorities : [];
 
                 if (!routineData) {
                     if (domCache.routineDisplay) domCache.routineDisplay.innerHTML = '<div style="padding:40px;text-align:center;color:#86868b;">Jumi could not build a routine \u2014 please try again.</div>';
@@ -8978,6 +8980,20 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
 
                 // Apply priority bias first, then Jumi's ranked order
                 const { result: biasedRoutineData, debugInfo: priorityDebug } = applyPriorityBias(routineData, scopedPriorities);
+
+                // Diagnostic: show raw candidate names from Jumi vs master array matches
+                const PHASE_MAP_DIAG = { warm_up:'Warm-Up', foam_roller:'Foam Roller', mobility:'Mobility', static_stretching:'Static Stretching', active_stretch:'Active Stretch', deep_stretch:'Deep Stretch', splits:'Splits', cool_down:'Cool Down' };
+                const diagLines = [];
+                for (const [key, displayPhase] of Object.entries(PHASE_MAP_DIAG)) {
+                    const cands = routineData[key];
+                    if (!cands || cands.length === 0) continue;
+                    const names = cands.map(c => typeof c === 'string' ? c : c.exercise);
+                    const matched = names.filter(n => exercises.some(e => e.exercise === n));
+                    const unmatched = names.filter(n => !exercises.some(e => e.exercise === n));
+                    if (unmatched.length > 0) diagLines.push(`${displayPhase}: NO MATCH — ${unmatched.join(', ')}`);
+                    else diagLines.push(`${displayPhase}: ok (${matched.length})`);
+                }
+                appState._jumiDiag = diagLines;
                 if (scopedPriorities.length > 0) {
                     console.info('[Jumi priority debug]', JSON.stringify(priorityDebug, null, 2));
                     appState._lastJumiPriorityDebug = priorityDebug;
@@ -8998,9 +9014,13 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                 const priDisplay = document.getElementById('jumiPrioritiesDisplay');
                 if (priDisplay) {
                     if (jumiPriorities.length > 0) {
-                        const raw = jumiPriorities.map(p => `${p.action === 'increase' ? '↑' : '↓'} ${p.target}`).join('  ·  ');
-                        const scoped = scopedPriorities.map(p => `${p.action === 'increase' ? '↑' : '↓'} ${p.target}`).join('  ·  ');
-                        priDisplay.innerHTML = `<strong>Priorities:</strong> ${raw}${scopedPriorities.length < jumiPriorities.length ? `<br><span style="color:#86868b;font-size:11px;">Scoped to: ${scoped || 'none (all filtered out)'}</span>` : ''}`;
+                        const lines = jumiPriorities.map(p => {
+                            const arrow = p.action === 'increase' ? '↑' : '↓';
+                            const count = coverage ? (coverage[p.target] !== undefined ? ` (${coverage[p.target]} selected)` : '') : '';
+                            const filtered = !scopedPriorities.find(s => s.target === p.target && s.action === p.action);
+                            return `${arrow} ${p.target}${count}${filtered ? ' <span style="color:#ff9500">[filtered by scope]</span>' : ''}`;
+                        });
+                        priDisplay.innerHTML = `<strong>Priorities:</strong> ${lines.join('  ·  ')}`;
                     } else {
                         priDisplay.innerHTML = `<span style="color:#86868b;">No priorities returned by Jumi</span>`;
                     }
@@ -9008,6 +9028,16 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                 }
                 const prioritised = applyJumiPriority(biasedRoutineData);
                 await generateRoutine(prioritised);
+
+                // Calculate coverage — how many selected exercises matched each priority
+                const coverage = {};
+                if (scopedPriorities.length > 0 && currentRoutine) {
+                    for (const p of scopedPriorities) {
+                        coverage[p.target] = currentRoutine.filter(ex =>
+                            (ex.target || '').toLowerCase() === p.target.toLowerCase()
+                        ).length;
+                    }
+                }
 
                 // Save and display
                 currentJumiRoutine = currentRoutine.map(e => ({...e}));
@@ -9025,7 +9055,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
 
                 // Get explanation based on actual built routine, then show in chat
                 const goals = getJumiGoals();
-                const actualExplanation = await getJumiExplanation(currentRoutine, goals, userPrompt, contextTable, scopedPriorities);
+                const actualExplanation = await getJumiExplanation(currentRoutine, goals, userPrompt, contextTable, scopedPriorities, coverage);
                 if (actualExplanation) {
                     appendChatMessage('jumi', actualExplanation);
                 }

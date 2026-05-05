@@ -34,6 +34,11 @@ exports.handler = async function(event) {
             cool_down: 'Cool Down'
         };
 
+        const PRIORITY_TARGET_ENUM = [
+            'Hips', 'Hamstrings', 'Quads', 'Glutes', 'Spine', 'Shoulders',
+            'Calves', 'Adductors', 'Abductors', 'Back', 'Ankles', 'Chest', 'Obliques'
+        ];
+
         const phaseSchema = { type: 'array', items: {
             type: 'object',
             properties: {
@@ -48,10 +53,24 @@ exports.handler = async function(event) {
 
         const generateRoutineTool = {
             name: 'generate_routine',
-            description: 'Output a structured flexibility routine. Call this whenever you generate a routine for the user. Put your explanation in your text response, and the routine data in this tool call.',
+            description: 'Output a structured flexibility routine with explicit priorities that drove the selection. Always include 1-2 priorities.',
             input_schema: {
                 type: 'object',
                 properties: {
+                    priorities: {
+                        type: 'array',
+                        description: 'The 1-2 explicit decisions that drove exercise selection for this routine. Must always be provided. Each priority must have an action (increase or reduce) and a target from the fixed enum.',
+                        minItems: 1,
+                        maxItems: 2,
+                        items: {
+                            type: 'object',
+                            properties: {
+                                action: { type: 'string', enum: ['increase', 'reduce'], description: 'Whether to increase or reduce this target' },
+                                target: { type: 'string', enum: PRIORITY_TARGET_ENUM, description: 'The muscle group or area being prioritised' }
+                            },
+                            required: ['action', 'target']
+                        }
+                    },
                     warm_up:           phaseSchema,
                     foam_roller:       phaseSchema,
                     mobility:          phaseSchema,
@@ -61,7 +80,7 @@ exports.handler = async function(event) {
                     splits:            phaseSchema,
                     cool_down:         phaseSchema,
                 },
-                required: []
+                required: ['priorities']
             }
         };
 
@@ -107,9 +126,10 @@ exports.handler = async function(event) {
             };
         }
 
-        // Extract text and routine tool call separately
+        // Extract text, routine, and priorities from tool call
         let reply = '';
         let routine = null;
+        let priorities = [];
 
         if (data.content && Array.isArray(data.content)) {
             for (const block of data.content) {
@@ -117,7 +137,16 @@ exports.handler = async function(event) {
                     reply += block.text;
                 } else if (block.type === 'tool_use' && block.name === 'generate_routine') {
                     const raw = block.input;
-                    // Keep snake_case keys so frontend applyJumiPriority can find them
+
+                    // Extract priorities
+                    if (Array.isArray(raw.priorities)) {
+                        priorities = raw.priorities.filter(p =>
+                            p && (p.action === 'increase' || p.action === 'reduce') &&
+                            PRIORITY_TARGET_ENUM.includes(p.target)
+                        ).slice(0, 2);
+                    }
+
+                    // Extract routine phases
                     routine = {};
                     for (const snake of Object.keys(PHASE_MAP)) {
                         if (raw[snake] && raw[snake].length > 0) {
@@ -132,14 +161,14 @@ exports.handler = async function(event) {
         return {
             statusCode: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reply, routine })
+            body: JSON.stringify({ reply, routine, priorities })
         };
     } catch (err) {
         console.error('Function error:', err);
         return {
             statusCode: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reply: `Function error: ${err.message}`, routine: null })
+            body: JSON.stringify({ reply: `Function error: ${err.message}`, routine: null, priorities: [] })
         };
     }
 };
