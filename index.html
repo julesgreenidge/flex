@@ -1870,6 +1870,8 @@
                 <div id="jumiExplanation" style="display:none;">
                     <div id="jumiExplanationText" style="display:none;"></div>
                 </div>
+                <!-- Jumi priority debug panel — toggle during testing -->
+                <div id="jumiPriorityDebug" style="display:none; margin-top:8px; padding:10px 12px; background:#f7f5ff; border:1px solid #c4bef0; border-radius:10px; font-size:11px; font-family:monospace; color:#4a3a7a; line-height:1.6;"></div>
             </div>
 
             <!-- MODE CONTROLS — single panel for quick and jumi -->
@@ -8711,22 +8713,28 @@ Please rank the candidates for each phase using the generate_routine tool.`;
         }
 
         // ── JUMI: Reorder candidate pools based on priorities ──
+        // Returns { result, debugInfo } where debugInfo surfaces priority effectiveness
         function applyPriorityBias(routineData, priorities) {
-            if (!priorities || priorities.length === 0) return routineData;
+            const debugInfo = { priorities: priorities.map(p => `${p.action} ${p.target}`), phases: {} };
+
+            if (!priorities || priorities.length === 0) return { result: routineData, debugInfo };
 
             const PHASE_KEYS = ['warm_up','foam_roller','mobility','static_stretching','active_stretch','deep_stretch','splits','cool_down'];
             const PHASE_MAP = { warm_up:'Warm-Up', foam_roller:'Foam Roller', mobility:'Mobility', static_stretching:'Static Stretching', active_stretch:'Active Stretch', deep_stretch:'Deep Stretch', splits:'Splits', cool_down:'Cool Down' };
 
             const result = { ...routineData };
 
+            const increasePriorities = priorities.filter(p => p.action === 'increase');
+            const reducePriorities = priorities.filter(p => p.action === 'reduce');
+
             for (const phaseKey of PHASE_KEYS) {
                 const candidates = result[phaseKey];
                 if (!candidates || candidates.length === 0) continue;
 
                 const displayPhase = PHASE_MAP[phaseKey];
+                const phaseDebug = { candidates: candidates.length, increaseMatches: 0, reduceMatches: 0 };
 
-                // Find the full exercise objects for these candidates
-                // Try name + phase first, fall back to name only
+                // Find full exercise objects — name+phase first, name-only fallback
                 const candidateObjs = candidates.map(c => {
                     const name = typeof c === 'string' ? c : c.exercise;
                     let found = exercises.find(e => e.exercise === name && e.phase === displayPhase);
@@ -8735,7 +8743,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                         if (found) {
                             console.warn(`[Jumi priority] Phase mismatch for "${name}": expected "${displayPhase}", found in "${found.phase}". Using name-only match.`);
                         } else {
-                            console.warn(`[Jumi priority] No match found for "${name}" in phase "${displayPhase}". Priority bias skipped for this exercise.`);
+                            console.warn(`[Jumi priority] No match found for "${name}" in phase "${displayPhase}". Priority bias skipped.`);
                             return { exercise: name, target: '', _noMatch: true };
                         }
                     }
@@ -8744,29 +8752,61 @@ Please rank the candidates for each phase using the generate_routine tool.`;
 
                 // Score each candidate
                 // First priority: weight 4 (dominant), second: weight 1 (secondary)
-                // increase → positive score (floats to top)
-                // reduce → large negative score (sinks to bottom, deterministically)
                 const scored = candidateObjs.map(ex => {
                     let score = 0;
                     priorities.forEach((p, i) => {
                         const weight = i === 0 ? 4 : 1;
-                        if ((ex.target || '').toLowerCase() === p.target.toLowerCase()) {
-                            score += p.action === 'increase' ? weight : -(weight + 10); // reduce pushes hard to bottom
+                        const matches = (ex.target || '').toLowerCase() === p.target.toLowerCase();
+                        if (matches) {
+                            if (p.action === 'increase') { score += weight; phaseDebug.increaseMatches++; }
+                            else { score -= (weight + 10); phaseDebug.reduceMatches++; } // hard push to bottom
                         }
                     });
                     return { ex, score };
                 });
 
-                // Sort: highest score first, preserving Jumi's original order for ties
                 scored.sort((a, b) => b.score - a.score);
 
-                result[phaseKey] = scored.map(s => {
+                // STEP 1 — Soft cap on "reduce": limit reduced-target exercises to max 1 per phase
+                let reducedCount = 0;
+                const capped = scored.map(s => {
+                    const isReduced = reducePriorities.some(p =>
+                        (s.ex.target || '').toLowerCase() === p.target.toLowerCase()
+                    );
+                    if (isReduced) {
+                        reducedCount++;
+                        if (reducedCount > 1) return null; // cap at 1
+                    }
+                    return s;
+                }).filter(Boolean);
+
+                // STEP 2 — Guarantee "increase" visibility: ensure at least 1 increase-matched
+                // exercise appears in the top half of the pool where matches exist
+                const increaseMatches = capped.filter(s =>
+                    increasePriorities.some(p =>
+                        (s.ex.target || '').toLowerCase() === p.target.toLowerCase()
+                    )
+                );
+                if (increaseMatches.length > 0) {
+                    // Move the first increase match to position 0 if not already in top half
+                    const firstMatchIdx = capped.indexOf(increaseMatches[0]);
+                    const topHalf = Math.ceil(capped.length / 2);
+                    if (firstMatchIdx > topHalf) {
+                        capped.splice(firstMatchIdx, 1);
+                        capped.unshift(increaseMatches[0]);
+                    }
+                }
+
+                phaseDebug.afterBias = capped.length;
+                debugInfo.phases[displayPhase] = phaseDebug;
+
+                result[phaseKey] = capped.map(s => {
                     const orig = candidates.find(c => (typeof c === 'string' ? c : c.exercise) === s.ex.exercise);
                     return orig || s.ex.exercise;
                 });
             }
 
-            return result;
+            return { result, debugInfo };
         }
         async function getJumiExplanation(routine, goals, userPrompt, contextTable, priorities) {
             const exerciseList = routine.map(e => `${e.exercise} (${e.phase}, ${e.target})`).join(', ');
@@ -8869,6 +8909,8 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
 
             // Show thinking placeholder in routine panel
             document.getElementById('jumiExplanation').style.display = 'none';
+            const _debugEl = document.getElementById('jumiPriorityDebug');
+            if (_debugEl) _debugEl.style.display = 'none';
             document.getElementById('routineDisplayWrapper').style.display = 'block';
             document.getElementById('customDisplay').style.display = 'none';
             if (domCache.routineDisplay) {
@@ -8931,7 +8973,23 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                 });
 
                 // Apply priority bias first, then Jumi's ranked order
-                const biasedRoutineData = applyPriorityBias(routineData, scopedPriorities);
+                const { result: biasedRoutineData, debugInfo: priorityDebug } = applyPriorityBias(routineData, scopedPriorities);
+                if (scopedPriorities.length > 0) {
+                    console.info('[Jumi priority debug]', JSON.stringify(priorityDebug, null, 2));
+                    appState._lastJumiPriorityDebug = priorityDebug; // expose for UI toggle
+                    // Render debug panel
+                    const debugEl = document.getElementById('jumiPriorityDebug');
+                    if (debugEl) {
+                        const lines = [`Priorities: ${priorityDebug.priorities.join(' | ')}`];
+                        for (const [phase, info] of Object.entries(priorityDebug.phases)) {
+                            if (info.increaseMatches > 0 || info.reduceMatches > 0) {
+                                lines.push(`${phase}: ${info.increaseMatches} increase match${info.increaseMatches !== 1 ? 'es' : ''}, ${info.reduceMatches} reduce match${info.reduceMatches !== 1 ? 'es' : ''} (pool: ${info.candidates})`);
+                            }
+                        }
+                        debugEl.innerHTML = lines.join('<br>');
+                        debugEl.style.display = 'block';
+                    }
+                }
                 const prioritised = applyJumiPriority(biasedRoutineData);
                 await generateRoutine(prioritised);
 
