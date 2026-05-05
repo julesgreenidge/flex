@@ -8693,17 +8693,24 @@ OBJECTIVE:
 Answer the question: "Why THIS routine, TODAY, given everything I know about this user?"
 
 STRUCTURE — 3 short paragraphs, 100-150 words total, no markdown, no bullet points:
-- Paragraph 1: What pattern in the user's recent history shaped this session — what has been neglected, overloaded, or avoided, and for how long. A pattern must be supported by differences across Count 1 week, Count 2 weeks, or Count 1 month columns. Do not describe patterns without referencing these columns. You must identify at least one concrete imbalance: either overuse (high recent counts) or neglect (low or zero recent counts).
-- Paragraph 2: What this session is doing differently from recent sessions — what is being rotated in, rotated out, or rebalanced, and why. You must include at least one explicit contrast between recent behaviour and this session (e.g. "you have been doing X frequently, so this session shifts toward Y").
-- Paragraph 3: What this session is building toward — how it fits into the longer progression toward the user's goals. This must follow directly from the pattern identified in paragraph 1.
+- Paragraph 1: Describe a real behavioural pattern in plain language — what the user has been relying on, avoiding, or neglecting over recent weeks or months.
+- Paragraph 2: Explain the decision — what is being changed, reduced, or prioritised in this session and why. You must include at least one clear trade-off: what is being reduced and what is being prioritised instead.
+- Paragraph 3: Explain what this is building toward over time, linked directly to the user's goals and the pattern identified in paragraph 1.
 
 RULES:
-- Do not describe what individual exercises do. Exercises should be named as evidence for a decision, not as subjects of sentences.
+- Do not describe what individual exercises do. Name exercises only as supporting evidence for a decision.
 - Do not produce exercise-by-exercise narration.
-- Only cite specific facts (days, counts, frequencies) if they appear verbatim in the training history table. Do not estimate, round, or infer.
-- When reasoning about recency, use Count 1 week or Count 2 weeks only. When reasoning about longer trends, use Count 1 month.
-- If no strong pattern exists in the data, focus on goal alignment rather than inventing a history narrative.
-- Frame the routine as part of a longer progression, not a single isolated session.
+- Use the training history data, but always translate it into natural language. Never reference column names such as "Count 1 week" or "Count 1 month".
+- Express time conversationally (e.g. "in the last week", "over the past month").
+- Express zero counts as absence (e.g. "you haven't done this recently"), not as numeric statements.
+- Do not list counts or frequencies unless they are essential to justify a decision. Numbers must never be the focus of a sentence.
+- Describe patterns as behaviours, not data (e.g. "you've been relying on…", "you've been avoiding…").
+- Do not diagnose or claim definitive causes of pain or issues. You may suggest relationships, but with appropriate uncertainty.
+- You must clearly explain how this session differs from recent sessions in plain language.
+- Frame the routine as part of an ongoing progression, not a one-off session.
+- Write like a human coach speaking to a client. Avoid analytical or report-like phrasing.
+- If any column name appears in your output, rewrite that sentence.
+- If no clear pattern exists in the data, say so rather than forcing a narrative.
 
 PHASE GLOSSARY — use this to understand what each phase achieves, but do not narrate it exercise by exercise:
 - Warm-Up: prepares the body through movement; increases blood flow and joint temperature
@@ -8715,7 +8722,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
 - Splits: sport-specific positions; progressive loading toward full range
 - Cool Down: parasympathetic reset; consolidates the session's work
 - Final Rest: full body stillness; integrates the session neurologically`;
-            const initialMessage = `Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}.${focusNote}${historyNote}\n\nThis session's exercises:\n${exerciseList}\n\nJustify this routine in 3 paragraphs (100-150 words total). Start from the history — identify at least one concrete pattern (overuse or neglect) supported by Count 1 week, Count 2 weeks, or Count 1 month. Then explain what this session does differently, including at least one explicit contrast with recent behaviour. Then explain what it is building toward, linked directly to the pattern and goals. Name exercises only as evidence. Do not describe what exercises do. Only cite specific numbers that appear verbatim in the history table.`;
+            const initialMessage = `Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}.${focusNote}${historyNote}\n\nThis session's exercises:\n${exerciseList}\n\nWrite 3 paragraphs (100-150 words total). Paragraph 1: describe a real behavioural pattern from the history in plain language — what has been relied on, avoided, or neglected. Paragraph 2: explain the decision this session makes — what changes, what trade-off is being made. Paragraph 3: explain what this builds toward, linked to the goals. Translate all data into natural language. Never reference column names. Name exercises only as evidence. Write like a coach, not an analyst.`;
             try {
                 const response = await fetch('https://flexibilityapp3849.netlify.app/.netlify/functions/coach', {
                     method: 'POST',
