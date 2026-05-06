@@ -1864,8 +1864,6 @@
             <div id="lhsStartJumiFav" style="display:none; margin-top:10px;">
                 <button id="lhsStartJumiFavBtn" onclick="startRoutine()" style="width:100%; background:linear-gradient(135deg,#34c759,#2da44e); color:white; border:none; padding:14px; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 4px 16px rgba(52,199,89,0.35);">▶ Start Routine</button>
             </div>
-            <!-- Jumi priorities display — shows after generation -->
-            <div id="jumiPrioritiesDisplay" style="display:none; margin-top:10px; padding:10px 12px; background:#f7f5ff; border:1px solid #c4bef0; border-radius:10px; font-size:12px; color:#4a3a7a; line-height:1.7;"></div>
 
             <!-- JUMI PANEL — stub for explanation storage -->
             <div id="jumiPanel" style="display:none !important;">
@@ -2023,8 +2021,6 @@
                 </div>
             </div>
             <!-- Floating Start button -->
-            <!-- Jumi priority debug panel — visible during testing when priorities active -->
-            <div id="jumiPriorityDebug" style="display:none; margin:0 30px 20px; padding:10px 14px; background:#f7f5ff; border:1px solid #c4bef0; border-radius:10px; font-size:11px; font-family:monospace; color:#4a3a7a; line-height:1.8;"></div>
             </div><!-- end padding wrapper -->
 
 
@@ -8670,6 +8666,7 @@ OUTPUT:
 
 Use the generate_routine tool. Always include 1-2 priorities in the priorities field — these are the explicit decisions that drove your exercise selection. Choose targets from the fixed enum only.
 Use snake_case phase keys: warm_up, foam_roller, mobility, static_stretching, active_stretch, deep_stretch, cool_down.
+IMPORTANT: Candidates listed under "Active Stretch" must be returned under the active_stretch key. Candidates listed under "Deep Stretch" must be returned under the deep_stretch key. Even if an exercise looks like a static stretch, always use the phase key it was listed under.
 
 CANDIDATE POOLS (rank these, do not add others):
 ${slotBrief}`;
@@ -8704,7 +8701,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                     )
                     .slice(0, 2); // hard cap at 2
             } catch(e) {
-                console.warn('[Jumi priority] Failed to parse priorities:', e);
+                
                 return [];
             }
         }
@@ -8738,10 +8735,10 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                     if (!found) {
                         found = exercises.find(e => e.exercise === name);
                         if (found) {
-                            console.warn(`[Jumi priority] Phase mismatch for "${name}": expected "${displayPhase}", found in "${found.phase}". Using name-only match.`);
+                            
                         } else {
-                            console.warn(`[Jumi priority] No match found for "${name}" in phase "${displayPhase}". Priority bias skipped.`);
-                            return { exercise: name, target: '', _noMatch: true };
+                            
+                            return { exercise: name, target: '' };
                         }
                     }
                     return found;
@@ -8913,10 +8910,6 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
 
             // Show thinking placeholder in routine panel
             document.getElementById('jumiExplanation').style.display = 'none';
-            const _debugEl = document.getElementById('jumiPriorityDebug');
-            if (_debugEl) _debugEl.style.display = 'none';
-            const _priDisplay = document.getElementById('jumiPrioritiesDisplay');
-            if (_priDisplay) _priDisplay.style.display = 'none';
             document.getElementById('routineDisplayWrapper').style.display = 'block';
             document.getElementById('customDisplay').style.display = 'none';
             if (domCache.routineDisplay) {
@@ -8948,6 +8941,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
 
                 // Priorities now come directly from the tool call via coach.js
                 const jumiPriorities = Array.isArray(data.priorities) ? data.priorities : [];
+                const coverage = {}; // populated after routine generation
 
                 if (!routineData) {
                     if (domCache.routineDisplay) domCache.routineDisplay.innerHTML = '<div style="padding:40px;text-align:center;color:#86868b;">Jumi could not build a routine \u2014 please try again.</div>';
@@ -8968,69 +8962,22 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                     const LOWER_TARGETS = new Set(['Hamstrings','Quads','Glutes','Calves','Adductors','Abductors','Hips','Ankles']);
                     const UPPER_TARGETS = new Set(['Shoulders','Chest','Triceps','Back','Neck','Wrists']);
                     if (selectedType === 'upper' && LOWER_TARGETS.has(p.target)) {
-                        console.warn(`[Jumi priority] Dropping priority "${p.action} ${p.target}" — out of scope for Upper Body`);
+                        
                         return false;
                     }
                     if (selectedType === 'lower' && UPPER_TARGETS.has(p.target)) {
-                        console.warn(`[Jumi priority] Dropping priority "${p.action} ${p.target}" — out of scope for Lower Body`);
+                        
                         return false;
                     }
                     return true;
                 });
 
                 // Apply priority bias first, then Jumi's ranked order
-                const { result: biasedRoutineData, debugInfo: priorityDebug } = applyPriorityBias(routineData, scopedPriorities);
-
-                // Diagnostic: show raw candidate names from Jumi vs master array matches
-                const PHASE_MAP_DIAG = { warm_up:'Warm-Up', foam_roller:'Foam Roller', mobility:'Mobility', static_stretching:'Static Stretching', active_stretch:'Active Stretch', deep_stretch:'Deep Stretch', splits:'Splits', cool_down:'Cool Down' };
-                const diagLines = [];
-                for (const [key, displayPhase] of Object.entries(PHASE_MAP_DIAG)) {
-                    const cands = routineData[key];
-                    if (!cands || cands.length === 0) continue;
-                    const names = cands.map(c => typeof c === 'string' ? c : c.exercise);
-                    const matched = names.filter(n => exercises.some(e => e.exercise === n));
-                    const unmatched = names.filter(n => !exercises.some(e => e.exercise === n));
-                    if (unmatched.length > 0) diagLines.push(`${displayPhase}: NO MATCH — ${unmatched.join(', ')}`);
-                    else diagLines.push(`${displayPhase}: ok (${matched.length})`);
-                }
-                appState._jumiDiag = diagLines;
-                if (scopedPriorities.length > 0) {
-                    console.info('[Jumi priority debug]', JSON.stringify(priorityDebug, null, 2));
-                    appState._lastJumiPriorityDebug = priorityDebug;
-                    const debugEl = document.getElementById('jumiPriorityDebug');
-                    if (debugEl) {
-                        const lines = [`Priorities: ${priorityDebug.priorities.join(' | ')}`];
-                        for (const [phase, info] of Object.entries(priorityDebug.phases)) {
-                            if (info.increaseMatches > 0 || info.reduceMatches > 0) {
-                                lines.push(`${phase}: ${info.increaseMatches} increase match${info.increaseMatches !== 1 ? 'es' : ''}, ${info.reduceMatches} reduce match${info.reduceMatches !== 1 ? 'es' : ''} (pool: ${info.candidates})`);
-                            }
-                        }
-                        debugEl.innerHTML = lines.join('<br>');
-                        debugEl.style.display = 'block';
-                    }
-                }
-
-                // Show priorities in LHS
-                const priDisplay = document.getElementById('jumiPrioritiesDisplay');
-                if (priDisplay) {
-                    if (jumiPriorities.length > 0) {
-                        const lines = jumiPriorities.map(p => {
-                            const arrow = p.action === 'increase' ? '↑' : '↓';
-                            const count = coverage ? (coverage[p.target] !== undefined ? ` (${coverage[p.target]} selected)` : '') : '';
-                            const filtered = !scopedPriorities.find(s => s.target === p.target && s.action === p.action);
-                            return `${arrow} ${p.target}${count}${filtered ? ' <span style="color:#ff9500">[filtered by scope]</span>' : ''}`;
-                        });
-                        priDisplay.innerHTML = `<strong>Priorities:</strong> ${lines.join('  ·  ')}`;
-                    } else {
-                        priDisplay.innerHTML = `<span style="color:#86868b;">No priorities returned by Jumi</span>`;
-                    }
-                    priDisplay.style.display = 'block';
-                }
+                const { result: biasedRoutineData } = applyPriorityBias(routineData, scopedPriorities);
                 const prioritised = applyJumiPriority(biasedRoutineData);
                 await generateRoutine(prioritised);
 
                 // Calculate coverage — how many selected exercises matched each priority
-                const coverage = {};
                 if (scopedPriorities.length > 0 && currentRoutine) {
                     for (const p of scopedPriorities) {
                         coverage[p.target] = currentRoutine.filter(ex =>
@@ -9062,7 +9009,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                 window.openJumiChat && window.openJumiChat();
 
             } catch(err) {
-                console.error('Jumi generation error:', err);
+                console.error('Jumi generation error:', err.message, err.stack);
                 if (domCache.routineDisplay) domCache.routineDisplay.innerHTML = '<div style="padding:40px;text-align:center;color:#86868b;">Could not reach Jumi. Please check your connection.</div>';
             }
 
