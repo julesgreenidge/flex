@@ -138,10 +138,20 @@ exports.handler = async function(event) {
                 } else if (block.type === 'tool_use' && block.name === 'generate_routine') {
                     const raw = block.input;
 
-                    // Extract priorities
+                    // Extract priorities — handle both object format {action, target} and string format "increase Quads"
                     if (Array.isArray(raw.priorities)) {
-                        priorities = raw.priorities.filter(p =>
-                            p && (p.action === 'increase' || p.action === 'reduce') &&
+                        priorities = raw.priorities.map(p => {
+                            // Already correct object format
+                            if (p && typeof p === 'object' && p.action && p.target) return p;
+                            // String format: "increase Quads" or "reduce Spine"
+                            if (typeof p === 'string') {
+                                const match = p.match(/^(increase|reduce)\s+(.+)$/i);
+                                if (match) return { action: match[1].toLowerCase(), target: match[2].trim() };
+                            }
+                            return null;
+                        }).filter(p =>
+                            p &&
+                            (p.action === 'increase' || p.action === 'reduce') &&
                             PRIORITY_TARGET_ENUM.includes(p.target)
                         ).slice(0, 2);
                     }
