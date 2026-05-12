@@ -9746,6 +9746,7 @@ function showStats() {
                     if (data.jumiGoals) localStorage.setItem('jumiGoals', JSON.stringify(data.jumiGoals));
                     if (data.globalDuration) localStorage.setItem('globalDuration', data.globalDuration);
                     
+                    localStorage.removeItem('jumiContextCache');
                     await customAlert('Backup restored successfully! The page will reload to apply all settings.');
                     location.reload();
                     
