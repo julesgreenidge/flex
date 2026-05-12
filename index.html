@@ -2174,7 +2174,7 @@
                     </div>
 
                     <label id="includeTodayLabel" style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:10px; padding:6px 4px;">
-                        <input type="checkbox" id="includeTodayCheckbox" style="width:16px; height:16px; cursor:pointer; accent-color:#764ba2;">
+                        <input type="checkbox" id="includeTodayCheckbox" checked style="width:16px; height:16px; cursor:pointer; accent-color:#764ba2;">
                         <span style="color:#1d1d1f; font-weight:500; font-size:14px;">Include today</span>
                     </label>
                 </div>
@@ -9418,6 +9418,10 @@ function showStats() {
             document.getElementById('statsView').style.display = 'block';
             applyNavColour();
             
+            // Sync the checkbox to match the current includeToday state
+            const cb = document.getElementById('includeTodayCheckbox');
+            if (cb) cb.checked = includeToday;
+
             // Hide floating buttons in stats view
             setStarVisible(false);
             document.getElementById('floatingEditBtn').style.display = 'none';
