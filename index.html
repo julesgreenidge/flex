@@ -3558,9 +3558,10 @@
 
 
         window.saveExercises = function saveExercises() {
-            const json = JSON.stringify(window._exercises);
+            const json = JSON.stringify(exercises);
             localStorage.setItem('flexibilityRoutineExercises', json);
             localStorage.setItem('flexibilityRoutineExercises_backup', json);
+            window._exercises = exercises; // keep in sync
         };
 
         // Proxy: let existing code use 'exercises' variable name
