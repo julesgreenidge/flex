@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499201 -->
+<!-- Version: 1775499202 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v4.1: Timing bug fixed — smarter trim picks best-fit exercise, padding runs after over-trim, assertion threshold aligned with tolerance -->
+    <!-- v4.2: target renamed to primaryMuscle; secondaryMuscle and tertiaryMuscle added; Jumi muscle-load context enriched -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -1638,7 +1638,7 @@
             background: white;
         }
     </style>
-<meta name="build-date" content="24 Apr 2026">
+<meta name="build-date" content="27 May 2026">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -2503,7 +2503,7 @@
             function populateExLibMuscleDropdown() {
                 const muscleSelect = document.getElementById('exLibMuscle');
                 if (!muscleSelect) return;
-                const allMuscles = [...new Set(exercises.map(e => e.target).filter(Boolean))].sort();
+                const allMuscles = [...new Set(exercises.map(e => e.primaryMuscle).filter(Boolean))].sort();
                 const current = muscleSelect.value;
                 muscleSelect.innerHTML = '<option value="">All Muscles</option>' +
                     allMuscles.map(m => `<option value="${m}"${m === current ? ' selected' : ''}>${m}</option>`).join('');
@@ -2545,7 +2545,7 @@
                         <span style="color:#c7c7cc;font-size:14px;cursor:grab;padding:0 10px;flex-shrink:0;">⠿</span>
                         <div style="flex:1;padding:8px 4px 8px 0;min-width:0;">
                             <div style="font-size:13px;font-weight:600;color:#1d1d1f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ex.exercise}${isCustom ? ' <span style="font-size:10px;background:#f0eef8;color:#667eea;padding:1px 6px;border-radius:10px;font-weight:600;">custom</span>' : ''}</div>
-                            <div style="font-size:11px;color:#86868b;margin-top:1px;">${ex.target} · ${ex.position} · ${ex.sides}x</div>
+                            <div style="font-size:11px;color:#86868b;margin-top:1px;">${ex.primaryMuscle} · ${ex.position} · ${ex.sides}x</div>
                         </div>
                         <div style="display:flex;gap:4px;padding:0 10px;flex-shrink:0;">
                             <button data-action="edit" data-idx="${globalIdx}" style="padding:5px 14px;font-size:11px;border-radius:20px;font-weight:600;color:#667eea;border:1.5px solid #c4bef0;background:white;cursor:pointer;font-family:inherit;">Edit</button>
@@ -2561,7 +2561,7 @@
                     // Search mode — flat results grouped by phase with dividers
                     const filtered = exercises.filter(e => {
                         const s = search;
-                        return e.exercise.toLowerCase().includes(s) || e.target.toLowerCase().includes(s) || (e.position || '').toLowerCase().includes(s);
+                        return e.exercise.toLowerCase().includes(s) || e.primaryMuscle.toLowerCase().includes(s) || (e.position || '').toLowerCase().includes(s);
                     });
 
                     if (filtered.length === 0) {
@@ -2670,7 +2670,7 @@
 
             function exerciseModalHTML(ex, idx) {
                 const isEdit = idx !== null && idx !== undefined;
-                const v = ex || { exercise:'', phase:'Static Stretching', target:'', position:'', sides:2, bodyPart:'lower', duration:45, rest:15 };
+                const v = ex || { exercise:'', phase:'Static Stretching', primaryMuscle:'', position:'', sides:2, bodyPart:'lower', duration:45, rest:15 };
                 return `<div id="exModalOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:20000;display:flex;align-items:center;justify-content:center;">
                     <div style="background:white;border-radius:20px;padding:28px;width:min(500px,92vw);max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
@@ -2680,7 +2680,7 @@
                         <div style="display:flex;flex-direction:column;gap:14px;">
                             <label style="font-size:13px;font-weight:600;">Name<input id="exName" value="${v.exercise}" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"/></label>
                             <label style="font-size:13px;font-weight:600;">Phase<select id="exPhase" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;">${PHASE_OPTIONS.map(p => '<option value="' + p + '"' + (p===v.phase?' selected':'') + '>' + p + '</option>').join('')}</select></label>
-                            <label style="font-size:13px;font-weight:600;">Target Muscle<input id="exTarget" value="${v.target}" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"/></label>
+                            <label style="font-size:13px;font-weight:600;">Primary Muscle<input id="exTarget" value="${v.primaryMuscle}" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"/></label>
                             <label style="font-size:13px;font-weight:600;">Position<input id="exPosition" value="${v.position}" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"/></label>
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                                 <label style="font-size:13px;font-weight:600;">Sides<select id="exSides" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"><option value="1"${v.sides===1?' selected':''}>1</option><option value="2"${v.sides===2?' selected':''}>2</option></select></label>
@@ -2710,15 +2710,15 @@
                 const ex = {
                     exercise: document.getElementById('exName').value.trim(),
                     phase: document.getElementById('exPhase').value,
-                    target: document.getElementById('exTarget').value.trim(),
+                    primaryMuscle: document.getElementById('exTarget').value.trim(),
                     position: document.getElementById('exPosition').value.trim(),
                     sides: parseInt(document.getElementById('exSides').value),
                     bodyPart: document.getElementById('exBodyPart').value,
                     duration: existing ? existing.duration : 45,
                     rest: existing ? existing.rest : 15
                 };
-                if (!ex.exercise || !ex.target || !ex.position) {
-                    alert('Please fill in Name, Target, and Position.');
+                if (!ex.exercise || !ex.primaryMuscle || !ex.position) {
+                    alert('Please fill in Name, Primary Muscle, and Position.');
                     return;
                 }
                 if (idx === null || idx === undefined || idx === 'null') {
@@ -4033,6 +4033,22 @@
                     console.log('Loaded', exercises.length, 'exercises from localStorage');
                     window._exercises = exercises;
                     
+                    // Migrate target -> primaryMuscle (v4.1 -> v4.2)
+                    let needsMuscleMigration = false;
+                    exercises = exercises.map(ex => {
+                        if (ex.hasOwnProperty('target') && !ex.hasOwnProperty('primaryMuscle')) {
+                            needsMuscleMigration = true;
+                            const newEx = {...ex, primaryMuscle: ex.target};
+                            delete newEx.target;
+                            return newEx;
+                        }
+                        return ex;
+                    });
+                    if (needsMuscleMigration) {
+                        saveExercises();
+                        console.log('✓ Migrated exercises: target -> primaryMuscle');
+                    }
+
                     // Migrate old format (splits: boolean) to new format (bodyPart: string)
                     let needsMigration = false;
                     exercises = exercises.map(ex => {
@@ -4046,7 +4062,7 @@
                             const upperTargets = ['shoulders', 'chest', 'back', 'neck', 'wrists', 'spine', 'upper spine', 'obliques', 'triceps'];
                             const lowerTargets = ['hamstrings', 'quads', 'glutes', 'hips', 'adductors', 'calves', 'ankles', 'knees', 'lower spine'];
                             
-                            const targetLower = (ex.target || '').toLowerCase();
+                            const targetLower = (ex.primaryMuscle || ex.target || '').toLowerCase();
                             if (upperTargets.includes(targetLower)) {
                                 newEx.bodyPart = 'upper';
                             } else if (lowerTargets.includes(targetLower)) {
@@ -4086,7 +4102,7 @@
                     }
                     
                     // Update focus dropdown with saved exercises
-                    const uniqueTargets = [...new Set(exercises.map(ex => ex.target))].sort();
+                    const uniqueTargets = [...new Set(exercises.map(ex => ex.primaryMuscle))].sort();
                     const focusSelect = document.getElementById('focusSelect');
                     focusSelect.innerHTML = '<option value="">None</option>' + 
                         uniqueTargets.map(t => `<option value="${t}">${t}</option>`).join('');
@@ -4559,10 +4575,16 @@
 
             const goals = getJumiGoals();
             const contextTable = buildChatContext();
-            const exerciseLibraryList = exercises.map(e => `${e.exercise} (${e.phase})`).join(', ');
+            const exerciseLibraryList = exercises.map(e => {
+                const muscles = [e.primaryMuscle, e.secondaryMuscle ? `secondary: ${e.secondaryMuscle}` : null, e.tertiaryMuscle ? `tertiary: ${e.tertiaryMuscle}` : null].filter(Boolean).join(', ');
+                return `${e.exercise} (${e.phase} | ${muscles})`;
+            }).join(', ');
             const currentRoutineSummary = (currentRoutine && currentRoutine.length > 0)
                 ? `The user currently has this ${selectedType || 'simple'} routine on screen (${currentRoutine.length} exercises):\n` +
-                  currentRoutine.map(e => `${e.exercise} | ${e.phase} | ${e.target} | ${e.sides} side(s) | ${e.duration}s hold`).join('\n')
+                  currentRoutine.map(e => {
+                      const muscles = [e.primaryMuscle, e.secondaryMuscle ? `secondary: ${e.secondaryMuscle}` : null, e.tertiaryMuscle ? `tertiary: ${e.tertiaryMuscle}` : null].filter(Boolean).join(', ');
+                      return `${e.exercise} | ${e.phase} | ${muscles} | ${e.sides} side(s) | ${e.duration}s hold`;
+                  }).join('\n')
                 : 'No routine currently on screen.';
 
             const systemPrompt = `You are Jumi, a flexibility and mobility coach with access to this user's training history and current routine. You can also use web search when useful to provide links, videos, or external resources. Use British English throughout.
@@ -4590,8 +4612,10 @@ You may discuss exercises already in the user's library, but do not recommend th
 Use web search when the user asks for links, tutorials, or external resources, or when it clearly adds value.
 
 If the user asks for new exercise recommendations, only suggest exercises NOT in their library. For each new exercise, include one <exercise> block at the end of your response. Format:
-<exercise>{"exercise":"name","phase":"phase","target":"muscle","position":"position","sides":1,"bodyPart":"lower"}</exercise>
-bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foam Roller, Mobility, Static Stretching, Splits, Cool Down, Final Rest. sides must be 1 (bilateral) or 2 (unilateral). Do not omit these blocks when recommending exercises.`;
+<exercise>{"exercise":"name","phase":"phase","primaryMuscle":"muscle","position":"position","sides":1,"bodyPart":"lower"}</exercise>
+bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foam Roller, Mobility, Static Stretching, Splits, Cool Down, Final Rest. sides must be 1 (bilateral) or 2 (unilateral). Do not omit these blocks when recommending exercises.
+
+MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = direct target (~100% load). secondaryMuscle = meaningfully engaged (~50% load). tertiaryMuscle = lightly involved (~20% load). Use these weightings when reasoning about cumulative muscle load across the session — do not treat all tiers equally.`;
 
             try {
                 const messages = [...jumiChatHistory.slice(-10)];
@@ -4668,7 +4692,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             const fields = [
                 {id:'apName', label:'Name', val: ex.exercise || ''},
                 {id:'apPhase', label:'Phase', val: phaseOptions.includes(ex.phase) ? ex.phase : 'Static Stretching', type:'select', options: phaseOptions},
-                {id:'apTarget', label:'Target Muscle', val: ex.target || ''},
+                {id:'apTarget', label:'Primary Muscle', val: ex.primaryMuscle || ''},
                 {id:'apPosition', label:'Position', val: ex.position || ''},
                 {id:'apSides', label:'Sides', val: ex.sides || 2, type:'select', options:[1,2]},
                 {id:'apBodyPart', label:'Body Part', val: ex.bodyPart || 'lower', type:'select', options:['upper','lower','full']},
@@ -4763,15 +4787,15 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             const ex = {
                 exercise: document.getElementById('apName').value.trim(),
                 phase: document.getElementById('apPhase').value,
-                target: document.getElementById('apTarget').value.trim(),
+                primaryMuscle: document.getElementById('apTarget').value.trim(),
                 position: document.getElementById('apPosition').value.trim(),
                 sides: parseInt(document.getElementById('apSides').value),
                 bodyPart: document.getElementById('apBodyPart').value,
                 duration: 45,
                 rest: 15
             };
-            if (!ex.exercise || !ex.target || !ex.position) {
-                alert('Please fill in Name, Target Muscle, and Position.');
+            if (!ex.exercise || !ex.primaryMuscle || !ex.position) {
+                alert('Please fill in Name, Primary Muscle, and Position.');
                 return;
             }
             exercises.push(ex);
@@ -4999,11 +5023,11 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 const randPhases = pick(['Warm-Up', 'Foam Roller', 'Mobility', 'Cool Down'], 2);
 
                 // Randomised lower body muscles (excl Hips)
-                const lowerMuscles = [...new Set(exercises.filter(e => e.bodyPart === 'lower' && e.target !== 'Hips').map(e => e.target))];
+                const lowerMuscles = [...new Set(exercises.filter(e => e.bodyPart === 'lower' && e.primaryMuscle !== 'Hip Flexors').map(e => e.primaryMuscle))];
                 const randLower = pick(lowerMuscles, 2);
 
                 // Randomised upper body muscles (excl Spine)
-                const upperMuscles = [...new Set(exercises.filter(e => e.bodyPart === 'upper' && e.target !== 'Spine').map(e => e.target))];
+                const upperMuscles = [...new Set(exercises.filter(e => e.bodyPart === 'upper' && e.primaryMuscle !== 'Lower Back').map(e => e.primaryMuscle))];
                 const randUpper = pick(upperMuscles, 2);
 
                 // Pills in exact order: All, Upper Body, Lower Body, Static, 2 phases, Hips, 2 lower, Spine, 2 upper
@@ -5056,14 +5080,14 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 } else if (search && search.trim() && search !== '__all__') {
                     filtered = filtered.filter(ex =>
                         ex.exercise.toLowerCase().includes(search) ||
-                        ex.target.toLowerCase().includes(search) ||
+                        ex.primaryMuscle.toLowerCase().includes(search) ||
                         ex.phase.toLowerCase().includes(search) ||
                         ex.position.toLowerCase().includes(search)
                     );
                 }
                 
                 if (customFilters.muscle.length > 0) {
-                    filtered = filtered.filter(ex => customFilters.muscle.includes(ex.target));
+                    filtered = filtered.filter(ex => customFilters.muscle.includes(ex.primaryMuscle));
                 }
                 if (customFilters.phase.length > 0) {
                     filtered = filtered.filter(ex => customFilters.phase.includes(ex.phase));
@@ -5127,7 +5151,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                                         <input type="checkbox" class="ex-checkbox" value="${ex.exercise}" data-exercise="${exData}" style="flex-shrink: 0; cursor: pointer;" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()">
                                         <div style="flex: 1;">
                                             <div style="font-weight: 600; font-size: 12px; margin-bottom: 1px;">${ex.exercise}</div>
-                                            <div style="font-size: 10px; color: #999;">${ex.target} • ${ex.position} • ${dur}s${ex.sides > 1 ? ' × ' + ex.sides : ''}</div>
+                                            <div style="font-size: 10px; color: #999;">${ex.primaryMuscle} • ${ex.position} • ${dur}s${ex.sides > 1 ? ' × ' + ex.sides : ''}</div>
                                         </div>
                                     </div>
                                 </td>
@@ -5291,7 +5315,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                                         <div style="color: #ccc; font-size: 16px; cursor: grab;">☰</div>
                                         <div style="flex: 1;">
                                             <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${ex.exercise}</div>
-                                            <div style="font-size: 12px; color: #999;">${ex.target} • ${ex.position} • ${sidesStr}</div>
+                                            <div style="font-size: 12px; color: #999;">${ex.primaryMuscle} • ${ex.position} • ${sidesStr}</div>
                                         </div>
                                     </div>
                                     <div style="font-weight: 600; font-size: 14px; color: #667eea; margin-right: 12px;">${dur * ex.sides}s</div>
@@ -5675,7 +5699,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 currentCustomFilterType = type;
                 
                 let opts = [];
-                if (type === 'muscle') opts = [...new Set(exercises.map(ex => ex.target))].sort();
+                if (type === 'muscle') opts = [...new Set(exercises.map(ex => ex.primaryMuscle))].sort();
                 else if (type === 'phase') opts = [...new Set(exercises.map(ex => ex.phase))].sort();
                 else opts = [...new Set(exercises.map(ex => ex.position))].sort();
                 
@@ -5902,7 +5926,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 
                 if (!selectedType) {
                     // No type selected, show all targets
-                    const uniqueTargets = [...new Set(exercises.map(ex => ex.target))].sort();
+                    const uniqueTargets = [...new Set(exercises.map(ex => ex.primaryMuscle))].sort();
                     focusSelect.innerHTML = '<option value="">None</option>' + 
                         uniqueTargets.map(t => `<option value="${t}">${t}</option>`).join('');
                 } else {
@@ -5923,7 +5947,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                         filteredExercises = exercises;
                     }
                     
-                    const uniqueTargets = [...new Set(filteredExercises.map(ex => ex.target))].sort();
+                    const uniqueTargets = [...new Set(filteredExercises.map(ex => ex.primaryMuscle))].sort();
                     focusSelect.innerHTML = '<option value="">None</option>' + 
                         uniqueTargets.map(t => `<option value="${t}">${t}</option>`).join('');
                 }
@@ -6032,77 +6056,95 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             // Exercises match the CSV exactly. Deep Stretch is NOT a separate data phase —
             // the generator promotes Static Stretching exercises to Deep Stretch at runtime
             // by copying them with phase="Deep Stretch" and duration=90.
+            // primaryMuscle = direct target (~100% load)
+            // secondaryMuscle = meaningfully engaged (~50% load)
+            // tertiaryMuscle = lightly involved (~20% load)
             return [
-                {phase: "Warm-Up", exercise: "Arm Swings", target: "Shoulders", position: "Standing", sides: 1, bodyPart: "upper", duration: 30, rest: 15},
-                {phase: "Warm-Up", exercise: "Jumping Jacks", target: "Hips", position: "Standing", sides: 1, bodyPart: "full", duration: 30, rest: 15},
-                {phase: "Warm-Up", exercise: "Leg Swings (Front)", target: "Hamstrings", position: "Standing", sides: 2, bodyPart: "lower", duration: 30, rest: 15},
-                {phase: "Warm-Up", exercise: "Leg Swings (Side)", target: "Adductors", position: "Standing", sides: 2, bodyPart: "lower", duration: 30, rest: 15},
-                {phase: "Warm-Up", exercise: "Hip Circles (Standing)", target: "Hips", position: "Standing", sides: 2, bodyPart: "lower", duration: 30, rest: 15},
-                {phase: "Warm-Up", exercise: "Torso Twists (Standing)", target: "Spine", position: "Standing", sides: 1, bodyPart: "upper", duration: 30, rest: 15},
-                {phase: "Warm-Up", exercise: "High Knees Marching", target: "Hips", position: "Standing", sides: 1, bodyPart: "lower", duration: 30, rest: 15},
-                {phase: "Warm-Up", exercise: "Shoulder Rolls", target: "Shoulders", position: "Standing", sides: 1, bodyPart: "upper", duration: 30, rest: 15},
-                {phase: "Warm-Up", exercise: "Wrist CARs", target: "Wrists", position: "Standing", sides: 1, bodyPart: "upper", duration: 30, rest: 15},
-                {phase: "Warm-Up", exercise: "Ankle Bounces", target: "Calves", position: "Standing", sides: 1, bodyPart: "lower", duration: 30, rest: 15},
-                {phase: "Warm-Up", exercise: "Knee Circles", target: "Knees", position: "Standing", sides: 1, bodyPart: "lower", duration: 30, rest: 15},
-                {phase: "Warm-Up", exercise: "Bird-Dog", target: "Spine", position: "Tabletop", sides: 1, bodyPart: "full", duration: 30, rest: 15},
-                {phase: "Foam Roller", exercise: "Foam Roll Upper Back", target: "Spine", position: "Supine", sides: 1, bodyPart: "upper", duration: 30, rest: 15},
-                {phase: "Foam Roller", exercise: "Foam Roll Lower Back", target: "Spine", position: "Supine", sides: 1, bodyPart: "upper", duration: 30, rest: 15},
-                {phase: "Foam Roller", exercise: "Foam Roll Quads", target: "Quads", position: "Prone", sides: 2, bodyPart: "lower", duration: 30, rest: 15},
-                {phase: "Foam Roller", exercise: "Foam Roll Hamstrings", target: "Hamstrings", position: "Seated", sides: 2, bodyPart: "lower", duration: 30, rest: 15},
-                {phase: "Foam Roller", exercise: "Foam Roll Hip Flexors", target: "Hips", position: "Prone", sides: 2, bodyPart: "lower", duration: 30, rest: 15},
-                {phase: "Foam Roller", exercise: "Foam Roll Abductors", target: "Abductors", position: "Prone", sides: 2, bodyPart: "lower", duration: 30, rest: 15},
-                {phase: "Foam Roller", exercise: "Foam Roll Adductors", target: "Hips", position: "Prone", sides: 2, bodyPart: "lower", duration: 30, rest: 15},
-                {phase: "Foam Roller", exercise: "Foam Roll Glutes", target: "Glutes", position: "Seated", sides: 2, bodyPart: "lower", duration: 30, rest: 15},
-                {phase: "Foam Roller", exercise: "Foam Roll Calves", target: "Calves", position: "Seated", sides: 2, bodyPart: "lower", duration: 30, rest: 15},
-                {phase: "Foam Roller", exercise: "Foam Roll Lats", target: "Back", position: "Supine", sides: 2, bodyPart: "upper", duration: 30, rest: 15},
-                {phase: "Mobility", exercise: "Cat-Cow", target: "Spine", position: "Tabletop", sides: 1, bodyPart: "upper", duration: 30, rest: 15},
-                {phase: "Mobility", exercise: "Ankle CARs", target: "Ankles", position: "Seated", sides: 1, bodyPart: "lower", duration: 30, rest: 15},
-                {phase: "Mobility", exercise: "Thread The Needle", target: "Spine", position: "Tabletop", sides: 2, bodyPart: "upper", duration: 30, rest: 15},
-                {phase: "Mobility", exercise: "90/90 Hip Transitions", target: "Hips", position: "Seated", sides: 1, bodyPart: "lower", duration: 30, rest: 15},
-                {phase: "Mobility", exercise: "Hip Hinge", target: "Hamstrings", position: "Standing", sides: 1, bodyPart: "lower", duration: 30, rest: 15},
-                {phase: "Mobility", exercise: "Glute Bridge (Dynamic)", target: "Glutes", position: "Supine", sides: 1, bodyPart: "lower", duration: 30, rest: 15},
-                {phase: "Mobility", exercise: "Downward Dog With Pedal", target: "Calves", position: "Tabletop", sides: 1, bodyPart: "full", duration: 30, rest: 15},
-                {phase: "Mobility", exercise: "Seated Spinal Twist (Dynamic)", target: "Spine", position: "Seated", sides: 1, bodyPart: "upper", duration: 30, rest: 15},
-                {phase: "Static Stretching", exercise: "Twisted Cross", target: "Chest", position: "Prone", sides: 2, bodyPart: "upper", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Twisted Reclined Big Toe Pose", target: "Spine", position: "Supine", sides: 2, bodyPart: "upper", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Figure 4 Stretch", target: "Glutes", position: "Supine", sides: 2, bodyPart: "upper", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Glute Bridge (Static)", target: "Glutes", position: "Supine", sides: 1, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Deep Squat", target: "Glutes", position: "Standing", sides: 1, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Standing Quad Stretch", target: "Quads", position: "Standing", sides: 2, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Standing Forward Fold", target: "Hamstrings", position: "Standing", sides: 1, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Runners Stretch", target: "Hamstrings", position: "Kneeling", sides: 2, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Pyramid Stretch", target: "Hamstrings", position: "Standing", sides: 2, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Low Lunge", target: "Hips", position: "Lunge", sides: 2, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "High Lunge", target: "Hips", position: "Lunge", sides: 2, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Wrist Leans", target: "Wrists", position: "Tabletop", sides: 1, bodyPart: "upper", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Frog Pose", target: "Adductors", position: "Tabletop", sides: 1, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "One Legged Frog", target: "Adductors", position: "Tabletop", sides: 2, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Supine Lizard", target: "Hips", position: "Supine", sides: 2, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Saddle", target: "Quads", position: "Kneeling", sides: 1, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Gate Pose", target: "Obliques", position: "Kneeling", sides: 2, bodyPart: "upper", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Butterfly Stretch", target: "Adductors", position: "Seated", sides: 1, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Seated Spinal Twist (Passive)", target: "Spine", position: "Seated", sides: 2, bodyPart: "upper", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Neck Side Stretch", target: "Neck", position: "Seated", sides: 2, bodyPart: "upper", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Seated Archer", target: "Shoulders", position: "Seated", sides: 2, bodyPart: "upper", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Overhead Tricep Stretch", target: "Triceps", position: "Seated", sides: 2, bodyPart: "upper", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Half Saddle", target: "Quads", position: "Seated", sides: 2, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Seated Forward Fold", target: "Hamstrings", position: "Seated", sides: 1, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Kneeling Bent Knee Calf Stretch", target: "Calves", position: "Kneeling", sides: 2, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Cow Face", target: "Glutes", position: "Seated", sides: 2, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Half Seated Frog", target: "Adductors", position: "Seated", sides: 2, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Pigeon Pose", target: "Glutes", position: "Prone", sides: 2, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Seal", target: "Spine", position: "Prone", sides: 1, bodyPart: "upper", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Splits On Wall", target: "Adductors", position: "Supine", sides: 1, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Pancake", target: "Hamstrings", position: "Seated", sides: 1, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Static Stretching", exercise: "Wide Legged Forward Fold", target: "Adductors", position: "Tabletop", sides: 1, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Splits", exercise: "Front Splits", target: "Hamstrings", position: "Lunge", sides: 2, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Cool Down", exercise: "Happy Baby", target: "Adductors", position: "Supine", sides: 1, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Cool Down", exercise: "Child's Pose", target: "Spine", position: "Tabletop", sides: 1, bodyPart: "upper", duration: 45, rest: 15},
-                {phase: "Cool Down", exercise: "Puppy Dog", target: "Chest", position: "Tabletop", sides: 1, bodyPart: "upper", duration: 45, rest: 15},
-                {phase: "Cool Down", exercise: "Supine Split", target: "Hamstrings", position: "Supine", sides: 2, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Cool Down", exercise: "Supine Butterfly", target: "Adductors", position: "Supine", sides: 1, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Cool Down", exercise: "Two Knee Spinal Twist", target: "Spine", position: "Supine", sides: 2, bodyPart: "lower", duration: 45, rest: 15},
-                {phase: "Final Rest", exercise: "Savasana", target: "Full Body", position: "Supine", sides: 1, bodyPart: "full", duration: 120, rest: 0}
+                {phase: "Warm-Up", exercise: "Leg Swings (Side)", position: "Standing", sides: 2, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Adductors", secondaryMuscle: "Glutes"},
+                {phase: "Warm-Up", exercise: "Ankle Bounces", position: "Standing", sides: 1, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Calves"},
+                {phase: "Warm-Up", exercise: "Leg Swings (Front)", position: "Standing", sides: 2, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Hamstrings", secondaryMuscle: "Hip Flexors"},
+                {phase: "Warm-Up", exercise: "Jumping Jacks", position: "Standing", sides: 1, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Full Body", secondaryMuscle: "Shoulders"},
+                {phase: "Warm-Up", exercise: "Hip Circles (Standing)", position: "Standing", sides: 2, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Hip Flexors", secondaryMuscle: "Glutes", tertiaryMuscle: "Adductors"},
+                {phase: "Warm-Up", exercise: "High Knees Marching", position: "Standing", sides: 1, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Hip Flexors", secondaryMuscle: "Hamstrings", tertiaryMuscle: "Glutes"},
+                {phase: "Warm-Up", exercise: "Hip Circles (Kneeling)", position: "Tabletop", sides: 2, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Hip Flexors", secondaryMuscle: "Glutes", tertiaryMuscle: "Adductors"},
+                {phase: "Warm-Up", exercise: "Knee Circles", position: "Standing", sides: 1, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Quadriceps", secondaryMuscle: "Hamstrings"},
+                {phase: "Warm-Up", exercise: "Arm Swings", position: "Standing", sides: 1, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Shoulders", secondaryMuscle: "Chest", tertiaryMuscle: "Upper Back"},
+                {phase: "Warm-Up", exercise: "Shoulder Rolls", position: "Standing", sides: 1, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Shoulders", secondaryMuscle: "Upper Back"},
+                {phase: "Warm-Up", exercise: "Banded Overhead Shoulder Stretch", position: "Standing", sides: 1, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Shoulders", secondaryMuscle: "Lats", tertiaryMuscle: "Triceps"},
+                {phase: "Warm-Up", exercise: "Torso Twists (Standing)", position: "Standing", sides: 1, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Abs", secondaryMuscle: "Upper Back"},
+                {phase: "Warm-Up", exercise: "Bird-Dog", position: "Tabletop", sides: 1, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Lower Back", secondaryMuscle: "Glutes", tertiaryMuscle: "Abs"},
+                {phase: "Warm-Up", exercise: "Wrist CARs", position: "Standing", sides: 1, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Wrists", secondaryMuscle: "Forearms"},
+                {phase: "Foam Roller", exercise: "Foam Roll Abductors", position: "Prone", sides: 2, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Glutes"},
+                {phase: "Foam Roller", exercise: "Foam Roll Lats", position: "Supine", sides: 2, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Lats", secondaryMuscle: "Upper Back"},
+                {phase: "Foam Roller", exercise: "Foam Roll Calves", position: "Seated", sides: 2, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Calves"},
+                {phase: "Foam Roller", exercise: "Foam Roll Pecs", position: "Prone", sides: 2, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Chest", secondaryMuscle: "Shoulders"},
+                {phase: "Foam Roller", exercise: "Foam Roll Glutes", position: "Seated", sides: 2, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Glutes"},
+                {phase: "Foam Roller", exercise: "Foam Roll Hamstrings", position: "Seated", sides: 2, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Hamstrings", secondaryMuscle: "Calves"},
+                {phase: "Foam Roller", exercise: "Foam Roll Hip Flexors", position: "Prone", sides: 2, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Hip Flexors", secondaryMuscle: "Quadriceps"},
+                {phase: "Foam Roller", exercise: "Foam Roll Adductors", position: "Prone", sides: 2, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Adductors"},
+                {phase: "Foam Roller", exercise: "Foam Roll IT Band", position: "Lateral", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Quadriceps", secondaryMuscle: "Glutes"},
+                {phase: "Foam Roller", exercise: "Foam Roll Quads", position: "Prone", sides: 2, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Quadriceps", secondaryMuscle: "Hip Flexors"},
+                {phase: "Foam Roller", exercise: "Foam Roll Upper Back", position: "Supine", sides: 1, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Upper Back"},
+                {phase: "Foam Roller", exercise: "Foam Roll Lower Back", position: "Supine", sides: 1, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Lower Back", secondaryMuscle: "Glutes"},
+                {phase: "Mobility", exercise: "Ankle CARs", position: "Seated", sides: 1, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Calves"},
+                {phase: "Mobility", exercise: "Seated Point and Flex", position: "Seated", sides: 1, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Calves"},
+                {phase: "Mobility", exercise: "Downward Dog With Pedal", position: "Tabletop", sides: 1, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Calves", secondaryMuscle: "Hamstrings", tertiaryMuscle: "Shoulders"},
+                {phase: "Mobility", exercise: "Glute Bridge (Dynamic)", position: "Supine", sides: 1, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Glutes", secondaryMuscle: "Hamstrings", tertiaryMuscle: "Abs"},
+                {phase: "Mobility", exercise: "Fire Hydrant", position: "Tabletop", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Glutes", secondaryMuscle: "Glutes", tertiaryMuscle: "Abs"},
+                {phase: "Mobility", exercise: "Hip Hinge", position: "Standing", sides: 1, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Hamstrings", secondaryMuscle: "Glutes", tertiaryMuscle: "Lower Back"},
+                {phase: "Mobility", exercise: "Scorpion", position: "Prone", sides: 1, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Glutes", secondaryMuscle: "Upper Back", tertiaryMuscle: "Abs"},
+                {phase: "Mobility", exercise: "90/90 Hip Transitions", position: "Seated", sides: 1, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Glutes", secondaryMuscle: "Hip Flexors"},
+                {phase: "Mobility", exercise: "Seated Spinal Twist (Dynamic)", position: "Seated", sides: 1, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Abs", secondaryMuscle: "Upper Back", tertiaryMuscle: "Glutes"},
+                {phase: "Mobility", exercise: "Open Book (Dynamic)", position: "Supine", sides: 2, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Upper Back", secondaryMuscle: "Chest", tertiaryMuscle: "Shoulders"},
+                {phase: "Mobility", exercise: "Cat-Cow", position: "Tabletop", sides: 1, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Lower Back", secondaryMuscle: "Abs", tertiaryMuscle: "Hip Flexors"},
+                {phase: "Mobility", exercise: "Thread The Needle", position: "Tabletop", sides: 2, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Shoulders", secondaryMuscle: "Upper Back", tertiaryMuscle: "Lats"},
+                {phase: "Static Stretching", exercise: "Butterfly Stretch", position: "Seated", sides: 1, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Adductors", secondaryMuscle: "Hip Flexors"},
+                {phase: "Static Stretching", exercise: "Half Seated Frog", position: "Seated", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Adductors"},
+                {phase: "Static Stretching", exercise: "Splits On Wall", position: "Supine", sides: 1, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Hamstrings", secondaryMuscle: "Adductors"},
+                {phase: "Static Stretching", exercise: "Frog Pose", position: "Tabletop", sides: 1, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Adductors", secondaryMuscle: "Hip Flexors"},
+                {phase: "Static Stretching", exercise: "One Legged Frog", position: "Tabletop", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Adductors", secondaryMuscle: "Hamstrings"},
+                {phase: "Static Stretching", exercise: "Wide Legged Forward Fold", position: "Tabletop", sides: 1, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Hamstrings", secondaryMuscle: "Adductors", tertiaryMuscle: "Lower Back"},
+                {phase: "Static Stretching", exercise: "Side Child's Pose", position: "Tabletop", sides: 2, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Upper Back", secondaryMuscle: "Lats", tertiaryMuscle: "Shoulders"},
+                {phase: "Static Stretching", exercise: "Kneeling Bent Knee Calf Stretch", position: "Kneeling", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Calves"},
+                {phase: "Static Stretching", exercise: "Twisted Cross", position: "Prone", sides: 2, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Glutes", secondaryMuscle: "Lower Back", tertiaryMuscle: "Abs"},
+                {phase: "Static Stretching", exercise: "Standing Chest Opener", position: "Standing", sides: 1, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Chest", secondaryMuscle: "Shoulders", tertiaryMuscle: "Biceps"},
+                {phase: "Static Stretching", exercise: "Pigeon Pose", position: "Prone", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Glutes", secondaryMuscle: "Hip Flexors"},
+                {phase: "Static Stretching", exercise: "Cow Face (Legs)", position: "Seated", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Glutes", secondaryMuscle: "Quadriceps", tertiaryMuscle: "Adductors"},
+                {phase: "Static Stretching", exercise: "Deep Squat", position: "Standing", sides: 1, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Adductors", secondaryMuscle: "Calves", tertiaryMuscle: "Glutes"},
+                {phase: "Static Stretching", exercise: "Supine Figure 4 Stretch", position: "Supine", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Glutes"},
+                {phase: "Static Stretching", exercise: "Seated Figure 4 Stretch", position: "Seated", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Glutes", secondaryMuscle: "Lower Back"},
+                {phase: "Static Stretching", exercise: "Glute Bridge (Static)", position: "Supine", sides: 1, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Glutes", secondaryMuscle: "Hamstrings", tertiaryMuscle: "Abs"},
+                {phase: "Static Stretching", exercise: "Runners Stretch", position: "Kneeling", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Hamstrings", secondaryMuscle: "Calves"},
+                {phase: "Static Stretching", exercise: "Seated Forward Fold", position: "Seated", sides: 1, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Hamstrings", secondaryMuscle: "Calves", tertiaryMuscle: "Lower Back"},
+                {phase: "Static Stretching", exercise: "Pancake", position: "Seated", sides: 1, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Adductors", secondaryMuscle: "Hamstrings", tertiaryMuscle: "Lower Back"},
+                {phase: "Static Stretching", exercise: "Standing Forward Fold", position: "Standing", sides: 1, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Hamstrings", secondaryMuscle: "Calves", tertiaryMuscle: "Lower Back"},
+                {phase: "Static Stretching", exercise: "Pyramid Stretch", position: "Standing", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Hamstrings", secondaryMuscle: "Calves", tertiaryMuscle: "Glutes"},
+                {phase: "Static Stretching", exercise: "Low Lunge", position: "Lunge", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Hip Flexors", secondaryMuscle: "Quadriceps", tertiaryMuscle: "Glutes"},
+                {phase: "Static Stretching", exercise: "High Lunge", position: "Lunge", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Hip Flexors", secondaryMuscle: "Quadriceps", tertiaryMuscle: "Calves"},
+                {phase: "Static Stretching", exercise: "Supine Lizard", position: "Supine", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Hip Flexors", secondaryMuscle: "Adductors", tertiaryMuscle: "Glutes"},
+                {phase: "Static Stretching", exercise: "Neck Stretch (Side)", position: "Seated", sides: 2, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Neck"},
+                {phase: "Static Stretching", exercise: "Neck Stretch (Front)", position: "Seated", sides: 2, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Neck"},
+                {phase: "Static Stretching", exercise: "Gate Pose", position: "Kneeling", sides: 2, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Lats", secondaryMuscle: "Adductors", tertiaryMuscle: "Abs"},
+                {phase: "Static Stretching", exercise: "Saddle", position: "Kneeling", sides: 1, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Quadriceps", secondaryMuscle: "Hip Flexors", tertiaryMuscle: "Abs"},
+                {phase: "Static Stretching", exercise: "Half Saddle", position: "Seated", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Quadriceps", secondaryMuscle: "Hip Flexors"},
+                {phase: "Static Stretching", exercise: "Standing Quad Stretch", position: "Standing", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Quadriceps", secondaryMuscle: "Hip Flexors"},
+                {phase: "Static Stretching", exercise: "Cow Face (Arms)", position: "Seated", sides: 2, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Shoulders", secondaryMuscle: "Triceps", tertiaryMuscle: "Chest"},
+                {phase: "Static Stretching", exercise: "Cross Body Shoulder Stretch", position: "Standing", sides: 2, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Shoulders", secondaryMuscle: "Upper Back"},
+                {phase: "Static Stretching", exercise: "Seal", position: "Prone", sides: 1, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Abs", secondaryMuscle: "Hip Flexors", tertiaryMuscle: "Lower Back"},
+                {phase: "Static Stretching", exercise: "Seated Spinal Twist (Passive)", position: "Seated", sides: 2, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Abs", secondaryMuscle: "Upper Back", tertiaryMuscle: "Glutes"},
+                {phase: "Static Stretching", exercise: "Twisted Reclined Big Toe Pose", position: "Supine", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Hamstrings", secondaryMuscle: "Glutes", tertiaryMuscle: "Lower Back"},
+                {phase: "Static Stretching", exercise: "Open Book (Static)", position: "Supine", sides: 2, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Upper Back", secondaryMuscle: "Chest", tertiaryMuscle: "Shoulders"},
+                {phase: "Static Stretching", exercise: "Overhead Tricep Stretch", position: "Seated", sides: 2, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Triceps", secondaryMuscle: "Shoulders", tertiaryMuscle: "Lats"},
+                {phase: "Static Stretching", exercise: "Wrist Leans", position: "Tabletop", sides: 1, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Wrists", secondaryMuscle: "Forearms"},
+                {phase: "Splits", exercise: "Front Splits", position: "Lunge", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Hamstrings", secondaryMuscle: "Hip Flexors", tertiaryMuscle: "Quadriceps"},
+                {phase: "Cool Down", exercise: "Happy Baby", position: "Supine", sides: 1, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Adductors", secondaryMuscle: "Glutes", tertiaryMuscle: "Lower Back"},
+                {phase: "Cool Down", exercise: "Supine Butterfly", position: "Supine", sides: 1, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Adductors", secondaryMuscle: "Hip Flexors"},
+                {phase: "Cool Down", exercise: "Foam Roller Chest Stretch", position: "Supine", sides: 1, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Chest", secondaryMuscle: "Shoulders", tertiaryMuscle: "Biceps"},
+                {phase: "Cool Down", exercise: "Puppy Dog", position: "Tabletop", sides: 1, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Shoulders", secondaryMuscle: "Lats", tertiaryMuscle: "Chest"},
+                {phase: "Cool Down", exercise: "Supine Split", position: "Supine", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Adductors", secondaryMuscle: "Hamstrings"},
+                {phase: "Cool Down", exercise: "Two Knee Spinal Twist", position: "Supine", sides: 2, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Lower Back", secondaryMuscle: "Abs", tertiaryMuscle: "Glutes"},
+                {phase: "Cool Down", exercise: "Child's Pose", position: "Tabletop", sides: 1, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Upper Back", secondaryMuscle: "Lats", tertiaryMuscle: "Shoulders"},
+                {phase: "Final Rest", exercise: "Savasana", position: "Supine", sides: 1, bodyPart: "full", duration: 120, rest: 0, primaryMuscle: "None"}
             ];
         }
 
@@ -6137,7 +6179,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                             updateFocusDropdown();
                         } else {
                             // No type selected, show all targets
-                            const uniqueTargets = [...new Set(exercises.map(ex => ex.target))].sort();
+                            const uniqueTargets = [...new Set(exercises.map(ex => ex.primaryMuscle))].sort();
                             const focusSelect = document.getElementById('focusSelect');
                             focusSelect.innerHTML = '<option value="">None</option>' + 
                                 uniqueTargets.map(t => `<option value="${t}">${t}</option>`).join('');
@@ -6173,11 +6215,11 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             
             // Validate header
             const header = lines[0].trim().toLowerCase();
-            const requiredHeaders = ['phase', 'exercise', 'target', 'position', 'sides', 'body part', 'duration', 'rest'];
+            const requiredHeaders = ['phase', 'exercise', 'primarymuscle', 'position', 'sides', 'bodypart', 'duration', 'rest'];
             const missingHeaders = requiredHeaders.filter(h => !header.includes(h));
             
             if (missingHeaders.length > 0) {
-                await customAlert(`❌ CSV Error: Missing required columns: ${missingHeaders.join(', ')}\n\nRequired: Phase, Exercise, Target, Position, Sides, Body Part, Duration, Rest`);
+                await customAlert(`❌ CSV Error: Missing required columns: ${missingHeaders.join(', ')}\n\nRequired: Phase, Exercise, PrimaryMuscle, Position, Sides, BodyPart, Duration, Rest`);
                 return parsedExercises;
             }
             
@@ -6204,16 +6246,18 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 const exercise = {
                     phase: fields[0],
                     exercise: fields[1],
-                    target: fields[2],
                     position: fields[3],
                     sides: parseInt(fields[4]) || 1,
                     bodyPart: fields[5].toLowerCase(), // 'upper', 'lower', or 'full' (case insensitive)
                     duration: parseTime(fields[6]),
-                    rest: parseTime(fields[7])
+                    rest: parseTime(fields[7]),
+                    primaryMuscle: fields[2],
+                    secondaryMuscle: fields[8] && fields[8].trim() ? fields[8].trim() : undefined,
+                    tertiaryMuscle: fields[9] && fields[9].trim() ? fields[9].trim() : undefined,
                 };
                 
                 // Validate required fields
-                if (!exercise.phase || !exercise.exercise || !exercise.target || !exercise.position) {
+                if (!exercise.phase || !exercise.exercise || !exercise.primaryMuscle || !exercise.position) {
                     console.warn(`Row ${i + 1}: Missing required field(s)`);
                     continue;
                 }
@@ -6639,8 +6683,8 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     // Apply focus and body part filtering
                     let focusExercises = [];
                     if (selectedFocus && !isAllExercises) {
-                        focusExercises = allPhaseExercises.filter(e => e.target === selectedFocus);
-                        let otherExercises = allPhaseExercises.filter(e => e.target !== selectedFocus);
+                        focusExercises = allPhaseExercises.filter(e => e.primaryMuscle === selectedFocus);
+                        let otherExercises = allPhaseExercises.filter(e => e.primaryMuscle !== selectedFocus);
                         focusExercises = weightedShuffle(focusExercises);
                         otherExercises = weightedShuffle(otherExercises);
                         allPhaseExercises = [...focusExercises, ...otherExercises];
@@ -7584,7 +7628,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                             <div>
                                 <div class="exercise-name">${ex.exercise}</div>
                                 <div class="exercise-details">
-                                    <span>${ex.target}</span>
+                                    <span>${ex.primaryMuscle}</span>
                                     <span>•</span>
                                     <span>${ex.position}</span>
                                     <span>•</span>
@@ -7617,7 +7661,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                             <div>
                                 <div class="exercise-name">${savasanaEx.exercise}</div>
                                 <div class="exercise-details">
-                                    <span>${savasanaEx.target}</span>
+                                    <span>${savasanaEx.primaryMuscle}</span>
                                     <span>•</span>
                                     <span>${savasanaEx.position}</span>
                                     <span>•</span>
@@ -7799,14 +7843,14 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     listHtml += '<div style="background:white;border-radius:16px;padding:20px 20px;margin-bottom:10px;color:#1d1d1f;border-left:16px solid ' + item.color + ';box-shadow:0 4px 16px rgba(0,0,0,0.12);min-height:160px;display:flex;flex-direction:column;justify-content:center;">'
                         + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;opacity:0.5;margin-bottom:4px;">Now</div>'
                         + '<div style="font-size:42px;font-weight:800;line-height:1.1;margin-bottom:10px;color:#1d1d1f;">' + item.nameStr + '</div>'
-                        + '<div style="font-size:17px;opacity:0.6;color:#1d1d1f;">' + item.ex.target + ' · ' + item.ex.position + ' · ' + item.timeStr + ' · ' + item.sidesStr + '</div>'
+                        + '<div style="font-size:17px;opacity:0.6;color:#1d1d1f;">' + item.ex.primaryMuscle + ' · ' + item.ex.position + ' · ' + item.timeStr + ' · ' + item.sidesStr + '</div>'
                         + '</div>';
                 } else if (item.type === 'next') {
                     listHtml += '<div style="background:white;border-radius:14px;padding:20px 20px;margin-bottom:8px;border-left:16px solid ' + item.color + ';color:#1d1d1f;min-height:160px;display:flex;flex-direction:column;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.08);">'
                         + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;opacity:0.5;margin-bottom:4px;">Up next</div>'
                         + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;opacity:0.4;margin-bottom:8px;">' + item.ex.phase + '</div>'
                         + '<div style="font-size:42px;font-weight:800;line-height:1.1;margin-bottom:10px;color:#86868b;">' + item.nameStr + '</div>'
-                        + '<div style="font-size:14px;opacity:0.6;">' + item.ex.target + ' · ' + item.ex.position + ' · ' + item.timeStr + ' · ' + item.sidesStr + '</div>'
+                        + '<div style="font-size:14px;opacity:0.6;">' + item.ex.primaryMuscle + ' · ' + item.ex.position + ' · ' + item.timeStr + ' · ' + item.sidesStr + '</div>'
                         + '</div>';
                 } else if (item.type === 'completed') {
                     listHtml += '<div style="background:white;border-radius:12px;padding:12px 16px;margin-bottom:6px;border-left:16px solid ' + item.color + '60;opacity:0.4;color:#1d1d1f;min-height:160px;display:flex;flex-direction:column;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.06);">'
@@ -7816,7 +7860,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     listHtml += '<div style="background:white;border-radius:12px;padding:14px 16px;margin-bottom:6px;border-left:16px solid ' + item.color + ';color:#1d1d1f;min-height:160px;display:flex;flex-direction:column;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.08);">'
                         + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;opacity:0.4;margin-bottom:6px;">' + item.ex.phase + '</div>'
                         + '<div style="font-size:42px;font-weight:800;line-height:1.1;margin-bottom:8px;color:#86868b;">' + item.ex.exercise + '</div>'
-                        + '<div style="font-size:12px;opacity:0.5;">' + item.ex.target + ' · ' + item.timeStr + ' · ' + item.sidesStr + '</div>'
+                        + '<div style="font-size:12px;opacity:0.5;">' + item.ex.primaryMuscle + ' · ' + item.timeStr + ' · ' + item.sidesStr + '</div>'
                         + '</div>';
                 }
             });
@@ -8400,7 +8444,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 const sMs = new Date(s.date).getTime();
                 (s.routine || []).forEach(ex => {
                     if (!exStats[ex.exercise]) exStats[ex.exercise] = {
-                        phase: ex.phase||'', target: ex.target||'', position: ex.position||'', sides: ex.sides||1,
+                        phase: ex.phase||'', primaryMuscle: ex.primaryMuscle || ex.target||'', secondaryMuscle: ex.secondaryMuscle||'', tertiaryMuscle: ex.tertiaryMuscle||'', position: ex.position||'', sides: ex.sides||1,
                         counts: {}, mins: {}, lastMs: 0
                     };
                     const e = exStats[ex.exercise];
@@ -8427,8 +8471,8 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
 
             // Build table grouped by phase, exercise first
             let table = `Sessions: ${totalSessions} | Avg duration: ${avgMins}m | Last session: ${lastDate}\n\n`;
-            table += `Exercise | Phase | Muscle | Position | Sides | Count 12 months | Count 6 months | Count 3 months | Count 1 month | Count 2 weeks | Count 1 week | Mins 12 months | Mins 6 months | Mins 3 months | Mins 1 month | Mins 2 weeks | Mins 1 week | Last done\n`;
-            table += `${'---'} | `.repeat(17).slice(0,-3) + '\n';
+            table += `Exercise | Phase | Primary Muscle | Secondary Muscle | Tertiary Muscle | Position | Sides | Count 12 months | Count 6 months | Count 3 months | Count 1 month | Count 2 weeks | Count 1 week | Mins 12 months | Mins 6 months | Mins 3 months | Mins 1 month | Mins 2 weeks | Mins 1 week | Last done\n`;
+            table += `${'---'} | `.repeat(19).slice(0,-3) + '\n';
 
             phaseOrder.forEach(phase => {
                 const phaseExs = Object.entries(exStats)
@@ -8436,7 +8480,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     .sort((a,b) => b[1].counts['12m']||0 - a[1].counts['12m']||0);
                 phaseExs.forEach(([name, e]) => {
                     const row = [
-                        name, phase, e.target, e.position, e.sides,
+                        name, phase, e.primaryMuscle, e.secondaryMuscle||'—', e.tertiaryMuscle||'—', e.position, e.sides,
                         ...wins.map(w => e.counts[w.label]||0),
                         ...wins.map(w => e.mins[w.label]||0),
                         daysAgo(e.lastMs)
@@ -8462,7 +8506,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                 exercises: (s.routine || []).map(e => ({
                     name: e.exercise,
                     phase: e.phase,
-                    target: e.target
+                    primaryMuscle: e.primaryMuscle || e.target
                 }))
             }));
 
@@ -8492,7 +8536,8 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
             const muscleFreq = {};
             history.filter(s => new Date(s.date).getTime() >= thirtyDays).forEach(s => {
                 (s.routine || []).forEach(e => {
-                    muscleFreq[e.target] = (muscleFreq[e.target] || 0) + 1;
+                    const m = e.primaryMuscle || e.target;
+                    if (m) muscleFreq[m] = (muscleFreq[m] || 0) + 1;
                 });
             });
 
@@ -8506,7 +8551,7 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
                     holdStyle: appSettings.shortHoldRest < appSettings.longHoldRest ? 'short' : 'long',
                     splitsFrequency: appSettings.splitsFrequency
                 },
-                availableExercises: exercises.map(e => ({ name: e.exercise, phase: e.phase, target: e.target, sides: e.sides }))
+                availableExercises: exercises.map(e => ({ name: e.exercise, phase: e.phase, primaryMuscle: e.primaryMuscle, sides: e.sides }))
             };
         }
 
@@ -8640,6 +8685,8 @@ bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foa
 
             const systemPrompt = `You are Jumi, a long-term flexibility coach. You think in terms of months of progress, not just today's session. Your job is to rank exercise candidates for a routine based on the user's goals, training history, and (if present) today's focus. Use British English throughout.
 
+MUSCLE LOAD TIERS: Each exercise in the library lists muscles at three tiers. primaryMuscle = direct target (~100% load). secondaryMuscle = meaningfully engaged (~50% load). tertiaryMuscle = lightly involved (~20% load). When reasoning about muscle balance and cumulative load across the session, weight these tiers accordingly — a secondary hit counts for roughly half as much as a primary, a tertiary for roughly a fifth.
+
 PRIORITY ORDER (highest to lowest):
 1. Today's focus (if provided) — this must strongly shape the routine
 2. Long-term gaps and imbalances from training history
@@ -8739,7 +8786,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                             
                         } else {
                             
-                            return { exercise: name, target: '' };
+                            return { exercise: name, primaryMuscle: '' };
                         }
                     }
                     return found;
@@ -8751,7 +8798,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                     let score = 0;
                     priorities.forEach((p, i) => {
                         const weight = i === 0 ? 4 : 1;
-                        const matches = (ex.target || '').toLowerCase() === p.target.toLowerCase();
+                        const matches = (ex.primaryMuscle || '').toLowerCase() === p.target.toLowerCase();
                         if (matches) {
                             if (p.action === 'increase') { score += weight; phaseDebug.increaseMatches++; }
                             else { score -= (weight + 10); phaseDebug.reduceMatches++; } // hard push to bottom
@@ -8766,7 +8813,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                 let reducedCount = 0;
                 const capped = scored.map(s => {
                     const isReduced = reducePriorities.some(p =>
-                        (s.ex.target || '').toLowerCase() === p.target.toLowerCase()
+                        (s.ex.primaryMuscle || '').toLowerCase() === p.target.toLowerCase()
                     );
                     if (isReduced) {
                         reducedCount++;
@@ -8779,7 +8826,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                 // exercise appears in the top half of the pool where matches exist
                 const increaseMatches = capped.filter(s =>
                     increasePriorities.some(p =>
-                        (s.ex.target || '').toLowerCase() === p.target.toLowerCase()
+                        (s.ex.primaryMuscle || '').toLowerCase() === p.target.toLowerCase()
                     )
                 );
                 if (increaseMatches.length > 0) {
@@ -8804,7 +8851,10 @@ Please rank the candidates for each phase using the generate_routine tool.`;
             return { result, debugInfo };
         }
         async function getJumiExplanation(routine, goals, userPrompt, contextTable, priorities, coverage) {
-            const exerciseList = routine.map(e => `${e.exercise} (${e.phase}, ${e.target})`).join(', ');
+            const exerciseList = routine.map(e => {
+                const muscles = [e.primaryMuscle, e.secondaryMuscle ? `secondary: ${e.secondaryMuscle}` : null, e.tertiaryMuscle ? `tertiary: ${e.tertiaryMuscle}` : null].filter(Boolean).join(', ');
+                return `${e.exercise} (${e.phase}, ${muscles})`;
+            }).join(', ');
             const focusNote = userPrompt ? ` The user's focus today was: "${userPrompt}".` : '';
             const historyNote = contextTable ? `\n\nTRAINING HISTORY (translate into natural language — never reference column names):\n${contextTable}` : '';
 
@@ -8982,7 +9032,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                 if (scopedPriorities.length > 0 && currentRoutine) {
                     for (const p of scopedPriorities) {
                         coverage[p.target] = currentRoutine.filter(ex =>
-                            (ex.target || '').toLowerCase() === p.target.toLowerCase()
+                            (ex.primaryMuscle || '').toLowerCase() === p.target.toLowerCase()
                         ).length;
                     }
                 }
@@ -9096,9 +9146,9 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
             showJumiChatBtn();
 
             const phases = [...new Set((currentRoutine || []).map(e => e.phase))].join(', ');
-            const targets = [...new Set((currentRoutine || []).map(e => e.target))].join(', ');
+            const targets = [...new Set((currentRoutine || []).map(e => e.primaryMuscle))].join(', ');
             const durationMins = Math.round((currentRoutine || []).reduce((s, e) => s + calculateExerciseTime(e), 0) / 60);
-            const sessionMsg = `Session complete: ${durationMins} minutes, ${selectedType || 'full'} body. Phases: ${phases}. Muscles: ${targets}.`;
+            const sessionMsg = `Session complete: ${durationMins} minutes, ${selectedType || 'full'} body. Phases: ${phases}. Primary muscles worked: ${targets}.`;
             window._jumiSessionContext = sessionMsg;
             window.openJumiChat && window.openJumiChat();
         };
@@ -9280,9 +9330,9 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
             }
             
             // Split exercises into two groups: same muscle and others
-            const currentMuscle = exerciseToSwap.target;
-            const sameMuscle = availableSwaps.filter(ex => ex.target === currentMuscle);
-            const otherMuscles = availableSwaps.filter(ex => ex.target !== currentMuscle);
+            const currentMuscle = exerciseToSwap.primaryMuscle;
+            const sameMuscle = availableSwaps.filter(ex => ex.primaryMuscle === currentMuscle);
+            const otherMuscles = availableSwaps.filter(ex => ex.primaryMuscle !== currentMuscle);
             
             // Randomize the "other muscles" section
             function shuffleArray(array) {
@@ -9309,7 +9359,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                     html += `
                         <div class="swap-option" onclick="selectSwapExercise(${routineIndex}, ${exIndex})">
                             <div class="swap-option-name">${ex.exercise}</div>
-                            <div class="swap-option-details">${ex.target} • ${ex.position}</div>
+                            <div class="swap-option-details">${ex.primaryMuscle} • ${ex.position}</div>
                         </div>
                     `;
                 });
@@ -9323,7 +9373,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                     html += `
                         <div class="swap-option" onclick="selectSwapExercise(${routineIndex}, ${exIndex})">
                             <div class="swap-option-name">${ex.exercise}</div>
-                            <div class="swap-option-details">${ex.target} • ${ex.position}</div>
+                            <div class="swap-option-details">${ex.primaryMuscle} • ${ex.position}</div>
                         </div>
                     `;
                 });
@@ -9517,10 +9567,11 @@ function showStats() {
                     }
                 });
                 
-                // Set focus based on most common target in routine
+                // Set focus based on most common primary muscle in routine
                 const targetCounts = {};
                 routine.forEach(ex => {
-                    targetCounts[ex.target] = (targetCounts[ex.target] || 0) + 1;
+                    const m = ex.primaryMuscle || ex.target;
+                    if (m) targetCounts[m] = (targetCounts[m] || 0) + 1;
                 });
                 const focus = Object.keys(targetCounts).sort((a, b) => targetCounts[b] - targetCounts[a])[0] || 'Full Body';
                 
@@ -9613,11 +9664,11 @@ function showStats() {
             const sorted = exList.slice().sort((a, b) => {
                 const pCmp = (phaseOrder.indexOf(a.phase) - phaseOrder.indexOf(b.phase));
                 if (pCmp !== 0) return pCmp;
-                const tCmp = (a.target || '').localeCompare(b.target || '');
+                const tCmp = (a.primaryMuscle || '').localeCompare(b.primaryMuscle || '');
                 if (tCmp !== 0) return tCmp;
                 return (a.position || '').localeCompare(b.position || '');
             });
-            const headers = ['phase', 'exercise', 'target', 'position', 'sides', 'bodyPart', 'duration', 'rest'];
+            const headers = ['phase', 'exercise', 'position', 'sides', 'bodyPart', 'duration', 'rest', 'primaryMuscle', 'secondaryMuscle', 'tertiaryMuscle'];
             const rows = [headers, ...sorted.map(e => headers.map(h => '"' + String(e[h] ?? '').replace(/"/g, '""') + '"'))];
             const csv = rows.map(r => r.join(',')).join('\n');
             const blob = new Blob([csv], {type: 'text/csv'});
@@ -10725,7 +10776,7 @@ function showStats() {
                                 <div>
                                     <div class="exercise-name">${ex.exercise}</div>
                                     <div class="exercise-details">
-                                        <span>${ex.target}</span>
+                                        <span>${ex.primaryMuscle}</span>
                                         <span>•</span>
                                         <span>${ex.position}</span>
                                         <span>•</span>
