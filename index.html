@@ -9660,6 +9660,11 @@ function showStats() {
                 if (status) { status.style.color = '#ff3b30'; status.textContent = 'No exercises to export.'; }
                 return;
             }
+            // Build a lookup from the defaults so we can fill in missing secondary/tertiary
+            const defaults = getDefaultExercises();
+            const defaultMap = {};
+            defaults.forEach(d => { defaultMap[d.exercise] = d; });
+
             const phaseOrder = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
             const sorted = exList.slice().sort((a, b) => {
                 const pCmp = (phaseOrder.indexOf(a.phase) - phaseOrder.indexOf(b.phase));
@@ -9669,7 +9674,15 @@ function showStats() {
                 return (a.position || '').localeCompare(b.position || '');
             });
             const headers = ['phase', 'exercise', 'position', 'sides', 'bodyPart', 'duration', 'rest', 'primaryMuscle', 'secondaryMuscle', 'tertiaryMuscle'];
-            const rows = [headers, ...sorted.map(e => headers.map(h => '"' + String(e[h] ?? '').replace(/"/g, '""') + '"'))];
+            const rows = [headers, ...sorted.map(e => {
+                const def = defaultMap[e.exercise];
+                const enriched = {
+                    ...e,
+                    secondaryMuscle: e.secondaryMuscle ?? (def ? def.secondaryMuscle : undefined),
+                    tertiaryMuscle:  e.tertiaryMuscle  ?? (def ? def.tertiaryMuscle  : undefined),
+                };
+                return headers.map(h => '"' + String(enriched[h] ?? '').replace(/"/g, '""') + '"');
+            })];
             const csv = rows.map(r => r.join(',')).join('\n');
             const blob = new Blob([csv], {type: 'text/csv'});
             const url = URL.createObjectURL(blob);
