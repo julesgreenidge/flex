@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499226 -->
+<!-- Version: 1775499229 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v4.26: secondary/tertiary muscle usage tracked in history — recency scoring and Jumi context updated — routineHistory updated to match current exercise library on load no longer flush to phase edge — empty primaryMuscle defaults to "None" for Final Rest; sanity check on import; auto-fix corrupted localStorage — max 2 per primary muscle per phase — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
+    <!-- v4.29: custom routine builder pills — top 3 upper and top 3 lower muscles by exercise count added — muscle fields updated on load to match current library — recency scoring and Jumi context updated — routineHistory updated to match current exercise library on load no longer flush to phase edge — empty primaryMuscle defaults to "None" for Final Rest; sanity check on import; auto-fix corrupted localStorage — max 2 per primary muscle per phase — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -4158,6 +4158,44 @@
                         console.log('✓ Migrated Front Splits to Splits phase');
                     }
                     
+                    // Migrate starredRoutines — update muscle fields to match current exercise library
+                    try {
+                        const starred = JSON.parse(localStorage.getItem('starredRoutines') || '[]');
+                        if (starred.length > 0) {
+                            const exerciseLookup = {};
+                            exercises.forEach(ex => { exerciseLookup[ex.exercise] = ex; });
+
+                            let starredChanged = false;
+                            const updatedStarred = starred.map(routine => {
+                                if (!routine.routine) return routine;
+                                const updatedRoutine = routine.routine.map(ex => {
+                                    const current = exerciseLookup[ex.exercise];
+                                    if (!current) return ex;
+                                    const needsUpdate =
+                                        ex.primaryMuscle   !== current.primaryMuscle   ||
+                                        ex.secondaryMuscle !== current.secondaryMuscle  ||
+                                        ex.tertiaryMuscle  !== current.tertiaryMuscle;
+                                    if (!needsUpdate) return ex;
+                                    starredChanged = true;
+                                    return {
+                                        ...ex,
+                                        primaryMuscle:   current.primaryMuscle,
+                                        secondaryMuscle: current.secondaryMuscle,
+                                        tertiaryMuscle:  current.tertiaryMuscle,
+                                    };
+                                });
+                                return {...routine, routine: updatedRoutine};
+                            });
+
+                            if (starredChanged) {
+                                localStorage.setItem('starredRoutines', JSON.stringify(updatedStarred));
+                                console.log('✓ Migrated starredRoutines muscle fields to match current library');
+                            }
+                        }
+                    } catch(e) {
+                        console.warn('Starred routines muscle migration failed:', e);
+                    }
+
                     // Migrate routineHistory — update muscle fields to match current exercise library
                     // Prevents stale muscle names (e.g. "Hips") skewing recency weights and Jumi context
                     try {
@@ -5124,32 +5162,28 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 const container = document.getElementById('customPillsContainer');
                 if (!container) return;
 
-                // Fixed pills
-                // Helper to shuffle and pick n items
-                const pick = (arr, n) => arr.slice().sort(() => Math.random() - 0.5).slice(0, n);
+                // Fixed pills: All, Upper Body, Lower Body, Static Stretching, Mobility, Cool Down
+                // Then top 3 upper body muscles and top 3 lower body muscles by exercise count
+                const upperCounts = {};
+                const lowerCounts = {};
+                exercises.forEach(e => {
+                    if (!e.primaryMuscle || e.primaryMuscle === 'None') return;
+                    const bp = (e.bodyPart || '').toLowerCase();
+                    if (bp === 'upper') upperCounts[e.primaryMuscle] = (upperCounts[e.primaryMuscle] || 0) + 1;
+                    if (bp === 'lower') lowerCounts[e.primaryMuscle] = (lowerCounts[e.primaryMuscle] || 0) + 1;
+                });
+                const top3Upper = Object.entries(upperCounts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([m]) => m);
+                const top3Lower = Object.entries(lowerCounts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([m]) => m);
 
-                // Randomised phases
-                const randPhases = pick(['Warm-Up', 'Foam Roller', 'Mobility', 'Cool Down'], 2);
-
-                // Randomised lower body muscles (excl Hips)
-                const lowerMuscles = [...new Set(exercises.filter(e => e.bodyPart === 'lower' && e.primaryMuscle !== 'Hip Flexors').map(e => e.primaryMuscle))];
-                const randLower = pick(lowerMuscles, 2);
-
-                // Randomised upper body muscles (excl Spine)
-                const upperMuscles = [...new Set(exercises.filter(e => e.bodyPart === 'upper' && e.primaryMuscle !== 'Lower Back').map(e => e.primaryMuscle))];
-                const randUpper = pick(upperMuscles, 2);
-
-                // Pills in exact order: All, Upper Body, Lower Body, Static, 2 phases, Hips, 2 lower, Spine, 2 upper
                 const allPills = [
                     { label: 'All exercises', search: '__all__', solid: true },
                     { label: 'Upper Body', search: 'Upper Body', bodyPart: 'upper' },
                     { label: 'Lower Body', search: 'Lower Body', bodyPart: 'lower' },
                     { label: 'Static Stretching', search: 'Static Stretching' },
-                    ...randPhases.map(p => ({ label: p, search: p })),
-                    { label: 'Hips', search: 'Hips' },
-                    ...randLower.map(m => ({ label: m, search: m })),
-                    { label: 'Spine', search: 'Spine' },
-                    ...randUpper.map(m => ({ label: m, search: m })),
+                    { label: 'Mobility', search: 'Mobility' },
+                    { label: 'Cool Down', search: 'Cool Down' },
+                    ...top3Upper.map(m => ({ label: m, search: m })),
+                    ...top3Lower.map(m => ({ label: m, search: m })),
                 ];
 
                 container.innerHTML = allPills.map(p => {
