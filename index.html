@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499202 -->
+<!-- Version: 1775499203 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v4.2: target renamed to primaryMuscle; secondaryMuscle and tertiaryMuscle added; Jumi muscle-load context enriched -->
+    <!-- v4.3: muscle display tiers in all cards; secondary/tertiary muscle fields in edit, add, and Jumi approval modals -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -2545,7 +2545,7 @@
                         <span style="color:#c7c7cc;font-size:14px;cursor:grab;padding:0 10px;flex-shrink:0;">⠿</span>
                         <div style="flex:1;padding:8px 4px 8px 0;min-width:0;">
                             <div style="font-size:13px;font-weight:600;color:#1d1d1f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ex.exercise}${isCustom ? ' <span style="font-size:10px;background:#f0eef8;color:#667eea;padding:1px 6px;border-radius:10px;font-weight:600;">custom</span>' : ''}</div>
-                            <div style="font-size:11px;color:#86868b;margin-top:1px;">${ex.primaryMuscle} · ${ex.position} · ${ex.sides}x</div>
+                            <div style="font-size:11px;color:#86868b;margin-top:1px;">${muscleDisplay(ex)} · ${ex.position} · ${ex.sides}x</div>
                         </div>
                         <div style="display:flex;gap:4px;padding:0 10px;flex-shrink:0;">
                             <button data-action="edit" data-idx="${globalIdx}" style="padding:5px 14px;font-size:11px;border-radius:20px;font-weight:600;color:#667eea;border:1.5px solid #c4bef0;background:white;cursor:pointer;font-family:inherit;">Edit</button>
@@ -2667,6 +2667,24 @@
 
             const PHASE_OPTIONS = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
             const BODYPART_OPTIONS = ['upper','lower','full'];
+            const MUSCLE_OPTIONS = ['Abs','Adductors','Biceps','Calves','Chest','Forearms','Full Body','Glutes','Hamstrings','Hip Flexors','Lats','Lower Back','Neck','Quadriceps','Shoulders','Triceps','Upper Back','Wrists'];
+
+            // Renders inline muscle tiers: primary bold/dark, secondary muted, tertiary more faded — same font size
+            function muscleDisplay(ex) {
+                const inputStyle = 'display:inline;border:none;padding:0;margin:0;background:transparent;font-family:inherit;';
+                let html = `<span style="font-weight:600;color:#1d1d1f;">${ex.primaryMuscle || '—'}</span>`;
+                if (ex.secondaryMuscle) html += ` <span style="font-weight:400;color:#86868b;">${ex.secondaryMuscle}</span>`;
+                if (ex.tertiaryMuscle)  html += ` <span style="font-weight:400;color:#c0c0c8;">${ex.tertiaryMuscle}</span>`;
+                return html;
+            }
+
+            // Renders a combobox input with datalist for muscle selection
+            function muscleCombo(id, val, placeholder) {
+                const listId = id + 'List';
+                const opts = MUSCLE_OPTIONS.map(m => '<option value="' + m + '">').join('');
+                return '<input id="' + id + '" list="' + listId + '" value="' + (val || '') + '" placeholder="' + (placeholder || '') + '" autocomplete="off" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"/>'
+                     + '<datalist id="' + listId + '">' + opts + '</datalist>';
+            }
 
             function exerciseModalHTML(ex, idx) {
                 const isEdit = idx !== null && idx !== undefined;
@@ -2680,13 +2698,14 @@
                         <div style="display:flex;flex-direction:column;gap:14px;">
                             <label style="font-size:13px;font-weight:600;">Name<input id="exName" value="${v.exercise}" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"/></label>
                             <label style="font-size:13px;font-weight:600;">Phase<select id="exPhase" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;">${PHASE_OPTIONS.map(p => '<option value="' + p + '"' + (p===v.phase?' selected':'') + '>' + p + '</option>').join('')}</select></label>
-                            <label style="font-size:13px;font-weight:600;">Primary Muscle<input id="exTarget" value="${v.primaryMuscle}" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"/></label>
+                            <label style="font-size:13px;font-weight:600;">Primary Muscle${muscleCombo('exTarget', v.primaryMuscle, '')}</label>
+                            <label style="font-size:13px;font-weight:600;color:#555;">Secondary Muscle <span style="font-weight:400;font-size:12px;color:#86868b;">(optional)</span>${muscleCombo('exSecondary', v.secondaryMuscle || '', '')}</label>
+                            <label style="font-size:13px;font-weight:600;color:#555;">Tertiary Muscle <span style="font-weight:400;font-size:12px;color:#86868b;">(optional)</span>${muscleCombo('exTertiary', v.tertiaryMuscle || '', '')}</label>
                             <label style="font-size:13px;font-weight:600;">Position<input id="exPosition" value="${v.position}" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"/></label>
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                                 <label style="font-size:13px;font-weight:600;">Sides<select id="exSides" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"><option value="1"${v.sides===1?' selected':''}>1</option><option value="2"${v.sides===2?' selected':''}>2</option></select></label>
                                 <label style="font-size:13px;font-weight:600;">Body Part<select id="exBodyPart" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;">${BODYPART_OPTIONS.map(b => '<option value="' + b + '"' + (b===v.bodyPart?' selected':'') + '>' + b + '</option>').join('')}</select></label>
                             </div>
-
                         </div>
                         <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
                             <button onclick="document.getElementById('exModalOverlay').remove()" style="background:white;border:1.5px solid #d2d2d7;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
@@ -2711,6 +2730,8 @@
                     exercise: document.getElementById('exName').value.trim(),
                     phase: document.getElementById('exPhase').value,
                     primaryMuscle: document.getElementById('exTarget').value.trim(),
+                    secondaryMuscle: document.getElementById('exSecondary').value.trim() || undefined,
+                    tertiaryMuscle: document.getElementById('exTertiary').value.trim() || undefined,
                     position: document.getElementById('exPosition').value.trim(),
                     sides: parseInt(document.getElementById('exSides').value),
                     bodyPart: document.getElementById('exBodyPart').value,
@@ -4612,8 +4633,8 @@ You may discuss exercises already in the user's library, but do not recommend th
 Use web search when the user asks for links, tutorials, or external resources, or when it clearly adds value.
 
 If the user asks for new exercise recommendations, only suggest exercises NOT in their library. For each new exercise, include one <exercise> block at the end of your response. Format:
-<exercise>{"exercise":"name","phase":"phase","primaryMuscle":"muscle","position":"position","sides":1,"bodyPart":"lower"}</exercise>
-bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foam Roller, Mobility, Static Stretching, Splits, Cool Down, Final Rest. sides must be 1 (bilateral) or 2 (unilateral). Do not omit these blocks when recommending exercises.
+<exercise>{"exercise":"name","phase":"phase","primaryMuscle":"muscle","secondaryMuscle":"muscle or omit","tertiaryMuscle":"muscle or omit","position":"position","sides":1,"bodyPart":"lower"}</exercise>
+bodyPart must be "upper", "lower", or "full". phase must be one of: Warm-Up, Foam Roller, Mobility, Static Stretching, Splits, Cool Down, Final Rest. sides must be 1 (bilateral) or 2 (unilateral). secondaryMuscle and tertiaryMuscle are optional — include them where relevant. Do not omit these blocks when recommending exercises.
 
 MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = direct target (~100% load). secondaryMuscle = meaningfully engaged (~50% load). tertiaryMuscle = lightly involved (~20% load). Use these weightings when reasoning about cumulative muscle load across the session — do not treat all tiers equally.`;
 
@@ -4692,7 +4713,9 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             const fields = [
                 {id:'apName', label:'Name', val: ex.exercise || ''},
                 {id:'apPhase', label:'Phase', val: phaseOptions.includes(ex.phase) ? ex.phase : 'Static Stretching', type:'select', options: phaseOptions},
-                {id:'apTarget', label:'Primary Muscle', val: ex.primaryMuscle || ''},
+                {id:'apTarget', label:'Primary Muscle', val: ex.primaryMuscle || '', type:'muscle'},
+                {id:'apSecondary', label:'Secondary Muscle', val: ex.secondaryMuscle || '', type:'muscle', optional: true},
+                {id:'apTertiary', label:'Tertiary Muscle', val: ex.tertiaryMuscle || '', type:'muscle', optional: true},
                 {id:'apPosition', label:'Position', val: ex.position || ''},
                 {id:'apSides', label:'Sides', val: ex.sides || 2, type:'select', options:[1,2]},
                 {id:'apBodyPart', label:'Body Part', val: ex.bodyPart || 'lower', type:'select', options:['upper','lower','full']},
@@ -4707,6 +4730,13 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                                 return `<option value="${o}" ${String(o)===String(f.val)?'selected':''}>${display}</option>`;
                             }).join('')}
                         </select></label>`;
+                }
+                if (f.type === 'muscle') {
+                    const listId = f.id + 'List';
+                    const optLabel = f.optional ? ' <span style="font-weight:400;font-size:12px;color:#86868b;">(optional)</span>' : '';
+                    return `<label style="font-size:13px; font-weight:600;">${f.label}${optLabel}
+                        <input id="${f.id}" list="${listId}" value="${f.val}" autocomplete="off" style="display:block; width:100%; margin-top:4px; border:1.5px solid #d2d2d7; border-radius:8px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;"/>
+                        <datalist id="${listId}">${MUSCLE_OPTIONS.map(m => `<option value="${m}">`).join('')}</datalist></label>`;
                 }
                 return `<label style="font-size:13px; font-weight:600;">${f.label}
                     <input id="${f.id}" value="${f.val}" style="display:block; width:100%; margin-top:4px; border:1.5px solid #d2d2d7; border-radius:8px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;"/></label>`;
@@ -4788,6 +4818,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 exercise: document.getElementById('apName').value.trim(),
                 phase: document.getElementById('apPhase').value,
                 primaryMuscle: document.getElementById('apTarget').value.trim(),
+                secondaryMuscle: document.getElementById('apSecondary').value.trim() || undefined,
+                tertiaryMuscle: document.getElementById('apTertiary').value.trim() || undefined,
                 position: document.getElementById('apPosition').value.trim(),
                 sides: parseInt(document.getElementById('apSides').value),
                 bodyPart: document.getElementById('apBodyPart').value,
@@ -5151,7 +5183,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                                         <input type="checkbox" class="ex-checkbox" value="${ex.exercise}" data-exercise="${exData}" style="flex-shrink: 0; cursor: pointer;" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()">
                                         <div style="flex: 1;">
                                             <div style="font-weight: 600; font-size: 12px; margin-bottom: 1px;">${ex.exercise}</div>
-                                            <div style="font-size: 10px; color: #999;">${ex.primaryMuscle} • ${ex.position} • ${dur}s${ex.sides > 1 ? ' × ' + ex.sides : ''}</div>
+                                            <div style="font-size: 10px; color: #999;">${muscleDisplay(ex)} • ${ex.position} • ${dur}s${ex.sides > 1 ? ' × ' + ex.sides : ''}</div>
                                         </div>
                                     </div>
                                 </td>
@@ -5315,7 +5347,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                                         <div style="color: #ccc; font-size: 16px; cursor: grab;">☰</div>
                                         <div style="flex: 1;">
                                             <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${ex.exercise}</div>
-                                            <div style="font-size: 12px; color: #999;">${ex.primaryMuscle} • ${ex.position} • ${sidesStr}</div>
+                                            <div style="font-size: 12px; color: #999;">${muscleDisplay(ex)} • ${ex.position} • ${sidesStr}</div>
                                         </div>
                                     </div>
                                     <div style="font-weight: 600; font-size: 14px; color: #667eea; margin-right: 12px;">${dur * ex.sides}s</div>
@@ -7628,7 +7660,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                             <div>
                                 <div class="exercise-name">${ex.exercise}</div>
                                 <div class="exercise-details">
-                                    <span>${ex.primaryMuscle}</span>
+                                    <span style="display:contents;">${muscleDisplay(ex)}</span>
                                     <span>•</span>
                                     <span>${ex.position}</span>
                                     <span>•</span>
@@ -7661,7 +7693,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                             <div>
                                 <div class="exercise-name">${savasanaEx.exercise}</div>
                                 <div class="exercise-details">
-                                    <span>${savasanaEx.primaryMuscle}</span>
+                                    <span style="display:contents;">${muscleDisplay(savasanaEx)}</span>
                                     <span>•</span>
                                     <span>${savasanaEx.position}</span>
                                     <span>•</span>
@@ -7843,14 +7875,14 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     listHtml += '<div style="background:white;border-radius:16px;padding:20px 20px;margin-bottom:10px;color:#1d1d1f;border-left:16px solid ' + item.color + ';box-shadow:0 4px 16px rgba(0,0,0,0.12);min-height:160px;display:flex;flex-direction:column;justify-content:center;">'
                         + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;opacity:0.5;margin-bottom:4px;">Now</div>'
                         + '<div style="font-size:42px;font-weight:800;line-height:1.1;margin-bottom:10px;color:#1d1d1f;">' + item.nameStr + '</div>'
-                        + '<div style="font-size:17px;opacity:0.6;color:#1d1d1f;">' + item.ex.primaryMuscle + ' · ' + item.ex.position + ' · ' + item.timeStr + ' · ' + item.sidesStr + '</div>'
+                        + '<div style="font-size:17px;opacity:0.6;color:#1d1d1f;">' + muscleDisplay(item.ex) + ' · ' + item.ex.position + ' · ' + item.timeStr + ' · ' + item.sidesStr + '</div>'
                         + '</div>';
                 } else if (item.type === 'next') {
                     listHtml += '<div style="background:white;border-radius:14px;padding:20px 20px;margin-bottom:8px;border-left:16px solid ' + item.color + ';color:#1d1d1f;min-height:160px;display:flex;flex-direction:column;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.08);">'
                         + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;opacity:0.5;margin-bottom:4px;">Up next</div>'
                         + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;opacity:0.4;margin-bottom:8px;">' + item.ex.phase + '</div>'
                         + '<div style="font-size:42px;font-weight:800;line-height:1.1;margin-bottom:10px;color:#86868b;">' + item.nameStr + '</div>'
-                        + '<div style="font-size:14px;opacity:0.6;">' + item.ex.primaryMuscle + ' · ' + item.ex.position + ' · ' + item.timeStr + ' · ' + item.sidesStr + '</div>'
+                        + '<div style="font-size:14px;opacity:0.6;">' + muscleDisplay(item.ex) + ' · ' + item.ex.position + ' · ' + item.timeStr + ' · ' + item.sidesStr + '</div>'
                         + '</div>';
                 } else if (item.type === 'completed') {
                     listHtml += '<div style="background:white;border-radius:12px;padding:12px 16px;margin-bottom:6px;border-left:16px solid ' + item.color + '60;opacity:0.4;color:#1d1d1f;min-height:160px;display:flex;flex-direction:column;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.06);">'
@@ -7860,7 +7892,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     listHtml += '<div style="background:white;border-radius:12px;padding:14px 16px;margin-bottom:6px;border-left:16px solid ' + item.color + ';color:#1d1d1f;min-height:160px;display:flex;flex-direction:column;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.08);">'
                         + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;opacity:0.4;margin-bottom:6px;">' + item.ex.phase + '</div>'
                         + '<div style="font-size:42px;font-weight:800;line-height:1.1;margin-bottom:8px;color:#86868b;">' + item.ex.exercise + '</div>'
-                        + '<div style="font-size:12px;opacity:0.5;">' + item.ex.primaryMuscle + ' · ' + item.timeStr + ' · ' + item.sidesStr + '</div>'
+                        + '<div style="font-size:12px;opacity:0.5;">' + muscleDisplay(item.ex) + ' · ' + item.timeStr + ' · ' + item.sidesStr + '</div>'
                         + '</div>';
                 }
             });
@@ -9359,7 +9391,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                     html += `
                         <div class="swap-option" onclick="selectSwapExercise(${routineIndex}, ${exIndex})">
                             <div class="swap-option-name">${ex.exercise}</div>
-                            <div class="swap-option-details">${ex.primaryMuscle} • ${ex.position}</div>
+                            <div class="swap-option-details">${muscleDisplay(ex)} • ${ex.position}</div>
                         </div>
                     `;
                 });
@@ -9373,7 +9405,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                     html += `
                         <div class="swap-option" onclick="selectSwapExercise(${routineIndex}, ${exIndex})">
                             <div class="swap-option-name">${ex.exercise}</div>
-                            <div class="swap-option-details">${ex.primaryMuscle} • ${ex.position}</div>
+                            <div class="swap-option-details">${muscleDisplay(ex)} • ${ex.position}</div>
                         </div>
                     `;
                 });
@@ -10789,7 +10821,7 @@ function showStats() {
                                 <div>
                                     <div class="exercise-name">${ex.exercise}</div>
                                     <div class="exercise-details">
-                                        <span>${ex.primaryMuscle}</span>
+                                        <span style="display:contents;">${muscleDisplay(ex)}</span>
                                         <span>•</span>
                                         <span>${ex.position}</span>
                                         <span>•</span>
