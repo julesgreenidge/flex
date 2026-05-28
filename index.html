@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499217 -->
+<!-- Version: 1775499218 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v4.17: full through-line — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
+    <!-- v4.18: fix muscleCountInPhase used before declaration — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -6855,7 +6855,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     
                     const phaseExercises = [];
                     let phaseCount = 0;
-                    const addedNames = new Set(); // Track what's been added in Pass 1
+                    const addedNames = new Set();
+                    const muscleCountInPhase = {}; // variety cap — tracks per-muscle count in this phase
                     
                     // Safety: if pool is empty after filtering, skip this phase entirely
                     if (allPhaseExercises.length === 0) {
@@ -6896,7 +6897,6 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     const effectiveReserved = Math.max(0, reservedTime - phaseReserved);
                     
                     // Track per-muscle counts for variety cap (stretch phases only)
-                    const muscleCountInPhase = {};
                     const STRETCH_VARIETY_MAX = 2; // max exercises per primary muscle per stretch phase
 
                     for (const ex of shuffled) {
