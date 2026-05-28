@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499203 -->
+<!-- Version: 1775499204 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v4.3: muscle display tiers in all cards; secondary/tertiary muscle fields in edit, add, and Jumi approval modals -->
+    <!-- v4.4: migration backfills secondaryMuscle/tertiaryMuscle from defaults on load -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -1638,7 +1638,7 @@
             background: white;
         }
     </style>
-<meta name="build-date" content="27 May 2026">
+<meta name="build-date" content="28 May 2026">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -4068,6 +4068,29 @@
                     if (needsMuscleMigration) {
                         saveExercises();
                         console.log('✓ Migrated exercises: target -> primaryMuscle');
+                    }
+
+                    // Backfill secondaryMuscle / tertiaryMuscle from defaults (v4.2 -> v4.3)
+                    const defaultsMap = {};
+                    getDefaultExercises().forEach(d => { defaultsMap[d.exercise] = d; });
+                    let needsMuscleFill = false;
+                    exercises = exercises.map(ex => {
+                        if (!ex.hasOwnProperty('secondaryMuscle') && !ex.hasOwnProperty('tertiaryMuscle')) {
+                            const def = defaultsMap[ex.exercise];
+                            if (def && (def.secondaryMuscle || def.tertiaryMuscle)) {
+                                needsMuscleFill = true;
+                                return {
+                                    ...ex,
+                                    ...(def.secondaryMuscle ? {secondaryMuscle: def.secondaryMuscle} : {}),
+                                    ...(def.tertiaryMuscle  ? {tertiaryMuscle:  def.tertiaryMuscle}  : {}),
+                                };
+                            }
+                        }
+                        return ex;
+                    });
+                    if (needsMuscleFill) {
+                        saveExercises();
+                        console.log('✓ Backfilled secondary/tertiary muscles from defaults');
                     }
 
                     // Migrate old format (splits: boolean) to new format (bodyPart: string)
