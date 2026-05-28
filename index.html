@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499220 -->
+<!-- Version: 1775499222 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v4.20: buildMusclePool moved to outer scope — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
+    <!-- v4.22: CSV parser uses header-based mapping; sanity check on import; auto-fix corrupted localStorage — max 2 per primary muscle per phase — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -4060,7 +4060,14 @@
                     console.log('Loaded', exercises.length, 'exercises from localStorage');
                     window._exercises = exercises;
                     
-                    // Migrate target -> primaryMuscle (v4.1 -> v4.2)
+                    // Fix corrupted exercises where primaryMuscle looks like a position (bad CSV import)
+                    const POSITION_VALUES = new Set(['standing','seated','supine','prone','tabletop','kneeling','lunge','lateral']);
+                    const corruptedCount = exercises.filter(ex => POSITION_VALUES.has((ex.primaryMuscle || '').toLowerCase())).length;
+                    if (corruptedCount > 0) {
+                        console.warn(`⚠️ Detected ${corruptedCount} exercises with corrupted muscle data — resetting to defaults`);
+                        exercises = getDefaultExercises();
+                        saveExercises();
+                    }
                     let needsMuscleMigration = false;
                     exercises = exercises.map(ex => {
                         if (ex.hasOwnProperty('target') && !ex.hasOwnProperty('primaryMuscle')) {
@@ -6285,11 +6292,15 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             }
             
             
+            // Parse headers once outside the loop
+            const headerFields = lines[0].trim().split(',').map(h => h.trim().toLowerCase().replace(/^"|"$/g, ''));
+            const colIdx = (name) => headerFields.indexOf(name);
+
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
                 
-                const fields = line.split(',').map(f => f.trim());
+                const fields = line.split(',').map(f => f.trim().replace(/^"|"$/g, ''));
                 
                 if (fields.length < 8) {
                     console.warn(`Row ${i + 1}: Not enough columns (${fields.length}/8)`);
@@ -6297,25 +6308,39 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 }
                 
                 const parseTime = (timeStr) => {
+                    if (!timeStr) return 30;
                     if (timeStr.includes(':')) {
                         const parts = timeStr.split(':');
                         return parseInt(parts[0]) * 60 + parseInt(parts[1]);
                     }
                     return parseInt(timeStr) || 30;
                 };
+
+                // Use header-based column mapping so column order doesn't matter
+                const col = (name) => {
+                    const idx = colIdx(name);
+                    return idx >= 0 ? (fields[idx] || '').trim() : '';
+                };
                 
                 const exercise = {
-                    phase: fields[0],
-                    exercise: fields[1],
-                    position: fields[3],
-                    sides: parseInt(fields[4]) || 1,
-                    bodyPart: fields[5].toLowerCase(), // 'upper', 'lower', or 'full' (case insensitive)
-                    duration: parseTime(fields[6]),
-                    rest: parseTime(fields[7]),
-                    primaryMuscle: fields[2],
-                    secondaryMuscle: fields[8] && fields[8].trim() ? fields[8].trim() : undefined,
-                    tertiaryMuscle: fields[9] && fields[9].trim() ? fields[9].trim() : undefined,
+                    phase:           col('phase'),
+                    exercise:        col('exercise'),
+                    position:        col('position'),
+                    sides:           parseInt(col('sides')) || 1,
+                    bodyPart:        col('bodypart').toLowerCase(),
+                    duration:        parseTime(col('duration')),
+                    rest:            parseTime(col('rest')),
+                    primaryMuscle:   col('primarymuscle'),
+                    secondaryMuscle: col('secondarymuscle') || undefined,
+                    tertiaryMuscle:  col('tertiarymuscle') || undefined,
                 };
+
+                // Sanity check: primaryMuscle should not look like a position
+                const POSITIONS = new Set(['standing','seated','supine','prone','tabletop','kneeling','lunge','lateral']);
+                if (POSITIONS.has((exercise.primaryMuscle || '').toLowerCase())) {
+                    await customAlert(`❌ CSV Error: Column mapping looks wrong — "${exercise.primaryMuscle}" appears to be a position, not a muscle. Please check your CSV column order.`);
+                    return parsedExercises;
+                }
                 
                 // Validate required fields
                 if (!exercise.phase || !exercise.exercise || !exercise.primaryMuscle || !exercise.position) {
@@ -6877,10 +6902,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                             addedNames.add(guaranteedEx.exercise);
                             totalTime += calculateExerciseTime(guaranteedEx);
                             usedExerciseNames.add(guaranteedEx.exercise);
-                            if (STRETCH_PHASES.has(phase)) {
-                                const m = guaranteedEx.primaryMuscle || '';
-                                muscleCountInPhase[m] = (muscleCountInPhase[m] || 0) + 1;
-                            }
+                            const gm = guaranteedEx.primaryMuscle || '';
+                            muscleCountInPhase[gm] = (muscleCountInPhase[gm] || 0) + 1;
                             phaseCount++;
                             
                         }
@@ -6904,8 +6927,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         if (phaseCount >= phaseConf.max) break;
                         if (addedNames.has(ex.exercise)) continue;
 
-                        // Variety cap: in stretch phases, limit per primary muscle to STRETCH_VARIETY_MAX
-                        if (STRETCH_PHASES.has(phase) && !isAllExercises) {
+                        // Variety cap: limit per primary muscle to STRETCH_VARIETY_MAX per phase
+                        if (!isAllExercises) {
                             const m = ex.primaryMuscle || '';
                             if ((muscleCountInPhase[m] || 0) >= STRETCH_VARIETY_MAX) continue;
                         }
@@ -6928,10 +6951,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         addedNames.add(ex.exercise);
                         totalTime += exTime;
                         usedExerciseNames.add(ex.exercise);
-                        if (STRETCH_PHASES.has(phase)) {
-                            const m = ex.primaryMuscle || '';
-                            muscleCountInPhase[m] = (muscleCountInPhase[m] || 0) + 1;
-                        }
+                        const m = ex.primaryMuscle || '';
+                        muscleCountInPhase[m] = (muscleCountInPhase[m] || 0) + 1;
                         phaseCount++;
                     }
                     
