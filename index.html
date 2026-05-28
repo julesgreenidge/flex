@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499204 -->
+<!-- Version: 1775499205 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v4.4: migration backfills secondaryMuscle/tertiaryMuscle from defaults on load -->
+    <!-- v4.5: muscleDisplay moved to outer scope — fixes history timeline blank render -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -2667,18 +2667,7 @@
 
             const PHASE_OPTIONS = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
             const BODYPART_OPTIONS = ['upper','lower','full'];
-            const MUSCLE_OPTIONS = ['Abs','Adductors','Biceps','Calves','Chest','Forearms','Full Body','Glutes','Hamstrings','Hip Flexors','Lats','Lower Back','Neck','Quadriceps','Shoulders','Triceps','Upper Back','Wrists'];
-
-            // Renders inline muscle tiers: primary bold/dark, secondary muted, tertiary more faded — same font size
-            function muscleDisplay(ex) {
-                const inputStyle = 'display:inline;border:none;padding:0;margin:0;background:transparent;font-family:inherit;';
-                let html = `<span style="font-weight:600;color:#1d1d1f;">${ex.primaryMuscle || '—'}</span>`;
-                if (ex.secondaryMuscle) html += ` <span style="font-weight:400;color:#86868b;">${ex.secondaryMuscle}</span>`;
-                if (ex.tertiaryMuscle)  html += ` <span style="font-weight:400;color:#c0c0c8;">${ex.tertiaryMuscle}</span>`;
-                return html;
-            }
-
-            // Renders a combobox input with datalist for muscle selection
+            const MUSCLE_OPTIONS = MUSCLE_OPTIONS_GLOBAL;
             function muscleCombo(id, val, placeholder) {
                 const listId = id + 'List';
                 const opts = MUSCLE_OPTIONS.map(m => '<option value="' + m + '">').join('');
@@ -4032,6 +4021,15 @@
 
             return { start, stop, showEmpty };
         })();
+
+        // muscleDisplay must be at outer scope — used by renderTimelineSection and other functions outside DOMContentLoaded
+        const MUSCLE_OPTIONS_GLOBAL = ['Abs','Adductors','Biceps','Calves','Chest','Forearms','Full Body','Glutes','Hamstrings','Hip Flexors','Lats','Lower Back','Neck','Quadriceps','Shoulders','Triceps','Upper Back','Wrists'];
+        function muscleDisplay(ex) {
+            let html = '<span style="font-weight:600;color:#1d1d1f;">' + (ex.primaryMuscle || ex.target || '—') + '</span>';
+            if (ex.secondaryMuscle) html += ' <span style="font-weight:400;color:#86868b;">' + ex.secondaryMuscle + '</span>';
+            if (ex.tertiaryMuscle)  html += ' <span style="font-weight:400;color:#c0c0c8;">' + ex.tertiaryMuscle  + '</span>';
+            return html;
+        }
 
         document.addEventListener('DOMContentLoaded', async function() {
             // Initialize DOM cache
