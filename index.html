@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499222 -->
+<!-- Version: 1775499223 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v4.22: CSV parser uses header-based mapping; sanity check on import; auto-fix corrupted localStorage — max 2 per primary muscle per phase — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
+    <!-- v4.23: Savasana no longer skipped on CSV import — empty primaryMuscle defaults to "None" for Final Rest; sanity check on import; auto-fix corrupted localStorage — max 2 per primary muscle per phase — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -6342,10 +6342,18 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     return parsedExercises;
                 }
                 
-                // Validate required fields
-                if (!exercise.phase || !exercise.exercise || !exercise.primaryMuscle || !exercise.position) {
+                // Validate required fields — Final Rest exercises don't need a primaryMuscle
+                if (!exercise.phase || !exercise.exercise || !exercise.position) {
                     console.warn(`Row ${i + 1}: Missing required field(s)`);
                     continue;
+                }
+                if (!exercise.primaryMuscle) {
+                    if (exercise.phase === 'Final Rest') {
+                        exercise.primaryMuscle = 'None';
+                    } else {
+                        console.warn(`Row ${i + 1}: Missing primaryMuscle`);
+                        continue;
+                    }
                 }
                 
                 if (exercise.duration % 5 !== 0 || exercise.rest % 5 !== 0) {
