@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499205 -->
+<!-- Version: 1775499217 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v4.5: muscleDisplay moved to outer scope — fixes history timeline blank render -->
+    <!-- v4.17: full through-line — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -2535,6 +2535,7 @@
                 const makeCard = (ex, colour) => {
                     const globalIdx = exercises.indexOf(ex);
                     const isCustom = ex._custom;
+                    const metaStr = `<span style="font-size:11px;color:#c0c0c8;">· ${ex.position} · ${ex.sides}x</span>`;
                     return `<div data-idx="${globalIdx}" draggable="true"
                         ondragstart="exDragStart(event,${globalIdx})"
                         ondragover="exDragOver(event)"
@@ -2543,9 +2544,9 @@
                         style="${cardStyle(colour)}">
                         <div style="width:4px;background:${colour};align-self:stretch;flex-shrink:0;"></div>
                         <span style="color:#c7c7cc;font-size:14px;cursor:grab;padding:0 10px;flex-shrink:0;">⠿</span>
-                        <div style="flex:1;padding:8px 4px 8px 0;min-width:0;">
-                            <div style="font-size:13px;font-weight:600;color:#1d1d1f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ex.exercise}${isCustom ? ' <span style="font-size:10px;background:#f0eef8;color:#667eea;padding:1px 6px;border-radius:10px;font-weight:600;">custom</span>' : ''}</div>
-                            <div style="font-size:11px;color:#86868b;margin-top:1px;">${muscleDisplay(ex)} · ${ex.position} · ${ex.sides}x</div>
+                        <div style="flex:1;padding:10px 4px 10px 0;min-width:0;">
+                            <div style="font-size:13px;font-weight:600;color:#1d1d1f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px;">${ex.exercise}${isCustom ? ' <span style="font-size:10px;background:#f0eef8;color:#667eea;padding:1px 6px;border-radius:10px;font-weight:600;">custom</span>' : ''}</div>
+                            <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">${muscleDisplayChips(ex)} ${metaStr}</div>
                         </div>
                         <div style="display:flex;gap:4px;padding:0 10px;flex-shrink:0;">
                             <button data-action="edit" data-idx="${globalIdx}" style="padding:5px 14px;font-size:11px;border-radius:20px;font-weight:600;color:#667eea;border:1.5px solid #c4bef0;background:white;cursor:pointer;font-family:inherit;">Edit</button>
@@ -2600,7 +2601,7 @@
                                 <div style="font-size:12px;color:#86868b;">${phaseExercises.length} exercises</div>
                                 <div style="color:#c7c7cc;font-size:11px;transform:rotate(${isOpen ? '180' : '0'}deg);transition:transform 0.2s;">▼</div>
                             </div>
-                            ${isOpen ? `<div style="border-top:1px solid #f0f0f5;">
+                            ${isOpen ? `<div style="border-top:1px solid #f0f0f5;padding:8px 8px 2px 8px;">
                                 ${phaseExercises.map(ex => makeCard(ex, colour)).join('')}
                             </div>` : ''}
                         </div>`;
@@ -4025,9 +4026,16 @@
         // muscleDisplay must be at outer scope — used by renderTimelineSection and other functions outside DOMContentLoaded
         const MUSCLE_OPTIONS_GLOBAL = ['Abs','Adductors','Biceps','Calves','Chest','Forearms','Full Body','Glutes','Hamstrings','Hip Flexors','Lats','Lower Back','Neck','Quadriceps','Shoulders','Triceps','Upper Back','Wrists'];
         function muscleDisplay(ex) {
-            let html = '<span style="font-weight:600;color:#1d1d1f;">' + (ex.primaryMuscle || ex.target || '—') + '</span>';
-            if (ex.secondaryMuscle) html += ' <span style="font-weight:400;color:#86868b;">' + ex.secondaryMuscle + '</span>';
-            if (ex.tertiaryMuscle)  html += ' <span style="font-weight:400;color:#c0c0c8;">' + ex.tertiaryMuscle  + '</span>';
+            return (ex.primaryMuscle || ex.target || '—');
+        }
+
+        // Chip-style muscle display — used only in Settings > Custom Exercises
+        function muscleDisplayChips(ex) {
+            const chipPrimary = 'font-size:11px;background:#f0eef8;color:#7c3aed;padding:2px 8px;border-radius:20px;font-weight:600;';
+            const chipOther   = 'font-size:11px;background:#f5f5f7;color:#86868b;padding:2px 8px;border-radius:20px;border:0.5px solid #e5e5e7;';
+            let html = '<span style="' + chipPrimary + '">' + (ex.primaryMuscle || ex.target || '—') + '</span>';
+            if (ex.secondaryMuscle) html += ' <span style="' + chipOther + '">' + ex.secondaryMuscle + '</span>';
+            if (ex.tertiaryMuscle)  html += ' <span style="' + chipOther + '">' + ex.tertiaryMuscle  + '</span>';
             return html;
         }
 
@@ -6468,59 +6476,73 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 };
             }
             
-            // BUILD POOLS ONCE - before retry loop
-            // Filter and shuffle Static Stretching exercises for Active/Deep Stretch reservation
-            const allStaticShuffled = exercisesForGen
-                .filter(e => e.phase === "Static Stretching" && e.exercise !== 'Savasana')
-                .filter(e => {
-                    const bp = (e.bodyPart || '').toLowerCase();
-                    if (selectedType === 'upper') return bp === 'upper' || bp === 'full';
-                    if (selectedType === 'lower') return bp === 'lower' || bp === 'full';
-                    return true;
-                })
-                .slice()
-                .sort(() => Math.random() - 0.5);
-            
-            // Use actual config max values
-            // For "All" mode, don't reserve - let Static Stretching phase use all exercises
-            // Active/Deep will be their own separate phases with their own promotion logic
-            // For long hold, Active/Deep exercises take significantly longer (75s vs 45s, 120s vs 90s)
-            // so reduce counts to avoid over-reserving budget from earlier phases
+            // Min/max counts needed for time estimation inside retry loop
             const maxActiveStretches = isAllExercises ? 0 : stretchConfig["Active Stretch"].max;
-            const maxDeepStretches = isAllExercises ? 0 : stretchConfig["Deep Stretch"].max;
+            const maxDeepStretches   = isAllExercises ? 0 : stretchConfig["Deep Stretch"].max;
             const minActiveStretches = isAllExercises ? 0 : stretchConfig["Active Stretch"].min;
-            const minDeepStretches = isAllExercises ? 0 : stretchConfig["Deep Stretch"].min;
-            
-            // Calculate reservation - reserve up to 40% of available OR actual max needed, whichever is smaller
-            // Skip reservation entirely for "All" mode
-            const totalAvailable = allStaticShuffled.length;
-            const maxReservable = isAllExercises ? 0 : Math.floor(totalAvailable * 0.4);
-            const totalNeeded = maxActiveStretches + maxDeepStretches;
-            const totalReserve = Math.min(totalNeeded, maxReservable);
-            
-            // Split proportionally based on config max values
-            const activeRatio = (maxActiveStretches + maxDeepStretches) > 0 ? maxActiveStretches / (maxActiveStretches + maxDeepStretches) : 0;
-            const activeStretchCount = Math.min(maxActiveStretches, Math.round(totalReserve * activeRatio));
-            const deepStretchCount = Math.min(maxDeepStretches, totalReserve - activeStretchCount);
-            
-            
-            // Reserve from end of shuffled list
-            const activeStretchReserved = new Set(
-                allStaticShuffled.slice(allStaticShuffled.length - totalReserve, allStaticShuffled.length - deepStretchCount).map(e => e.exercise)
-            );
-            const deepStretchReserved = new Set(
-                allStaticShuffled.slice(allStaticShuffled.length - deepStretchCount).map(e => e.exercise)
-            );
-            
-            // Build the Active Stretch pool (keeps original 45s duration, or 75s if longSession)
-            const activeStretchPool = allStaticShuffled
-                .filter(e => activeStretchReserved.has(e.exercise))
-                .map(e => ({...e, phase: "Active Stretch", duration: longSession ? 75 : 45}));
-            
-            // Build the Deep Stretch pool (90s duration normally, or 120s if longSession)
-            const deepStretchPool = allStaticShuffled
-                .filter(e => deepStretchReserved.has(e.exercise))
-                .map(e => ({...e, phase: "Deep Stretch", duration: longSession ? 120 : 90}));
+            const minDeepStretches   = isAllExercises ? 0 : stretchConfig["Deep Stretch"].min;
+
+            // ── SESSION TARGET SELECTION ──────────────────────────────────────────────
+            // Selects 2-3 muscle groups to anchor the session.
+            // Priority hierarchy: (1) explicit user focus, (2) Jumi priorities, (3) recency, (4) random
+            // Prep phases are NOT forced toward these targets — they support them naturally.
+            // Only stretch phases (Static, Active, Deep) are scored against session targets.
+            function selectSessionTargets(exList, recencyWts, focus, jumiPriorities) {
+                // 1. Explicit user focus — single dominant target
+                if (focus) return [focus];
+
+                // 2. Jumi increase priorities — use those as targets
+                if (jumiPriorities && jumiPriorities.length > 0) {
+                    const increases = jumiPriorities.filter(p => p.action === 'increase').map(p => p.target);
+                    if (increases.length > 0) return increases.slice(0, 3);
+                }
+
+                // 3. Recency-weighted random selection
+                // Get all unique primary muscles from the stretch library
+                const stretchMuscles = [...new Set(
+                    exList
+                        .filter(e => e.phase === 'Static Stretching')
+                        .map(e => e.primaryMuscle)
+                        .filter(Boolean)
+                )];
+
+                if (stretchMuscles.length === 0) return [];
+
+                // Score each muscle: higher = more neglected (lower recency weight = seen recently = lower score)
+                // recencyWts[exercise] is per-exercise, so we derive muscle recency from exercises
+                const muscleRecencyScore = {};
+                stretchMuscles.forEach(muscle => {
+                    const muscleExercises = exList.filter(e => e.primaryMuscle === muscle);
+                    // Average recency weight across exercises for this muscle (default 1.0 = not seen recently)
+                    const avgWeight = muscleExercises.reduce((sum, e) => sum + (recencyWts[e.exercise] || 1.0), 0) / muscleExercises.length;
+                    muscleRecencyScore[muscle] = avgWeight;
+                });
+
+                // Weighted random selection — muscles more neglected have higher chance
+                const targets = [];
+                const available = [...stretchMuscles];
+                const count = Math.min(3, available.length);
+
+                for (let i = 0; i < count; i++) {
+                    const totalWeight = available.reduce((sum, m) => sum + muscleRecencyScore[m], 0);
+                    let rand = Math.random() * totalWeight;
+                    for (const muscle of available) {
+                        rand -= muscleRecencyScore[muscle];
+                        if (rand <= 0) {
+                            targets.push(muscle);
+                            available.splice(available.indexOf(muscle), 1);
+                            break;
+                        }
+                    }
+                }
+
+                return targets;
+            }
+
+            // Extract Jumi priorities if this is a Jumi-generated routine
+            const jumiPriorities = prioritisedExercises ? (window._lastJumiPriorities || []) : [];
+            // sessionTargets computed inside retry loop after recency weights are available
+
 
             let bestRoutine = null;
             let bestTimeDiff = Infinity;
@@ -6699,28 +6721,82 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         if (!recencyWeights[ex.exercise]) recencyWeights[ex.exercise] = 0.75;
                     });
                 }
-                function weightedShuffle(arr) {
-                    return arr
+
+                // Compute session targets here so recency weights are available
+                // Session targets anchor the stretch phases — prep phases are not forced toward them
+                const sessionTargets = isAllExercises ? [] : selectSessionTargets(exercisesForGen, recencyWeights, selectedFocus, jumiPriorities);
+                const sessionTargetPool = {};
+                sessionTargets.forEach(m => { sessionTargetPool[m] = 1; });
+                // Builds a weighted muscle pool from a list of exercises
+                // primary = 1.0, secondary = 0.5, tertiary = 0.2
+                function buildMusclePool(exList) {
+                    const pool = {};
+                    exList.forEach(ex => {
+                        if (ex.primaryMuscle)   pool[ex.primaryMuscle]   = (pool[ex.primaryMuscle]   || 0) + 1.0;
+                        if (ex.secondaryMuscle) pool[ex.secondaryMuscle] = (pool[ex.secondaryMuscle] || 0) + 0.5;
+                        if (ex.tertiaryMuscle)  pool[ex.tertiaryMuscle]  = (pool[ex.tertiaryMuscle]  || 0) + 0.2;
+                    });
+                    return pool;
+                }
+
+                function weightedShuffle(arr, musclePool) {
+                    // Base shuffle using recency weights (no muscle pool)
+                    const recencyShuffle = a => a
                         .map(e => ({ e, sort: Math.random() * (recencyWeights[e.exercise] || 1.0) }))
                         .sort((a, b) => b.sort - a.sort)
                         .map(x => x.e);
+
+                    if (!musclePool) return recencyShuffle(arr);
+
+                    // With muscle pool: split into groups, shuffle each, then concatenate
+                    // This guarantees matching exercises are structurally first — 
+                    // randomness operates within each group, not across them
+                    const primaryMatch   = arr.filter(e => (musclePool[e.primaryMuscle]   || 0) > 0);
+                    const secondaryMatch = arr.filter(e => (musclePool[e.secondaryMuscle] || 0) > 0
+                                                        && (musclePool[e.primaryMuscle]   || 0) === 0);
+                    const tertiaryMatch  = arr.filter(e => (musclePool[e.tertiaryMuscle]  || 0) > 0
+                                                        && (musclePool[e.secondaryMuscle] || 0) === 0
+                                                        && (musclePool[e.primaryMuscle]   || 0) === 0);
+                    const noMatch        = arr.filter(e => (musclePool[e.primaryMuscle]   || 0) === 0
+                                                        && (musclePool[e.secondaryMuscle] || 0) === 0
+                                                        && (musclePool[e.tertiaryMuscle]  || 0) === 0);
+
+                    return [
+                        ...recencyShuffle(primaryMatch),
+                        ...recencyShuffle(secondaryMatch),
+                        ...recencyShuffle(tertiaryMatch),
+                        ...recencyShuffle(noMatch)
+                    ];
                 }
+
+                let prepMusclePool = null;    // kept for cool down — built after stretch phases
+                let stretchMusclePool = null;
+
+                // Determine which pool to use for a given phase:
+                // Prep phases (Warm-Up, Foam Roller, Mobility) — no muscle forcing, recency only
+                // Stretch phases (Static, Active, Deep) — use sessionTargetPool
+                // Cool Down — use stretchMusclePool (built after stretch phases)
+                const PREP_PHASES    = new Set(['Warm-Up','Foam Roller','Mobility']);
+                const STRETCH_PHASES = new Set(['Static Stretching','Active Stretch','Deep Stretch']);
 
                 // Select exercises for each phase
                 for (let phase of phases) {
                     let allPhaseExercises;
 
-                    // Standard pool selection — same for Quick Start and Jumi
-                    // (Jumi's preferred exercises are already at the front of exercisesForGen via applyJumiPriority)
+                    // Standard pool selection
                     if (phase === "Active Stretch") {
-                        allPhaseExercises = activeStretchPool.filter(e => !usedExerciseNames.has(e.exercise));
+                        // Draw from full Static library (not pre-reserved) — phase tagged at selection time
+                        allPhaseExercises = exercisesForGen
+                            .filter(e => e.phase === "Static Stretching" && !usedExerciseNames.has(e.exercise))
+                            .map(e => ({...e, phase: "Active Stretch", duration: longSession ? 75 : 45}));
                     } else if (phase === "Deep Stretch") {
-                        allPhaseExercises = deepStretchPool.filter(e => !usedExerciseNames.has(e.exercise));
+                        // Draw from full Static library — exclude already used (incl. Active Stretch)
+                        allPhaseExercises = exercisesForGen
+                            .filter(e => e.phase === "Static Stretching" && !usedExerciseNames.has(e.exercise))
+                            .map(e => ({...e, phase: "Deep Stretch", duration: longSession ? 120 : 90}));
                     } else if (phase === "Static Stretching") {
                         allPhaseExercises = exercisesForGen.filter(e =>
-                            e.phase === "Static Stretching" &&
-                            !activeStretchReserved.has(e.exercise) &&
-                            !deepStretchReserved.has(e.exercise)
+                            e.phase === "Static Stretching"
                         );
                     } else {
                         allPhaseExercises = exercisesForGen.filter(e => e.phase === phase);
@@ -6733,13 +6809,17 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         return true;
                     });
 
+                    // All phases scored against session targets — full through-line
+                    // Cool Down uses stretchMusclePool instead (built after stretch phases)
+                    const phasePool = phase === 'Cool Down' ? stretchMusclePool : (sessionTargetPool && Object.keys(sessionTargetPool).length > 0 ? sessionTargetPool : null);
+
                     // Apply focus and body part filtering
                     let focusExercises = [];
                     if (selectedFocus && !isAllExercises) {
                         focusExercises = allPhaseExercises.filter(e => e.primaryMuscle === selectedFocus);
                         let otherExercises = allPhaseExercises.filter(e => e.primaryMuscle !== selectedFocus);
-                        focusExercises = weightedShuffle(focusExercises);
-                        otherExercises = weightedShuffle(otherExercises);
+                        focusExercises = weightedShuffle(focusExercises, phasePool);
+                        otherExercises = weightedShuffle(otherExercises, phasePool);
                         allPhaseExercises = [...focusExercises, ...otherExercises];
                     }
 
@@ -6749,15 +6829,15 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                             const bp = (e.bodyPart || '').toLowerCase();
                             return bp === 'upper' || bp === 'full';
                         });
-                        allPhaseExercises = weightedShuffle(allPhaseExercises);
+                        allPhaseExercises = weightedShuffle(allPhaseExercises, phasePool);
                     } else if (selectedType === 'lower') {
                         allPhaseExercises = allPhaseExercises.filter(e => {
                             const bp = (e.bodyPart || '').toLowerCase();
                             return bp === 'lower' || bp === 'full';
                         });
-                        allPhaseExercises = weightedShuffle(allPhaseExercises);
+                        allPhaseExercises = weightedShuffle(allPhaseExercises, phasePool);
                     } else {
-                        allPhaseExercises = weightedShuffle(allPhaseExercises);
+                        allPhaseExercises = weightedShuffle(allPhaseExercises, phasePool);
                     }
                     
                     // Safety check: if no exercises after filtering, skip this phase
@@ -6795,6 +6875,10 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                             addedNames.add(guaranteedEx.exercise);
                             totalTime += calculateExerciseTime(guaranteedEx);
                             usedExerciseNames.add(guaranteedEx.exercise);
+                            if (STRETCH_PHASES.has(phase)) {
+                                const m = guaranteedEx.primaryMuscle || '';
+                                muscleCountInPhase[m] = (muscleCountInPhase[m] || 0) + 1;
+                            }
                             phaseCount++;
                             
                         }
@@ -6811,9 +6895,19 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         phase === 'Cool Down'       ? estimatedCoolDownTime : 0;
                     const effectiveReserved = Math.max(0, reservedTime - phaseReserved);
                     
+                    // Track per-muscle counts for variety cap (stretch phases only)
+                    const muscleCountInPhase = {};
+                    const STRETCH_VARIETY_MAX = 2; // max exercises per primary muscle per stretch phase
+
                     for (const ex of shuffled) {
                         if (phaseCount >= phaseConf.max) break;
-                        if (addedNames.has(ex.exercise)) continue; // Skip - already added this exercise
+                        if (addedNames.has(ex.exercise)) continue;
+
+                        // Variety cap: in stretch phases, limit per primary muscle to STRETCH_VARIETY_MAX
+                        if (STRETCH_PHASES.has(phase) && !isAllExercises) {
+                            const m = ex.primaryMuscle || '';
+                            if ((muscleCountInPhase[m] || 0) >= STRETCH_VARIETY_MAX) continue;
+                        }
                         
                         const modifiedEx = {...ex};
                         
@@ -6833,6 +6927,10 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         addedNames.add(ex.exercise);
                         totalTime += exTime;
                         usedExerciseNames.add(ex.exercise);
+                        if (STRETCH_PHASES.has(phase)) {
+                            const m = ex.primaryMuscle || '';
+                            muscleCountInPhase[m] = (muscleCountInPhase[m] || 0) + 1;
+                        }
                         phaseCount++;
                     }
                     
@@ -6860,6 +6958,12 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     }
                     
                     routine.push(...phaseExercises);
+
+                    // After stretch phases, build muscle pool to bias cool down selection
+                    if (phase === 'Deep Stretch' && stretchMusclePool === null) {
+                        const stretchExercises = routine.filter(e => ['Static Stretching','Active Stretch','Deep Stretch'].includes(e.phase));
+                        stretchMusclePool = buildMusclePool(stretchExercises);
+                    }
                 }
 
                 
@@ -6880,22 +6984,19 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 
                 // Filter by body type, then randomize (case-insensitive)
                 if (selectedType === 'upper') {
-                    // Upper Body: only include upper + full exercises
                     coolDownExercises = coolDownExercises.filter(e => {
                         const bp = (e.bodyPart || '').toLowerCase();
                         return bp === 'upper' || bp === 'full';
                     });
-                    coolDownExercises = weightedShuffle(coolDownExercises);
+                    coolDownExercises = weightedShuffle(coolDownExercises, stretchMusclePool);
                 } else if (selectedType === 'lower') {
-                    // Lower Body: only include lower + full exercises
                     coolDownExercises = coolDownExercises.filter(e => {
                         const bp = (e.bodyPart || '').toLowerCase();
                         return bp === 'lower' || bp === 'full';
                     });
-                    coolDownExercises = weightedShuffle(coolDownExercises);
+                    coolDownExercises = weightedShuffle(coolDownExercises, stretchMusclePool);
                 } else {
-                    // Full Body: include all exercises
-                    coolDownExercises = weightedShuffle(coolDownExercises);
+                    coolDownExercises = weightedShuffle(coolDownExercises, stretchMusclePool);
                 }
                 
                 let coolDownAdded = 0;
@@ -7404,6 +7505,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             const btn = document.getElementById('modeGenerateBtn');
             const rw = document.getElementById('routineDisplayWrapper');
             if (rw) rw.style.display = 'block';
+            window._lastJumiPriorities = []; // clear any stale Jumi priorities
             await generateRoutine();
             if (btn) { btn.innerHTML = '&#8635; Regenerate'; btn.classList.remove('shimmer'); }
         }
@@ -8810,17 +8912,24 @@ Please rank the candidates for each phase using the generate_routine tool.`;
         // ── JUMI: Reorder candidate pools based on priorities ──
         // Returns { result, debugInfo } where debugInfo surfaces priority effectiveness
         function applyPriorityBias(routineData, priorities) {
+            priorities = priorities || [];
             const debugInfo = { priorities: priorities.map(p => `${p.action} ${p.target}`), phases: {} };
-
-            if (!priorities || priorities.length === 0) return { result: routineData, debugInfo };
 
             const PHASE_KEYS = ['warm_up','foam_roller','mobility','static_stretching','active_stretch','deep_stretch','splits','cool_down'];
             const PHASE_MAP = { warm_up:'Warm-Up', foam_roller:'Foam Roller', mobility:'Mobility', static_stretching:'Static Stretching', active_stretch:'Active Stretch', deep_stretch:'Deep Stretch', splits:'Splits', cool_down:'Cool Down' };
+            const PREP_KEYS    = new Set(['warm_up','foam_roller','mobility']);
+            const STRETCH_KEYS = new Set(['static_stretching','active_stretch','deep_stretch']);
 
             const result = { ...routineData };
 
             const increasePriorities = priorities.filter(p => p.action === 'increase');
             const reducePriorities = priorities.filter(p => p.action === 'reduce');
+
+            // Accumulate muscle pools as we process phases
+            let jumiPrepPool    = null;
+            let jumiStretchPool = null;
+            const prepExObjs    = [];
+            const stretchExObjs = [];
 
             for (const phaseKey of PHASE_KEYS) {
                 const candidates = result[phaseKey];
@@ -8836,27 +8945,37 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                     if (!found) {
                         found = exercises.find(e => e.exercise === name);
                         if (found) {
-                            
                         } else {
-                            
                             return { exercise: name, primaryMuscle: '' };
                         }
                     }
                     return found;
                 }).filter(Boolean);
 
-                // Score each candidate
-                // First priority: weight 4 (dominant), second: weight 1 (secondary)
+                // Determine which muscle pool applies to this phase
+                const musclePool = STRETCH_KEYS.has(phaseKey) ? jumiPrepPool
+                                 : phaseKey === 'cool_down'    ? jumiStretchPool
+                                 : null;
+
+                // Score each candidate — priority bias + muscle pool grouping
                 const scored = candidateObjs.map(ex => {
                     let score = 0;
+                    // Priority bias
                     priorities.forEach((p, i) => {
                         const weight = i === 0 ? 4 : 1;
                         const matches = (ex.primaryMuscle || '').toLowerCase() === p.target.toLowerCase();
                         if (matches) {
                             if (p.action === 'increase') { score += weight; phaseDebug.increaseMatches++; }
-                            else { score -= (weight + 10); phaseDebug.reduceMatches++; } // hard push to bottom
+                            else { score -= (weight + 10); phaseDebug.reduceMatches++; }
                         }
                     });
+                    // Muscle pool grouping: primary match = group 3, secondary = group 2, tertiary = group 1, none = group 0
+                    // Multiplied by a large base so grouping always dominates over priority scoring within the same tier
+                    if (musclePool) {
+                        if ((musclePool[ex.primaryMuscle]   || 0) > 0) score += 30;
+                        else if ((musclePool[ex.secondaryMuscle] || 0) > 0) score += 20;
+                        else if ((musclePool[ex.tertiaryMuscle]  || 0) > 0) score += 10;
+                    }
                     return { ex, score };
                 });
 
@@ -8870,20 +8989,18 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                     );
                     if (isReduced) {
                         reducedCount++;
-                        if (reducedCount > 1) return null; // cap at 1
+                        if (reducedCount > 1) return null;
                     }
                     return s;
                 }).filter(Boolean);
 
-                // STEP 2 — Guarantee "increase" visibility: ensure at least 1 increase-matched
-                // exercise appears in the top half of the pool where matches exist
+                // STEP 2 — Guarantee "increase" visibility
                 const increaseMatches = capped.filter(s =>
                     increasePriorities.some(p =>
                         (s.ex.primaryMuscle || '').toLowerCase() === p.target.toLowerCase()
                     )
                 );
                 if (increaseMatches.length > 0) {
-                    // Move the first increase match to position 0 if not already in top half
                     const firstMatchIdx = capped.indexOf(increaseMatches[0]);
                     const topHalf = Math.ceil(capped.length / 2);
                     if (firstMatchIdx > topHalf) {
@@ -8899,6 +9016,18 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                     const orig = candidates.find(c => (typeof c === 'string' ? c : c.exercise) === s.ex.exercise);
                     return orig || s.ex.exercise;
                 });
+
+                // Accumulate exercise objects for pool building
+                if (PREP_KEYS.has(phaseKey)) {
+                    prepExObjs.push(...capped.map(s => s.ex));
+                    // Build prep pool after mobility (last prep phase)
+                    if (phaseKey === 'mobility') jumiPrepPool = buildMusclePool(prepExObjs);
+                }
+                if (STRETCH_KEYS.has(phaseKey)) {
+                    stretchExObjs.push(...capped.map(s => s.ex));
+                    // Build stretch pool after deep_stretch (last stretch phase)
+                    if (phaseKey === 'deep_stretch') jumiStretchPool = buildMusclePool(stretchExObjs);
+                }
             }
 
             return { result, debugInfo };
@@ -8946,6 +9075,7 @@ RULES:
 - Write like a human coach speaking to a client. Avoid analytical or report-like phrasing.
 - If any column name appears in your output, rewrite that sentence.
 - If no clear pattern exists in the data, say so rather than forcing a narrative.
+- Where relevant, briefly note the muscle thread running through the session — how the prep phases (Warm-Up, Foam Roller, Mobility) lead into the stretch phases, and how the Cool Down settles the same muscles. This should feel like a natural observation, not a structural description. Only include it if it adds meaning.
 
 PHASE GLOSSARY — use this to understand what each phase achieves, but do not narrate it exercise by exercise:
 - Warm-Up: prepares the body through movement; increases blood flow and joint temperature
@@ -8957,7 +9087,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
 - Splits: sport-specific positions; progressive loading toward full range
 - Cool Down: parasympathetic reset; consolidates the session's work
 - Final Rest: full body stillness; integrates the session neurologically`;
-            const initialMessage = `Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}.${focusNote}${historyNote}${priorityNote}\n\nThis session's exercises:\n${exerciseList}\n\nWrite 3 paragraphs (100-150 words total). Paragraph 1: describe a real behavioural pattern from the history in plain language — what has been relied on, avoided, or neglected. Paragraph 2: explain the decision this session makes — what changes, what trade-off is being made. If priorities are provided, anchor this paragraph to them explicitly. Paragraph 3: explain what this builds toward, linked to the goals. Translate all data into natural language. Never reference column names. Name exercises only as evidence. Write like a coach, not an analyst.`;
+            const initialMessage = `Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}.${focusNote}${historyNote}${priorityNote}\n\nThis session's exercises:\n${exerciseList}\n\nWrite 3 paragraphs (100-150 words total). Paragraph 1: describe a real behavioural pattern from the history in plain language — what has been relied on, avoided, or neglected. Paragraph 2: explain the decision this session makes — what changes, what trade-off is being made. If priorities are provided, anchor this paragraph to them explicitly. Where relevant, briefly note how the prep phases lead into the stretches and the cool down settles the same muscles — only if this adds meaning. Paragraph 3: explain what this builds toward, linked to the goals. Translate all data into natural language. Never reference column names. Name exercises only as evidence. Write like a coach, not an analyst.`;
             try {
                 const response = await fetch('https://flexibilityapp3849.netlify.app/.netlify/functions/coach', {
                     method: 'POST',
@@ -9079,6 +9209,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                 // Apply priority bias first, then Jumi's ranked order
                 const { result: biasedRoutineData } = applyPriorityBias(routineData, scopedPriorities);
                 const prioritised = applyJumiPriority(biasedRoutineData);
+                window._lastJumiPriorities = scopedPriorities; // expose for selectSessionTargets
                 await generateRoutine(prioritised);
 
                 // Calculate coverage — how many selected exercises matched each priority
