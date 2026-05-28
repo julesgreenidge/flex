@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499223 -->
+<!-- Version: 1775499224 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v4.23: Savasana no longer skipped on CSV import — empty primaryMuscle defaults to "None" for Final Rest; sanity check on import; auto-fix corrupted localStorage — max 2 per primary muscle per phase — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
+    <!-- v4.24: padding fix — custom routine builder cards no longer flush to phase edge — empty primaryMuscle defaults to "None" for Final Rest; sanity check on import; auto-fix corrupted localStorage — max 2 per primary muscle per phase — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -5207,7 +5207,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         
                         html += `
                             <tr>
-                                <td colspan="5" style="padding: 0 0 8px 0;">
+                                <td colspan="5" style="padding: 0 8px 8px 8px;">
                                     <div draggable="true" 
                                          data-exercise="${exData}"
                                          style="padding: 7px 10px; background: white; border-radius: 8px; border: 1.5px solid #c7c7cc; display: flex; align-items: center; gap: 10px; cursor: move; transition: all 0.2s;"
