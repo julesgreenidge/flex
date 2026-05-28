@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499224 -->
+<!-- Version: 1775499226 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v4.24: padding fix — custom routine builder cards no longer flush to phase edge — empty primaryMuscle defaults to "None" for Final Rest; sanity check on import; auto-fix corrupted localStorage — max 2 per primary muscle per phase — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
+    <!-- v4.26: secondary/tertiary muscle usage tracked in history — recency scoring and Jumi context updated — routineHistory updated to match current exercise library on load no longer flush to phase edge — empty primaryMuscle defaults to "None" for Final Rest; sanity check on import; auto-fix corrupted localStorage — max 2 per primary muscle per phase — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -4158,6 +4158,47 @@
                         console.log('✓ Migrated Front Splits to Splits phase');
                     }
                     
+                    // Migrate routineHistory — update muscle fields to match current exercise library
+                    // Prevents stale muscle names (e.g. "Hips") skewing recency weights and Jumi context
+                    try {
+                        const history = JSON.parse(localStorage.getItem('routineHistory') || '[]');
+                        if (history.length > 0) {
+                            // Build lookup from current exercise library by name
+                            const exerciseLookup = {};
+                            exercises.forEach(ex => { exerciseLookup[ex.exercise] = ex; });
+
+                            let historyChanged = false;
+                            const updatedHistory = history.map(session => {
+                                if (!session.routine) return session;
+                                const updatedRoutine = session.routine.map(ex => {
+                                    const current = exerciseLookup[ex.exercise];
+                                    if (!current) return ex;
+                                    // Check if any muscle field differs from current library
+                                    const needsUpdate =
+                                        ex.primaryMuscle   !== current.primaryMuscle   ||
+                                        ex.secondaryMuscle !== current.secondaryMuscle  ||
+                                        ex.tertiaryMuscle  !== current.tertiaryMuscle;
+                                    if (!needsUpdate) return ex;
+                                    historyChanged = true;
+                                    return {
+                                        ...ex,
+                                        primaryMuscle:   current.primaryMuscle,
+                                        secondaryMuscle: current.secondaryMuscle,
+                                        tertiaryMuscle:  current.tertiaryMuscle,
+                                    };
+                                });
+                                return {...session, routine: updatedRoutine};
+                            });
+
+                            if (historyChanged) {
+                                localStorage.setItem('routineHistory', JSON.stringify(updatedHistory));
+                                console.log('✓ Migrated routineHistory muscle fields to match current library');
+                            }
+                        }
+                    } catch(e) {
+                        console.warn('History muscle migration failed:', e);
+                    }
+
                     // Update focus dropdown with saved exercises
                     const uniqueTargets = [...new Set(exercises.map(ex => ex.primaryMuscle))].sort();
                     const focusSelect = document.getElementById('focusSelect');
@@ -6553,14 +6594,21 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
                 if (stretchMuscles.length === 0) return [];
 
-                // Score each muscle: higher = more neglected (lower recency weight = seen recently = lower score)
-                // recencyWts[exercise] is per-exercise, so we derive muscle recency from exercises
+                // Score each muscle: higher = more neglected
+                // Each exercise contributes to its primary muscle (full weight),
+                // secondary muscle (0.5 weight), and tertiary muscle (0.2 weight)
                 const muscleRecencyScore = {};
                 stretchMuscles.forEach(muscle => {
-                    const muscleExercises = exList.filter(e => e.primaryMuscle === muscle);
-                    // Average recency weight across exercises for this muscle (default 1.0 = not seen recently)
-                    const avgWeight = muscleExercises.reduce((sum, e) => sum + (recencyWts[e.exercise] || 1.0), 0) / muscleExercises.length;
-                    muscleRecencyScore[muscle] = avgWeight;
+                    // Accumulate weighted recency across all exercises that hit this muscle
+                    let totalWeight = 0;
+                    let totalContribution = 0;
+                    exList.forEach(e => {
+                        const recency = recencyWts[e.exercise] || 1.0;
+                        if (e.primaryMuscle === muscle)   { totalWeight += 1.0; totalContribution += recency * 1.0; }
+                        if (e.secondaryMuscle === muscle) { totalWeight += 0.5; totalContribution += recency * 0.5; }
+                        if (e.tertiaryMuscle === muscle)  { totalWeight += 0.2; totalContribution += recency * 0.2; }
+                    });
+                    muscleRecencyScore[muscle] = totalWeight > 0 ? totalContribution / totalWeight : 1.0;
                 });
 
                 // Weighted random selection — muscles more neglected have higher chance
@@ -8716,13 +8764,15 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 lastSeenDaysAgo: daysAgo(now - exLastSeen[name])
             })).sort((a, b) => a.lastSeenDaysAgo - b.lastSeenDaysAgo);
 
-            // Muscle group frequency (last 30 days)
+            // Muscle group frequency (last 30 days) — primary counts fully, secondary at 0.5, tertiary at 0.2
             const thirtyDays = Date.now() - (30 * 24 * 60 * 60 * 1000);
             const muscleFreq = {};
             history.filter(s => new Date(s.date).getTime() >= thirtyDays).forEach(s => {
                 (s.routine || []).forEach(e => {
-                    const m = e.primaryMuscle || e.target;
-                    if (m) muscleFreq[m] = (muscleFreq[m] || 0) + 1;
+                    const pm = e.primaryMuscle || e.target;
+                    if (pm) muscleFreq[pm] = (muscleFreq[pm] || 0) + 1.0;
+                    if (e.secondaryMuscle) muscleFreq[e.secondaryMuscle] = (muscleFreq[e.secondaryMuscle] || 0) + 0.5;
+                    if (e.tertiaryMuscle)  muscleFreq[e.tertiaryMuscle]  = (muscleFreq[e.tertiaryMuscle]  || 0) + 0.2;
                 });
             });
 
