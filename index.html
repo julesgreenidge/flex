@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499218 -->
+<!-- Version: 1775499220 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v4.18: fix muscleCountInPhase used before declaration — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
+    <!-- v4.20: buildMusclePool moved to outer scope — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -6352,6 +6352,18 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
         }
 
         // ===== ROUTINE GENERATION =====
+
+        // Builds a weighted muscle pool from a list of exercises
+        // primary = 1.0, secondary = 0.5, tertiary = 0.2
+        function buildMusclePool(exList) {
+            const pool = {};
+            exList.forEach(ex => {
+                if (ex.primaryMuscle)   pool[ex.primaryMuscle]   = (pool[ex.primaryMuscle]   || 0) + 1.0;
+                if (ex.secondaryMuscle) pool[ex.secondaryMuscle] = (pool[ex.secondaryMuscle] || 0) + 0.5;
+                if (ex.tertiaryMuscle)  pool[ex.tertiaryMuscle]  = (pool[ex.tertiaryMuscle]  || 0) + 0.2;
+            });
+            return pool;
+        }
         async function generateRoutine(prioritisedExercises) {
             // Hide start button to prevent starting outdated routine if user re-generates
             
@@ -6727,17 +6739,6 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 const sessionTargets = isAllExercises ? [] : selectSessionTargets(exercisesForGen, recencyWeights, selectedFocus, jumiPriorities);
                 const sessionTargetPool = {};
                 sessionTargets.forEach(m => { sessionTargetPool[m] = 1; });
-                // Builds a weighted muscle pool from a list of exercises
-                // primary = 1.0, secondary = 0.5, tertiary = 0.2
-                function buildMusclePool(exList) {
-                    const pool = {};
-                    exList.forEach(ex => {
-                        if (ex.primaryMuscle)   pool[ex.primaryMuscle]   = (pool[ex.primaryMuscle]   || 0) + 1.0;
-                        if (ex.secondaryMuscle) pool[ex.secondaryMuscle] = (pool[ex.secondaryMuscle] || 0) + 0.5;
-                        if (ex.tertiaryMuscle)  pool[ex.tertiaryMuscle]  = (pool[ex.tertiaryMuscle]  || 0) + 0.2;
-                    });
-                    return pool;
-                }
 
                 function weightedShuffle(arr, musclePool) {
                     // Base shuffle using recency weights (no muscle pool)
@@ -9245,7 +9246,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
 
             } catch(err) {
                 console.error('Jumi generation error:', err.message, err.stack);
-                if (domCache.routineDisplay) domCache.routineDisplay.innerHTML = '<div style="padding:40px;text-align:center;color:#86868b;">Could not reach Jumi. Please check your connection.</div>';
+                if (domCache.routineDisplay) domCache.routineDisplay.innerHTML = '<div style="padding:40px;text-align:center;color:#86868b;">Could not reach Jumi. Please check your connection.<br><br><small style="font-size:11px;color:#c0c0c8;">' + (err.message || 'Unknown error') + '</small></div>';
             }
 
             if (btn) btn.disabled = false;
