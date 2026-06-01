@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499234 -->
+<!-- Version: 1775499235 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1639,7 +1639,7 @@
         }
     </style>
 <meta name="build-date" content="01 Jun 2026">
-<meta name="app-version" content="4.33">
+<meta name="app-version" content="4.34">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -2340,7 +2340,7 @@
             });
 
             // Settings tab navigation
-            const settingsNavBtns = ['settingsGoalsBtn', 'settingsQuickStartBtn', 'settingsExerciseDurationBtn', 'settingsSoundBtn', 'settingsFrontSplitsBtn', 'settingsCustomExercisesBtn', 'settingsBackupBtn', 'settingsVersionBtn', 'settingsKeyboardBtn'];
+            const settingsNavBtns = ['settingsGoalsBtn', 'settingsQuickStartBtn', 'settingsExerciseDurationBtn', 'settingsSoundBtn', 'settingsFrontSplitsBtn', 'settingsCustomExercisesBtn', 'settingsBackupBtn', 'settingsVersionBtn', 'settingsKeyboardBtn', 'settingsExternalDataBtn'];
             settingsNavBtns.filter(id => id !== 'settingsCustomExercisesBtn').forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.addEventListener('click', () => {
@@ -2348,7 +2348,7 @@
                     if (nb) nb.style.display = 'none';
                 });
             });
-            const settingsContentPanels = ['settingsGoalsContent', 'settingsQuickStartContent', 'settingsExerciseDurationContent', 'settingsSoundContent', 'settingsFrontSplitsContent', 'settingsCustomExercisesContent', 'settingsBackupContent', 'settingsVersionContent', 'settingsKeyboardContent'];
+            const settingsContentPanels = ['settingsGoalsContent', 'settingsQuickStartContent', 'settingsExerciseDurationContent', 'settingsSoundContent', 'settingsFrontSplitsContent', 'settingsCustomExercisesContent', 'settingsBackupContent', 'settingsVersionContent', 'settingsKeyboardContent', 'settingsExternalDataContent'];
 
             function activateSettingsTab(activeId, activeContent) {
                 settingsNavBtns.forEach(id => document.getElementById(id).classList.remove('active'));
@@ -2762,6 +2762,11 @@
 
             document.getElementById('settingsBackupBtn').addEventListener('click', function() {
                 activateSettingsTab('settingsBackupBtn', 'settingsBackupContent');
+            });
+
+            document.getElementById('settingsExternalDataBtn').addEventListener('click', function() {
+                activateSettingsTab('settingsExternalDataBtn', 'settingsExternalDataContent');
+                renderFitbodStatus();
             });
 
             document.getElementById('settingsVersionBtn').addEventListener('click', function() {
@@ -9009,10 +9014,163 @@ ${contextTable}
 
 Please rank the candidates for each phase using the generate_routine tool.`;
 
-            return { systemPrompt, userMessage };
+            const fitbodContext = buildFitbodContext();
+            const fitbodNote = fitbodContext ? `\n\n${fitbodContext}` : '';
+
+            return { systemPrompt, userMessage: userMessage + fitbodNote };
         }
 
-        // ── JUMI: Parse priorities from text reply ──
+        // ── FITBOD EXTERNAL DATA ──────────────────────────────────────────────────
+
+        const FITBOD_MUSCLE_MAP = {
+            'Ab Rollout':                              { primary: 'Abs',         secondary: 'Lower Back',  tertiary: 'Hip Flexors' },
+            'Backward Arm Circle':                     { primary: 'Shoulders',   secondary: 'Upper Back',  tertiary: 'Chest' },
+            'Biceps Curl To Shoulder Press':           { primary: 'Biceps',      secondary: 'Shoulders',   tertiary: 'Triceps' },
+            'Butt Kick':                               { primary: 'Hamstrings',  secondary: 'Glutes',      tertiary: 'Calves' },
+            'Butterfly Stretch':                       { primary: 'Adductors',   secondary: 'Hip Flexors' },
+            'Chest Doorway Stretch':                   { primary: 'Chest',       secondary: 'Shoulders',   tertiary: 'Biceps' },
+            'Couch Stretch':                           { primary: 'Hip Flexors', secondary: 'Quadriceps',  tertiary: 'Abs' },
+            'Double Leg Bridge':                       { primary: 'Glutes',      secondary: 'Hamstrings',  tertiary: 'Abs' },
+            'Dual Kettlebell Front Squat':             { primary: 'Quadriceps',  secondary: 'Glutes',      tertiary: 'Calves' },
+            'Dumbbell Bent Over Row':                  { primary: 'Upper Back',  secondary: 'Lats',        tertiary: 'Biceps' },
+            'Dumbbell Bicep Curl':                     { primary: 'Biceps',      secondary: 'Forearms' },
+            'Dumbbell Curtsy Lunge':                   { primary: 'Glutes',      secondary: 'Adductors',   tertiary: 'Quadriceps' },
+            'Dumbbell Floor Press':                    { primary: 'Chest',       secondary: 'Triceps',     tertiary: 'Shoulders' },
+            'Dumbbell Hang Snatch':                    { primary: 'Shoulders',   secondary: 'Upper Back',  tertiary: 'Glutes' },
+            'Dumbbell Kickbacks':                      { primary: 'Triceps',     secondary: 'Shoulders' },
+            'Dumbbell Romanian Deadlift':              { primary: 'Hamstrings',  secondary: 'Glutes',      tertiary: 'Lower Back' },
+            'Dumbbell Side Bend':                      { primary: 'Abs',         secondary: 'Lower Back' },
+            'Dumbbell Superman':                       { primary: 'Lower Back',  secondary: 'Glutes',      tertiary: 'Upper Back' },
+            'Foam Roll Hamstrings':                    { primary: 'Hamstrings',  secondary: 'Calves' },
+            'Foam Roll Hip Flexors':                   { primary: 'Hip Flexors', secondary: 'Quadriceps' },
+            'Foam Roll Hip Thrust':                    { primary: 'Glutes',      secondary: 'Hamstrings' },
+            'Foam Roll Lats':                          { primary: 'Lats',        secondary: 'Upper Back' },
+            'Foam Roll Quadriceps':                    { primary: 'Quadriceps',  secondary: 'Hip Flexors' },
+            'Foam Roller Hamstring Bridge':            { primary: 'Hamstrings',  secondary: 'Glutes',      tertiary: 'Abs' },
+            'Forward Arm Circle':                      { primary: 'Shoulders',   secondary: 'Chest',       tertiary: 'Upper Back' },
+            'Goblet Squat':                            { primary: 'Quadriceps',  secondary: 'Glutes',      tertiary: 'Calves' },
+            'Hip Flow':                                { primary: 'Hip Flexors', secondary: 'Glutes',      tertiary: 'Adductors' },
+            'Hip Hinge':                               { primary: 'Hamstrings',  secondary: 'Glutes',      tertiary: 'Lower Back' },
+            'Incline Dumbbell Row':                    { primary: 'Upper Back',  secondary: 'Lats',        tertiary: 'Biceps' },
+            'Incline Dumbbell Squeeze Press':          { primary: 'Chest',       secondary: 'Triceps',     tertiary: 'Shoulders' },
+            'Kettlebell Swing American':               { primary: 'Glutes',      secondary: 'Hamstrings',  tertiary: 'Lower Back' },
+            'Lateral Leg Swing':                       { primary: 'Adductors',   secondary: 'Abductors',   tertiary: 'Hip Flexors' },
+            'Leg Pull-In':                             { primary: 'Abs',         secondary: 'Hip Flexors' },
+            'Leg Swing':                               { primary: 'Hip Flexors', secondary: 'Hamstrings',  tertiary: 'Glutes' },
+            'Lunge':                                   { primary: 'Quadriceps',  secondary: 'Glutes',      tertiary: 'Hip Flexors' },
+            'Oblique Crunch':                          { primary: 'Abs',         secondary: 'Lower Back' },
+            "Prone W's":                               { primary: 'Upper Back',  secondary: 'Shoulders',   tertiary: 'Lats' },
+            'Push Up':                                 { primary: 'Chest',       secondary: 'Triceps',     tertiary: 'Shoulders' },
+            'Side Bridge':                             { primary: 'Abs',         secondary: 'Glutes',      tertiary: 'Adductors' },
+            'Single Dumbbell Sumo Squat':              { primary: 'Adductors',   secondary: 'Glutes',      tertiary: 'Quadriceps' },
+            'Single Leg Foam Roller Hamstring Bridge': { primary: 'Hamstrings',  secondary: 'Glutes',      tertiary: 'Abs' },
+            'Standing Dumbbell Calf Raise':            { primary: 'Calves' },
+            'Standing Dumbbell Shoulder Press':        { primary: 'Shoulders',   secondary: 'Triceps',     tertiary: 'Upper Back' },
+            'Standing Dumbbell Tricep Extension':      { primary: 'Triceps',     secondary: 'Shoulders' },
+            'Walking':                                 { primary: 'Calves',      secondary: 'Hamstrings',  tertiary: 'Glutes' },
+            'Wall Sit':                                { primary: 'Quadriceps',  secondary: 'Glutes',      tertiary: 'Hamstrings' },
+        };
+
+        window.importFitbodCSV = function(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const lines = e.target.result.split('\n').filter(l => l.trim());
+                    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+                    const dateIdx = headers.indexOf('date');
+                    const exerciseIdx = headers.indexOf('exercise');
+                    if (dateIdx < 0 || exerciseIdx < 0) {
+                        alert('❌ Could not find Date or Exercise columns. Please check this is a Fitbod CSV export.');
+                        return;
+                    }
+
+                    // Parse into sessions: { date: 'YYYY-MM-DD', exercises: [...] }
+                    const sessionMap = {};
+                    for (let i = 1; i < lines.length; i++) {
+                        const fields = lines[i].split(',').map(f => f.trim().replace(/^"|"$/g, ''));
+                        const rawDate = fields[dateIdx];
+                        const exercise = fields[exerciseIdx];
+                        if (!rawDate || !exercise) continue;
+                        const dateKey = rawDate.substring(0, 10); // YYYY-MM-DD
+                        if (!sessionMap[dateKey]) sessionMap[dateKey] = new Set();
+                        sessionMap[dateKey].add(exercise);
+                    }
+
+                    const sessions = Object.entries(sessionMap)
+                        .map(([date, exSet]) => ({ date, exercises: [...exSet] }))
+                        .sort((a, b) => a.date.localeCompare(b.date));
+
+                    localStorage.setItem('fitbodData', JSON.stringify({
+                        importedAt: new Date().toISOString(),
+                        sessions
+                    }));
+
+                    renderFitbodStatus();
+                    input.value = '';
+                } catch(err) {
+                    alert('❌ Failed to parse Fitbod CSV: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        window.clearFitbodData = function() {
+            localStorage.removeItem('fitbodData');
+            renderFitbodStatus();
+        };
+
+        function renderFitbodStatus() {
+            const data = JSON.parse(localStorage.getItem('fitbodData') || 'null');
+            const statusEl = document.getElementById('fitbodStatus');
+            const clearBtn = document.getElementById('fitbodClearBtn');
+            const preview = document.getElementById('fitbodPreview');
+            const previewContent = document.getElementById('fitbodPreviewContent');
+            if (!statusEl) return;
+
+            if (!data) {
+                statusEl.textContent = 'No data imported';
+                if (clearBtn) clearBtn.style.display = 'none';
+                if (preview) preview.style.display = 'none';
+                return;
+            }
+
+            const fourWeeks = Date.now() - 28 * 24 * 60 * 60 * 1000;
+            const recentSessions = data.sessions.filter(s => new Date(s.date).getTime() >= fourWeeks);
+            const importDate = new Date(data.importedAt).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
+
+            statusEl.textContent = `${data.sessions.length} sessions imported · Last updated ${importDate}`;
+            if (clearBtn) clearBtn.style.display = 'inline-flex';
+
+            if (preview && previewContent) {
+                if (recentSessions.length === 0) {
+                    preview.style.display = 'none';
+                } else {
+                    preview.style.display = 'block';
+                    previewContent.innerHTML = recentSessions.map(s =>
+                        `<div style="margin-bottom:8px;"><span style="font-weight:600;color:#1d1d1f;">${s.date}</span> — ${s.exercises.join(', ')}</div>`
+                    ).join('');
+                }
+            }
+        }
+
+        // Build Fitbod context string for Jumi — last 4 weeks of sessions with muscle mapping
+        function buildFitbodContext() {
+            const data = JSON.parse(localStorage.getItem('fitbodData') || 'null');
+            if (!data || !data.sessions || data.sessions.length === 0) return null;
+
+            const fourWeeks = Date.now() - 28 * 24 * 60 * 60 * 1000;
+            const recentSessions = data.sessions.filter(s => new Date(s.date).getTime() >= fourWeeks);
+            if (recentSessions.length === 0) return null;
+
+            const lines = recentSessions.map(s => {
+                const exerciseList = s.exercises.join(', ');
+                return `${s.date}: ${exerciseList}`;
+            });
+
+            return `STRENGTH TRAINING (Fitbod, last 4 weeks):\n${lines.join('\n')}\n\nUse your knowledge of these exercises to infer which muscles were loaded. Factor this into your routine recommendations — if muscles were heavily loaded in strength training recently, prioritise recovery-oriented flexibility work for them rather than intense deep stretches.`;
+        }
         // Built dynamically from the exercise library so new muscles are automatically included
         function getPriorityTargetEnum() {
             const muscles = new Set();
@@ -9172,6 +9330,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                 return `${e.exercise} (${e.phase}, ${muscles})`;
             }).join(', ');
             const focusNote = userPrompt ? ` The user's focus today was: "${userPrompt}".` : '';
+            const fitbodNote = buildFitbodContext() ? `\n\n${buildFitbodContext()}` : '';
             const historyNote = contextTable ? `\n\nTRAINING HISTORY (translate into natural language — never reference column names):\n${contextTable}` : '';
 
             let priorityNote = '';
@@ -9222,7 +9381,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
 - Splits: sport-specific positions; progressive loading toward full range
 - Cool Down: parasympathetic reset; consolidates the session's work
 - Final Rest: full body stillness; integrates the session neurologically`;
-            const initialMessage = `Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}.${focusNote}${historyNote}${priorityNote}\n\nThis session's exercises:\n${exerciseList}\n\nWrite 3 paragraphs (100-150 words total). Paragraph 1: describe a real behavioural pattern from the history in plain language — what has been relied on, avoided, or neglected. Paragraph 2: explain the decision this session makes — what changes, what trade-off is being made. If priorities are provided, anchor this paragraph to them explicitly. Where relevant, briefly note how the prep phases lead into the stretches and the cool down settles the same muscles — only if this adds meaning. Paragraph 3: explain what this builds toward, linked to the goals. Translate all data into natural language. Never reference column names. Name exercises only as evidence. Write like a coach, not an analyst.`;
+            const initialMessage = `Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}.${focusNote}${historyNote}${fitbodNote}${priorityNote}\n\nThis session's exercises:\n${exerciseList}\n\nWrite 3 paragraphs (100-150 words total). Paragraph 1: describe a real behavioural pattern from the history in plain language — what has been relied on, avoided, or neglected. Paragraph 2: explain the decision this session makes — what changes, what trade-off is being made. If priorities are provided, anchor this paragraph to them explicitly. Where relevant, briefly note how the prep phases lead into the stretches and the cool down settles the same muscles — only if this adds meaning. Paragraph 3: explain what this builds toward, linked to the goals. Translate all data into natural language. Never reference column names. Name exercises only as evidence. Write like a coach, not an analyst.`;
             try {
                 const response = await fetch('https://flexibilityapp3849.netlify.app/.netlify/functions/coach', {
                     method: 'POST',
@@ -11361,6 +11520,7 @@ function showStats() {
                                 <button id="settingsExerciseDurationBtn" class="sidebar-nav-btn" style="display:flex;align-items:center;gap:9px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Exercise Duration</button>
                                 <button id="settingsFrontSplitsBtn" class="sidebar-nav-btn" style="display:flex;align-items:center;gap:9px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Front Splits</button>
                                 <button id="settingsCustomExercisesBtn" class="sidebar-nav-btn" style="display:flex;align-items:center;gap:9px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Custom Exercises</button>
+                                <button id="settingsExternalDataBtn" class="sidebar-nav-btn" style="display:flex;align-items:center;gap:9px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>External Data</button>
                             </div>
                         </div>
                         <div>
@@ -11770,9 +11930,39 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">4.33</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">4.34</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
+                    </div>
+                </div>
+
+                <div id="settingsExternalDataContent" class="settings-content-panel" style="display: none;">
+                    <h2 style="margin:0 0 6px; font-size:24px; font-weight:800; letter-spacing:-0.5px; color:#1d1d1f;">External Data</h2>
+                    <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">Import workout data from other apps to give Jumi more context about your training.</p>
+
+                    <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:24px; margin-bottom:16px;">
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+                            <div style="width:36px; height:36px; background:linear-gradient(135deg,#667eea,#764ba2); border-radius:10px; display:flex; align-items:center; justify-content:center;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                            </div>
+                            <div>
+                                <div style="font-size:15px; font-weight:700; color:#1d1d1f;">Fitbod</div>
+                                <div id="fitbodStatus" style="font-size:12px; color:#86868b;">No data imported</div>
+                            </div>
+                        </div>
+                        <p style="font-size:13px; color:#555; margin:0 0 16px; line-height:1.6;">Upload a Fitbod CSV export. Jumi will use your last 4 weeks of strength sessions to understand which muscles you've recently loaded, helping it recommend complementary flexibility work.</p>
+                        <p style="font-size:12px; color:#86868b; margin:0 0 16px; line-height:1.6;">To export from Fitbod: Profile → Settings → Export Workout Data.</p>
+                        <label style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#667eea,#764ba2); color:white; padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            Import CSV
+                            <input type="file" id="fitbodCsvInput" accept=".csv" style="display:none;" onchange="importFitbodCSV(this)"/>
+                        </label>
+                        <button onclick="clearFitbodData()" id="fitbodClearBtn" style="display:none; margin-left:10px; background:white; border:1.5px solid #ffcdd2; color:#ff3b30; padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer;">Clear</button>
+                    </div>
+
+                    <div id="fitbodPreview" style="display:none; background:white; border:1.5px solid #ebebf0; border-radius:14px; padding:20px;">
+                        <div style="font-size:13px; font-weight:600; color:#1d1d1f; margin-bottom:12px;">Last 4 weeks of sessions</div>
+                        <div id="fitbodPreviewContent" style="font-size:12px; color:#555; line-height:1.8;"></div>
                     </div>
                 </div>
             </div>
