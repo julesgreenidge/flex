@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499232 -->
+<!-- Version: 1775499233 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1639,6 +1639,7 @@
         }
     </style>
 <meta name="build-date" content="01 Jun 2026">
+<meta name="app-version" content="4.32">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -2765,9 +2766,12 @@
 
             document.getElementById('settingsVersionBtn').addEventListener('click', function() {
                 activateSettingsTab('settingsVersionBtn', 'settingsVersionContent');
-                const meta = document.querySelector('meta[name="build-date"]');
-                const el = document.getElementById('buildDateDisplay');
-                if (meta && el) el.textContent = 'Built ' + meta.getAttribute('content');
+                const buildMeta = document.querySelector('meta[name="build-date"]');
+                const versionMeta = document.querySelector('meta[name="app-version"]');
+                const dateEl = document.getElementById('buildDateDisplay');
+                const versionEl = document.getElementById('appVersionDisplay');
+                if (buildMeta && dateEl) dateEl.textContent = 'Built ' + buildMeta.getAttribute('content');
+                if (versionMeta && versionEl) versionEl.textContent = versionMeta.getAttribute('content');
             });
 
             document.getElementById('settingsKeyboardBtn').addEventListener('click', function() {
@@ -11755,7 +11759,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">4.29</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">4.32</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
