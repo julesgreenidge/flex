@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499233 -->
+<!-- Version: 1775499234 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1639,7 +1639,7 @@
         }
     </style>
 <meta name="build-date" content="01 Jun 2026">
-<meta name="app-version" content="4.32">
+<meta name="app-version" content="4.33">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -8735,13 +8735,23 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             const avgMins = totalSessions ? Math.round(allHistory.reduce((s,h)=>s+(h.totalTime||0),0)/totalSessions/60) : 0;
             const lastDate = last ? new Date(last.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'never';
 
+            // Rolling 4-week training frequency
+            const fourWeeksMs = 28 * 24 * 60 * 60 * 1000;
+            const sessionsLast4Weeks = allHistory.filter(s => now - new Date(s.date).getTime() <= fourWeeksMs).length;
+            const avgSessionsPerWeek = totalSessions >= 4
+                ? Math.round((sessionsLast4Weeks / 4) * 10) / 10
+                : null; // not enough history to be meaningful
+
             const daysAgo = ms => {
                 const d = Math.round((now - ms)/(24*60*60*1000));
                 return d === 0 ? 'today' : d === 1 ? 'yesterday' : d + ' days ago';
             };
 
             // Build table grouped by phase, exercise first
-            let table = `Sessions: ${totalSessions} | Avg duration: ${avgMins}m | Last session: ${lastDate}\n\n`;
+            const freqNote = avgSessionsPerWeek !== null
+                ? ` | Training frequency: ~${avgSessionsPerWeek} sessions/week (last 4 weeks)`
+                : '';
+            let table = `Sessions: ${totalSessions} | Avg duration: ${avgMins}m | Last session: ${lastDate}${freqNote}\n\n`;
             table += `Exercise | Phase | Primary Muscle | Secondary Muscle | Tertiary Muscle | Position | Sides | Count 12 months | Count 6 months | Count 3 months | Count 1 month | Count 2 weeks | Count 1 week | Mins 12 months | Mins 6 months | Mins 3 months | Mins 1 month | Mins 2 weeks | Mins 1 week | Last done\n`;
             table += `${'---'} | `.repeat(19).slice(0,-3) + '\n';
 
@@ -9186,6 +9196,7 @@ STRUCTURE — 3 short paragraphs, 100-150 words total, no markdown, no bullet po
 - Paragraph 3: Explain what this is building toward over time, linked directly to the user's goals and the pattern identified in paragraph 1.
 
 RULES:
+- The training history includes the user's average sessions per week over the last 4 weeks. Use this to calibrate what "recent" means — for someone training twice a week, a muscle worked 10 days ago is not neglected, it was simply not in the last session. Never flag absence within a normal inter-session gap as neglect.
 - Do not describe what individual exercises do. Name exercises only as supporting evidence for a decision.
 - Do not produce exercise-by-exercise narration.
 - Use the training history data, but always translate it into natural language. Never reference column names such as "Count 1 week" or "Count 1 month".
@@ -11759,7 +11770,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">4.32</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">4.33</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
