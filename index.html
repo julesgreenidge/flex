@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499229 -->
+<!-- Version: 1775499230 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v4.29: custom routine builder pills — top 3 upper and top 3 lower muscles by exercise count added — muscle fields updated on load to match current library — recency scoring and Jumi context updated — routineHistory updated to match current exercise library on load no longer flush to phase edge — empty primaryMuscle defaults to "None" for Final Rest; sanity check on import; auto-fix corrupted localStorage — max 2 per primary muscle per phase — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
+    <!-- v4.30: fix LOWER_TARGETS/UPPER_TARGETS muscle names — Jumi priorities were being silently filtered; version display updated to 4.30 — top 3 upper and top 3 lower muscles by exercise count added — muscle fields updated on load to match current library — recency scoring and Jumi context updated — routineHistory updated to match current exercise library on load no longer flush to phase edge — empty primaryMuscle defaults to "None" for Final Rest; sanity check on import; auto-fix corrupted localStorage — max 2 per primary muscle per phase — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -1638,7 +1638,7 @@
             background: white;
         }
     </style>
-<meta name="build-date" content="28 May 2026">
+<meta name="build-date" content="01 Jun 2026">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -9307,16 +9307,10 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                 // Filter priorities to only those relevant to the current scope (body type)
                 // If Upper Body is selected, Hamstring priorities are pointless — remove them
                 const scopedPriorities = jumiPriorities.filter(p => {
-                    const LOWER_TARGETS = new Set(['Hamstrings','Quads','Glutes','Calves','Adductors','Abductors','Hips','Ankles']);
-                    const UPPER_TARGETS = new Set(['Shoulders','Chest','Triceps','Back','Neck','Wrists']);
-                    if (selectedType === 'upper' && LOWER_TARGETS.has(p.target)) {
-                        
-                        return false;
-                    }
-                    if (selectedType === 'lower' && UPPER_TARGETS.has(p.target)) {
-                        
-                        return false;
-                    }
+                    const LOWER_TARGETS = new Set(['Hamstrings','Quadriceps','Glutes','Calves','Adductors','Abductors','Hip Flexors','Ankles']);
+                    const UPPER_TARGETS = new Set(['Shoulders','Chest','Triceps','Upper Back','Lats','Neck','Wrists','Abs','Lower Back']);
+                    if (selectedType === 'upper' && LOWER_TARGETS.has(p.target)) return false;
+                    if (selectedType === 'lower' && UPPER_TARGETS.has(p.target)) return false;
                     return true;
                 });
 
@@ -11746,7 +11740,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">4.1</div>
+                        <div style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">4.29</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
