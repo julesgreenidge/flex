@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499235 -->
+<!-- Version: 1775499236 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1639,7 +1639,7 @@
         }
     </style>
 <meta name="build-date" content="01 Jun 2026">
-<meta name="app-version" content="4.34">
+<meta name="app-version" content="4.35">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -9015,9 +9015,11 @@ ${contextTable}
 Please rank the candidates for each phase using the generate_routine tool.`;
 
             const fitbodContext = buildFitbodContext();
-            const fitbodNote = fitbodContext ? `\n\n${fitbodContext}` : '';
+            const fitbodSection = fitbodContext
+                ? `\n\n${fitbodContext}\n\nThis strength training data is a primary input — weight it equally with flexibility history. Use your anatomy knowledge to identify which muscles were loaded. If a muscle was heavily worked in the last 2 weeks of strength training, prioritise recovery-oriented flexibility for it (lighter static stretches, mobility work) rather than intense deep stretches. If a muscle was not recently worked in strength training, it may tolerate deeper stretching work.`
+                : '';
 
-            return { systemPrompt, userMessage: userMessage + fitbodNote };
+            return { systemPrompt, userMessage: userMessage + fitbodSection };
         }
 
         // ── FITBOD EXTERNAL DATA ──────────────────────────────────────────────────
@@ -9136,8 +9138,8 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                 return;
             }
 
-            const fourWeeks = Date.now() - 28 * 24 * 60 * 60 * 1000;
-            const recentSessions = data.sessions.filter(s => new Date(s.date).getTime() >= fourWeeks);
+            const twoWeeks = Date.now() - 14 * 24 * 60 * 60 * 1000;
+            const recentSessions = data.sessions.filter(s => new Date(s.date).getTime() >= twoWeeks);
             const importDate = new Date(data.importedAt).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
 
             statusEl.textContent = `${data.sessions.length} sessions imported · Last updated ${importDate}`;
@@ -9155,13 +9157,13 @@ Please rank the candidates for each phase using the generate_routine tool.`;
             }
         }
 
-        // Build Fitbod context string for Jumi — last 4 weeks of sessions with muscle mapping
+        // Build Fitbod context string for Jumi — last 2 weeks of sessions
         function buildFitbodContext() {
             const data = JSON.parse(localStorage.getItem('fitbodData') || 'null');
             if (!data || !data.sessions || data.sessions.length === 0) return null;
 
-            const fourWeeks = Date.now() - 28 * 24 * 60 * 60 * 1000;
-            const recentSessions = data.sessions.filter(s => new Date(s.date).getTime() >= fourWeeks);
+            const twoWeeks = Date.now() - 14 * 24 * 60 * 60 * 1000;
+            const recentSessions = data.sessions.filter(s => new Date(s.date).getTime() >= twoWeeks);
             if (recentSessions.length === 0) return null;
 
             const lines = recentSessions.map(s => {
@@ -9169,7 +9171,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                 return `${s.date}: ${exerciseList}`;
             });
 
-            return `STRENGTH TRAINING (Fitbod, last 4 weeks):\n${lines.join('\n')}\n\nUse your knowledge of these exercises to infer which muscles were loaded. Factor this into your routine recommendations — if muscles were heavily loaded in strength training recently, prioritise recovery-oriented flexibility work for them rather than intense deep stretches.`;
+            return `STRENGTH TRAINING (Fitbod, last 2 weeks):\n${lines.join('\n')}`;
         }
         // Built dynamically from the exercise library so new muscles are automatically included
         function getPriorityTargetEnum() {
@@ -9330,7 +9332,10 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                 return `${e.exercise} (${e.phase}, ${muscles})`;
             }).join(', ');
             const focusNote = userPrompt ? ` The user's focus today was: "${userPrompt}".` : '';
-            const fitbodNote = buildFitbodContext() ? `\n\n${buildFitbodContext()}` : '';
+            const fitbodContext = buildFitbodContext();
+            const fitbodNote = fitbodContext
+                ? `\n\n${fitbodContext}\n\nThis strength training data is a primary input — weight it equally with flexibility history. Reference it explicitly in your explanation where relevant. If muscles were recently loaded in strength training, say so and explain how the session accounts for it.`
+                : '';
             const historyNote = contextTable ? `\n\nTRAINING HISTORY (translate into natural language — never reference column names):\n${contextTable}` : '';
 
             let priorityNote = '';
@@ -11930,7 +11935,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">4.34</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">4.35</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
