@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499230 -->
+<!-- Version: 1775499232 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v4.30: fix LOWER_TARGETS/UPPER_TARGETS muscle names — Jumi priorities were being silently filtered; version display updated to 4.30 — top 3 upper and top 3 lower muscles by exercise count added — muscle fields updated on load to match current library — recency scoring and Jumi context updated — routineHistory updated to match current exercise library on load no longer flush to phase edge — empty primaryMuscle defaults to "None" for Final Rest; sanity check on import; auto-fix corrupted localStorage — max 2 per primary muscle per phase — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
+    <!-- v4.32: muscle name lists fully dynamic — PRIORITY_TARGET_ENUM, LOWER_TARGETS, UPPER_TARGETS, and Jumi prompt all derived from exercise library at runtime — Jumi now returns correct muscle names in priorities/UPPER_TARGETS muscle names — Jumi priorities were being silently filtered; version display updated to 4.30 — top 3 upper and top 3 lower muscles by exercise count added — muscle fields updated on load to match current library — recency scoring and Jumi context updated — routineHistory updated to match current exercise library on load no longer flush to phase edge — empty primaryMuscle defaults to "None" for Final Rest; sanity check on import; auto-fix corrupted localStorage — max 2 per primary muscle per phase — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -8981,7 +8981,7 @@ Prefer specific, intentional choices over safe, generic ones.
 
 OUTPUT:
 
-Use the generate_routine tool. Always include 1-2 priorities in the priorities field — these are the explicit decisions that drove your exercise selection. Choose targets from the fixed enum only.
+Use the generate_routine tool. Always include 1-2 priorities in the priorities field — these are the explicit decisions that drove your exercise selection. Valid target values are: ${[...getPriorityTargetEnum()].sort().join(', ')}.
 Use snake_case phase keys: warm_up, foam_roller, mobility, static_stretching, active_stretch, deep_stretch, cool_down.
 IMPORTANT: Candidates listed under "Active Stretch" must be returned under the active_stretch key. Candidates listed under "Deep Stretch" must be returned under the deep_stretch key. Even if an exercise looks like a static stretch, always use the phase key it was listed under.
 
@@ -8999,10 +8999,16 @@ Please rank the candidates for each phase using the generate_routine tool.`;
         }
 
         // ── JUMI: Parse priorities from text reply ──
-        const PRIORITY_TARGET_ENUM = new Set([
-            'Hips','Hamstrings','Quads','Glutes','Spine','Shoulders',
-            'Calves','Adductors','Abductors','Back','Ankles','Chest','Obliques'
-        ]);
+        // Built dynamically from the exercise library so new muscles are automatically included
+        function getPriorityTargetEnum() {
+            const muscles = new Set();
+            (window._exercises || []).forEach(ex => {
+                if (ex.primaryMuscle && ex.primaryMuscle !== 'None') muscles.add(ex.primaryMuscle);
+                if (ex.secondaryMuscle) muscles.add(ex.secondaryMuscle);
+                if (ex.tertiaryMuscle) muscles.add(ex.tertiaryMuscle);
+            });
+            return muscles;
+        }
 
         function parsePriorities(reply) {
             try {
@@ -9014,7 +9020,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                     .filter(p =>
                         p && typeof p === 'object' &&
                         (p.action === 'increase' || p.action === 'reduce') &&
-                        PRIORITY_TARGET_ENUM.has(p.target)
+                        getPriorityTargetEnum().has(p.target)
                     )
                     .slice(0, 2); // hard cap at 2
             } catch(e) {
@@ -9307,10 +9313,19 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                 // Filter priorities to only those relevant to the current scope (body type)
                 // If Upper Body is selected, Hamstring priorities are pointless — remove them
                 const scopedPriorities = jumiPriorities.filter(p => {
-                    const LOWER_TARGETS = new Set(['Hamstrings','Quadriceps','Glutes','Calves','Adductors','Abductors','Hip Flexors','Ankles']);
-                    const UPPER_TARGETS = new Set(['Shoulders','Chest','Triceps','Upper Back','Lats','Neck','Wrists','Abs','Lower Back']);
-                    if (selectedType === 'upper' && LOWER_TARGETS.has(p.target)) return false;
-                    if (selectedType === 'lower' && UPPER_TARGETS.has(p.target)) return false;
+                    // Derive muscle→bodyPart mapping from exercise library
+                    const lowerMuscles = new Set();
+                    const upperMuscles = new Set();
+                    (window._exercises || []).forEach(ex => {
+                        const bp = (ex.bodyPart || '').toLowerCase();
+                        const muscles = [ex.primaryMuscle, ex.secondaryMuscle, ex.tertiaryMuscle].filter(Boolean);
+                        muscles.forEach(m => {
+                            if (bp === 'lower') lowerMuscles.add(m);
+                            if (bp === 'upper') upperMuscles.add(m);
+                        });
+                    });
+                    if (selectedType === 'upper' && lowerMuscles.has(p.target) && !upperMuscles.has(p.target)) return false;
+                    if (selectedType === 'lower' && upperMuscles.has(p.target) && !lowerMuscles.has(p.target)) return false;
                     return true;
                 });
 
