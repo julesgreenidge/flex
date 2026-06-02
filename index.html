@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499236 -->
+<!-- Version: 1775499237 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1639,7 +1639,7 @@
         }
     </style>
 <meta name="build-date" content="01 Jun 2026">
-<meta name="app-version" content="4.35">
+<meta name="app-version" content="4.36">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -9016,7 +9016,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
 
             const fitbodContext = buildFitbodContext();
             const fitbodSection = fitbodContext
-                ? `\n\n${fitbodContext}\n\nThis strength training data is a primary input — weight it equally with flexibility history. Use your anatomy knowledge to identify which muscles were loaded. If a muscle was heavily worked in the last 2 weeks of strength training, prioritise recovery-oriented flexibility for it (lighter static stretches, mobility work) rather than intense deep stretches. If a muscle was not recently worked in strength training, it may tolerate deeper stretching work.`
+                ? `\n\n${fitbodContext}\n\nUse your anatomy knowledge to infer which muscles were loaded by these exercises. Treat this as an important secondary signal — use it to avoid overloading recently trained muscles and identify complementary flexibility opportunities, but do not override long-term flexibility deficits unless the evidence is strong. When flexibility history and strength-training history conflict, prioritise long-term flexibility deficits unless the strength load occurred within the last 72 hours. For muscles trained within 72 hours, favour lighter mobility and static work. For muscles trained multiple times in the last 2 weeks but not within 72 hours, consider their cumulative load but do not automatically deprioritise them for deeper work.`
                 : '';
 
             return { systemPrompt, userMessage: userMessage + fitbodSection };
@@ -9142,7 +9142,16 @@ Please rank the candidates for each phase using the generate_routine tool.`;
             const recentSessions = data.sessions.filter(s => new Date(s.date).getTime() >= twoWeeks);
             const importDate = new Date(data.importedAt).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
 
-            statusEl.textContent = `${data.sessions.length} sessions imported · Last updated ${importDate}`;
+            // Coverage: how many unique exercises in recent sessions are in FITBOD_MUSCLE_MAP
+            const allRecentExercises = new Set(recentSessions.flatMap(s => s.exercises));
+            const mappedCount = [...allRecentExercises].filter(ex => FITBOD_MUSCLE_MAP[ex]).length;
+            const totalCount = allRecentExercises.size;
+            const coveragePct = totalCount > 0 ? Math.round(mappedCount / totalCount * 100) : 0;
+            const coverageWarning = totalCount > 0 && coveragePct < 80
+                ? ` <span style="color:#ff9500;">⚠ ${coveragePct}% mapped</span>`
+                : totalCount > 0 ? ` · ${coveragePct}% mapped` : '';
+
+            statusEl.innerHTML = `${data.sessions.length} sessions imported · Last updated ${importDate}${coverageWarning}`;
             if (clearBtn) clearBtn.style.display = 'inline-flex';
 
             if (preview && previewContent) {
@@ -9166,12 +9175,43 @@ Please rank the candidates for each phase using the generate_routine tool.`;
             const recentSessions = data.sessions.filter(s => new Date(s.date).getTime() >= twoWeeks);
             if (recentSessions.length === 0) return null;
 
-            const lines = recentSessions.map(s => {
-                const exerciseList = s.exercises.join(', ');
-                return `${s.date}: ${exerciseList}`;
+            // Build per-exercise frequency and most recent date
+            const exerciseStats = {};
+            recentSessions.forEach(s => {
+                s.exercises.forEach(ex => {
+                    if (!exerciseStats[ex]) exerciseStats[ex] = { count: 0, lastDate: '' };
+                    exerciseStats[ex].count++;
+                    if (s.date > exerciseStats[ex].lastDate) exerciseStats[ex].lastDate = s.date;
+                });
             });
 
-            return `STRENGTH TRAINING (Fitbod, last 2 weeks):\n${lines.join('\n')}`;
+            // Session list for full context
+            const sessionLines = recentSessions.map(s => `${s.date}: ${s.exercises.join(', ')}`);
+
+            // Most loaded exercises (frequency ≥ 2) sorted by count descending
+            const frequentExercises = Object.entries(exerciseStats)
+                .filter(([, s]) => s.count >= 2)
+                .sort((a, b) => b[1].count - a[1].count)
+                .map(([ex, s]) => `${ex} (${s.count}x, last: ${s.lastDate})`);
+
+            // Exercises done in last 72 hours
+            const cutoff72h = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString().substring(0, 10);
+            const recent72h = Object.entries(exerciseStats)
+                .filter(([, s]) => s.lastDate >= cutoff72h)
+                .map(([ex]) => ex);
+
+            let context = `STRENGTH TRAINING (Fitbod, last 2 weeks — ${recentSessions.length} sessions):\n`;
+            context += sessionLines.join('\n');
+
+            if (frequentExercises.length > 0) {
+                context += `\n\nMost frequently trained exercises (2+ times):\n${frequentExercises.join('\n')}`;
+            }
+
+            if (recent72h.length > 0) {
+                context += `\n\nExercises performed within last 72 hours:\n${recent72h.join(', ')}`;
+            }
+
+            return context;
         }
         // Built dynamically from the exercise library so new muscles are automatically included
         function getPriorityTargetEnum() {
@@ -9334,7 +9374,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
             const focusNote = userPrompt ? ` The user's focus today was: "${userPrompt}".` : '';
             const fitbodContext = buildFitbodContext();
             const fitbodNote = fitbodContext
-                ? `\n\n${fitbodContext}\n\nThis strength training data is a primary input — weight it equally with flexibility history. Reference it explicitly in your explanation where relevant. If muscles were recently loaded in strength training, say so and explain how the session accounts for it.`
+                ? `\n\n${fitbodContext}\n\nUse your anatomy knowledge to infer which muscles were loaded. Where the strength training data influenced this session's decisions, reference it explicitly — particularly if muscles were trained within the last 72 hours or trained frequently in the last 2 weeks. Do not let recent strength training override long-term flexibility deficits unless the load was within 72 hours.`
                 : '';
             const historyNote = contextTable ? `\n\nTRAINING HISTORY (translate into natural language — never reference column names):\n${contextTable}` : '';
 
@@ -11935,7 +11975,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">4.35</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">4.36</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
