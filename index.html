@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499237 -->
+<!-- Version: 1775499238 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1639,7 +1639,7 @@
         }
     </style>
 <meta name="build-date" content="01 Jun 2026">
-<meta name="app-version" content="4.36">
+<meta name="app-version" content="4.37">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -9024,55 +9024,6 @@ Please rank the candidates for each phase using the generate_routine tool.`;
 
         // ── FITBOD EXTERNAL DATA ──────────────────────────────────────────────────
 
-        const FITBOD_MUSCLE_MAP = {
-            'Ab Rollout':                              { primary: 'Abs',         secondary: 'Lower Back',  tertiary: 'Hip Flexors' },
-            'Backward Arm Circle':                     { primary: 'Shoulders',   secondary: 'Upper Back',  tertiary: 'Chest' },
-            'Biceps Curl To Shoulder Press':           { primary: 'Biceps',      secondary: 'Shoulders',   tertiary: 'Triceps' },
-            'Butt Kick':                               { primary: 'Hamstrings',  secondary: 'Glutes',      tertiary: 'Calves' },
-            'Butterfly Stretch':                       { primary: 'Adductors',   secondary: 'Hip Flexors' },
-            'Chest Doorway Stretch':                   { primary: 'Chest',       secondary: 'Shoulders',   tertiary: 'Biceps' },
-            'Couch Stretch':                           { primary: 'Hip Flexors', secondary: 'Quadriceps',  tertiary: 'Abs' },
-            'Double Leg Bridge':                       { primary: 'Glutes',      secondary: 'Hamstrings',  tertiary: 'Abs' },
-            'Dual Kettlebell Front Squat':             { primary: 'Quadriceps',  secondary: 'Glutes',      tertiary: 'Calves' },
-            'Dumbbell Bent Over Row':                  { primary: 'Upper Back',  secondary: 'Lats',        tertiary: 'Biceps' },
-            'Dumbbell Bicep Curl':                     { primary: 'Biceps',      secondary: 'Forearms' },
-            'Dumbbell Curtsy Lunge':                   { primary: 'Glutes',      secondary: 'Adductors',   tertiary: 'Quadriceps' },
-            'Dumbbell Floor Press':                    { primary: 'Chest',       secondary: 'Triceps',     tertiary: 'Shoulders' },
-            'Dumbbell Hang Snatch':                    { primary: 'Shoulders',   secondary: 'Upper Back',  tertiary: 'Glutes' },
-            'Dumbbell Kickbacks':                      { primary: 'Triceps',     secondary: 'Shoulders' },
-            'Dumbbell Romanian Deadlift':              { primary: 'Hamstrings',  secondary: 'Glutes',      tertiary: 'Lower Back' },
-            'Dumbbell Side Bend':                      { primary: 'Abs',         secondary: 'Lower Back' },
-            'Dumbbell Superman':                       { primary: 'Lower Back',  secondary: 'Glutes',      tertiary: 'Upper Back' },
-            'Foam Roll Hamstrings':                    { primary: 'Hamstrings',  secondary: 'Calves' },
-            'Foam Roll Hip Flexors':                   { primary: 'Hip Flexors', secondary: 'Quadriceps' },
-            'Foam Roll Hip Thrust':                    { primary: 'Glutes',      secondary: 'Hamstrings' },
-            'Foam Roll Lats':                          { primary: 'Lats',        secondary: 'Upper Back' },
-            'Foam Roll Quadriceps':                    { primary: 'Quadriceps',  secondary: 'Hip Flexors' },
-            'Foam Roller Hamstring Bridge':            { primary: 'Hamstrings',  secondary: 'Glutes',      tertiary: 'Abs' },
-            'Forward Arm Circle':                      { primary: 'Shoulders',   secondary: 'Chest',       tertiary: 'Upper Back' },
-            'Goblet Squat':                            { primary: 'Quadriceps',  secondary: 'Glutes',      tertiary: 'Calves' },
-            'Hip Flow':                                { primary: 'Hip Flexors', secondary: 'Glutes',      tertiary: 'Adductors' },
-            'Hip Hinge':                               { primary: 'Hamstrings',  secondary: 'Glutes',      tertiary: 'Lower Back' },
-            'Incline Dumbbell Row':                    { primary: 'Upper Back',  secondary: 'Lats',        tertiary: 'Biceps' },
-            'Incline Dumbbell Squeeze Press':          { primary: 'Chest',       secondary: 'Triceps',     tertiary: 'Shoulders' },
-            'Kettlebell Swing American':               { primary: 'Glutes',      secondary: 'Hamstrings',  tertiary: 'Lower Back' },
-            'Lateral Leg Swing':                       { primary: 'Adductors',   secondary: 'Abductors',   tertiary: 'Hip Flexors' },
-            'Leg Pull-In':                             { primary: 'Abs',         secondary: 'Hip Flexors' },
-            'Leg Swing':                               { primary: 'Hip Flexors', secondary: 'Hamstrings',  tertiary: 'Glutes' },
-            'Lunge':                                   { primary: 'Quadriceps',  secondary: 'Glutes',      tertiary: 'Hip Flexors' },
-            'Oblique Crunch':                          { primary: 'Abs',         secondary: 'Lower Back' },
-            "Prone W's":                               { primary: 'Upper Back',  secondary: 'Shoulders',   tertiary: 'Lats' },
-            'Push Up':                                 { primary: 'Chest',       secondary: 'Triceps',     tertiary: 'Shoulders' },
-            'Side Bridge':                             { primary: 'Abs',         secondary: 'Glutes',      tertiary: 'Adductors' },
-            'Single Dumbbell Sumo Squat':              { primary: 'Adductors',   secondary: 'Glutes',      tertiary: 'Quadriceps' },
-            'Single Leg Foam Roller Hamstring Bridge': { primary: 'Hamstrings',  secondary: 'Glutes',      tertiary: 'Abs' },
-            'Standing Dumbbell Calf Raise':            { primary: 'Calves' },
-            'Standing Dumbbell Shoulder Press':        { primary: 'Shoulders',   secondary: 'Triceps',     tertiary: 'Upper Back' },
-            'Standing Dumbbell Tricep Extension':      { primary: 'Triceps',     secondary: 'Shoulders' },
-            'Walking':                                 { primary: 'Calves',      secondary: 'Hamstrings',  tertiary: 'Glutes' },
-            'Wall Sit':                                { primary: 'Quadriceps',  secondary: 'Glutes',      tertiary: 'Hamstrings' },
-        };
-
         window.importFitbodCSV = function(input) {
             const file = input.files[0];
             if (!file) return;
@@ -9142,16 +9093,7 @@ Please rank the candidates for each phase using the generate_routine tool.`;
             const recentSessions = data.sessions.filter(s => new Date(s.date).getTime() >= twoWeeks);
             const importDate = new Date(data.importedAt).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
 
-            // Coverage: how many unique exercises in recent sessions are in FITBOD_MUSCLE_MAP
-            const allRecentExercises = new Set(recentSessions.flatMap(s => s.exercises));
-            const mappedCount = [...allRecentExercises].filter(ex => FITBOD_MUSCLE_MAP[ex]).length;
-            const totalCount = allRecentExercises.size;
-            const coveragePct = totalCount > 0 ? Math.round(mappedCount / totalCount * 100) : 0;
-            const coverageWarning = totalCount > 0 && coveragePct < 80
-                ? ` <span style="color:#ff9500;">⚠ ${coveragePct}% mapped</span>`
-                : totalCount > 0 ? ` · ${coveragePct}% mapped` : '';
-
-            statusEl.innerHTML = `${data.sessions.length} sessions imported · Last updated ${importDate}${coverageWarning}`;
+            statusEl.textContent = `${data.sessions.length} sessions imported · Last updated ${importDate} · Jumi infers muscles from exercise names`;
             if (clearBtn) clearBtn.style.display = 'inline-flex';
 
             if (preview && previewContent) {
@@ -11975,7 +11917,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">4.36</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">4.37</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
