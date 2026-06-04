@@ -19,6 +19,7 @@ exports.handler = async function(event) {
 
         const isJumiGen = mode === 'jumi_generate';
         const isChat = mode === 'jumi_chat';
+        const isAuthor = mode === 'jumi_author'; // new: no tools, plain JSON response
 
         // Tool definition for structured routine output
         // Phase names use snake_case (API requirement: no spaces in property keys)
@@ -84,7 +85,7 @@ exports.handler = async function(event) {
             }
         };
 
-        const tools = [generateRoutineTool];
+        const tools = isAuthor ? [] : [generateRoutineTool];
 
         // Add web search for chat mode
         if (isChat) {
@@ -92,14 +93,18 @@ exports.handler = async function(event) {
         }
 
         const requestBody = {
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: isJumiGen ? 4000 : 2000,
+            model: isAuthor ? 'claude-sonnet-4-20250514' : 'claude-haiku-4-5-20251001',
+            max_tokens: isJumiGen ? 4000 : isAuthor ? 4000 : 2000,
             system,
             messages,
-            tools
         };
 
-        // Encourage tool use for generate mode but don't force it (allows text explanation through)
+        // Only add tools if we have any
+        if (tools.length > 0) {
+            requestBody.tools = tools;
+        }
+
+        // Encourage tool use for generate mode but don't force it
         if (isJumiGen) {
             requestBody.tool_choice = { type: 'auto' };
         }
