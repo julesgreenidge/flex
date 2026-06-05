@@ -85,7 +85,7 @@ exports.handler = async function(event) {
             }
         };
 
-        const tools = isAuthor ? [] : [generateRoutineTool];
+        const tools = isAuthor ? [] : isChat ? [] : [generateRoutineTool];
 
         // Add web search for chat mode
         if (isChat) {
