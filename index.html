@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499238 -->
+<!-- Version: 1775499278 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1638,8 +1638,8 @@
             background: white;
         }
     </style>
-<meta name="build-date" content="01 Jun 2026">
-<meta name="app-version" content="4.37">
+<meta name="build-date" content="04 Jun 2026">
+<meta name="app-version" content="5.27">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -1826,22 +1826,21 @@
                             <div class="section-title" style="color:#86868b;">Focus <span class="info-icon">i<span class="info-tooltip">Optionally bias the routine towards a specific muscle group.<br><br>The generator will prioritise exercises targeting that area while still including other phases.</span></span></div>
                             <select id="focusSelect">
                                 <option value="">None</option>
+                                <option value="Abductors">Abductors</option>
+                                <option value="Abs">Abs</option>
                                 <option value="Adductors">Adductors</option>
-                                <option value="Ankles">Ankles</option>
-                                <option value="Back">Back</option>
                                 <option value="Calves">Calves</option>
                                 <option value="Chest">Chest</option>
-                                <option value="Full Body">Full Body</option>
+                                <option value="Forearms">Forearms</option>
                                 <option value="Glutes">Glutes</option>
                                 <option value="Hamstrings">Hamstrings</option>
-                                <option value="Hips">Hips</option>
-                                <option value="Knees">Knees</option>
-                                <option value="Lower Spine">Lower Spine</option>
+                                <option value="Hip Flexors">Hip Flexors</option>
+                                <option value="Lats">Lats</option>
+                                <option value="Lower Back">Lower Back</option>
                                 <option value="Neck">Neck</option>
-                                <option value="Quads">Quads</option>
+                                <option value="Quadriceps">Quadriceps</option>
                                 <option value="Shoulders">Shoulders</option>
-                                <option value="Spine">Spine</option>
-                                <option value="Upper Spine">Upper Spine</option>
+                                <option value="Upper Back">Upper Back</option>
                                 <option value="Wrists">Wrists</option>
                             </select>
                         </div>
@@ -2340,7 +2339,7 @@
             });
 
             // Settings tab navigation
-            const settingsNavBtns = ['settingsGoalsBtn', 'settingsQuickStartBtn', 'settingsExerciseDurationBtn', 'settingsSoundBtn', 'settingsFrontSplitsBtn', 'settingsCustomExercisesBtn', 'settingsBackupBtn', 'settingsVersionBtn', 'settingsKeyboardBtn', 'settingsExternalDataBtn'];
+            const settingsNavBtns = ['settingsGoalsBtn', 'settingsPlanBtn', 'settingsQuickStartBtn', 'settingsExerciseDurationBtn', 'settingsSoundBtn', 'settingsFrontSplitsBtn', 'settingsCustomExercisesBtn', 'settingsBackupBtn', 'settingsVersionBtn', 'settingsKeyboardBtn', 'settingsExternalDataBtn'];
             settingsNavBtns.filter(id => id !== 'settingsCustomExercisesBtn').forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.addEventListener('click', () => {
@@ -2348,16 +2347,19 @@
                     if (nb) nb.style.display = 'none';
                 });
             });
-            const settingsContentPanels = ['settingsGoalsContent', 'settingsQuickStartContent', 'settingsExerciseDurationContent', 'settingsSoundContent', 'settingsFrontSplitsContent', 'settingsCustomExercisesContent', 'settingsBackupContent', 'settingsVersionContent', 'settingsKeyboardContent', 'settingsExternalDataContent'];
+            const settingsContentPanels = ['settingsGoalsContent', 'settingsPlanContent', 'settingsQuickStartContent', 'settingsExerciseDurationContent', 'settingsSoundContent', 'settingsFrontSplitsContent', 'settingsCustomExercisesContent', 'settingsBackupContent', 'settingsVersionContent', 'settingsKeyboardContent', 'settingsExternalDataContent'];
 
             function activateSettingsTab(activeId, activeContent) {
-                settingsNavBtns.forEach(id => document.getElementById(id).classList.remove('active'));
-                settingsContentPanels.forEach(id => document.getElementById(id).style.display = 'none');
-                document.getElementById(activeId).classList.add('active');
-                document.getElementById(activeContent).style.display = 'block';
+                settingsNavBtns.forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('active'); });
+                settingsContentPanels.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+                const activeBtn = document.getElementById(activeId);
+                const activePanel = document.getElementById(activeContent);
+                if (activeBtn) activeBtn.classList.add('active');
+                if (activePanel) activePanel.style.display = 'block';
                 // Clear CSV status when switching tabs (keep it on Custom Exercises tab)
                 if (activeId !== 'settingsCustomExercisesBtn') {
-                    document.getElementById('csvUploadStatus').textContent = '';
+                    const csvStatus = document.getElementById('csvUploadStatus');
+                    if (csvStatus) csvStatus.textContent = '';
                 }
             }
 
@@ -2501,19 +2503,19 @@
 
             const capFirst = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
 
-            function populateExLibMuscleDropdown() {
-                const muscleSelect = document.getElementById('exLibMuscle');
-                if (!muscleSelect) return;
-                const allMuscles = [...new Set(exercises.map(e => e.primaryMuscle).filter(Boolean))].sort();
-                const current = muscleSelect.value;
-                muscleSelect.innerHTML = '<option value="">All Muscles</option>' +
-                    allMuscles.map(m => `<option value="${m}"${m === current ? ' selected' : ''}>${m}</option>`).join('');
-            }
+        window.populateExLibMuscleDropdown = function populateExLibMuscleDropdown() {
+            const muscleSelect = document.getElementById('exLibMuscle');
+            if (!muscleSelect) return;
+            const allMuscles = [...new Set((window._exercises || exercises || []).map(e => e.primaryMuscle).filter(Boolean))].sort();
+            const current = muscleSelect.value;
+            muscleSelect.innerHTML = '<option value="">All Muscles</option>' +
+                allMuscles.map(m => `<option value="${m}"${m === current ? ' selected' : ''}>${m}</option>`).join('');
+        }
 
             // Track which phase groups are expanded
             const exLibExpandedPhases = new Set();
 
-            function renderExerciseLibraryTable() {
+            window.renderExerciseLibraryTable = function renderExerciseLibraryTable() {
                 const container = document.getElementById('exerciseLibraryTable');
                 if (!container) return;
 
@@ -2672,7 +2674,7 @@
             const MUSCLE_OPTIONS = MUSCLE_OPTIONS_GLOBAL;
             function muscleCombo(id, val, placeholder) {
                 const listId = id + 'List';
-                const opts = MUSCLE_OPTIONS.map(m => '<option value="' + m + '">').join('');
+                const opts = MUSCLE_OPTIONS_GLOBAL.map(m => '<option value="' + m + '">').join('');
                 return '<input id="' + id + '" list="' + listId + '" value="' + (val || '') + '" placeholder="' + (placeholder || '') + '" autocomplete="off" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"/>'
                      + '<datalist id="' + listId + '">' + opts + '</datalist>';
             }
@@ -2762,6 +2764,11 @@
 
             document.getElementById('settingsBackupBtn').addEventListener('click', function() {
                 activateSettingsTab('settingsBackupBtn', 'settingsBackupContent');
+            });
+
+            document.getElementById('settingsPlanBtn').addEventListener('click', function() {
+                activateSettingsTab('settingsPlanBtn', 'settingsPlanContent');
+                renderJumiPlanPanel();
             });
 
             document.getElementById('settingsExternalDataBtn').addEventListener('click', function() {
@@ -4125,8 +4132,8 @@
                             delete newEx.splits; // Remove old property
                             
                             // Determine bodyPart based on target muscle group
-                            const upperTargets = ['shoulders', 'chest', 'back', 'neck', 'wrists', 'spine', 'upper spine', 'obliques', 'triceps'];
-                            const lowerTargets = ['hamstrings', 'quads', 'glutes', 'hips', 'adductors', 'calves', 'ankles', 'knees', 'lower spine'];
+                            const upperTargets = ['shoulders', 'chest', 'upper back', 'lats', 'neck', 'wrists', 'abs', 'lower back', 'triceps', 'biceps', 'forearms'];
+                            const lowerTargets = ['hamstrings', 'quadriceps', 'glutes', 'hip flexors', 'adductors', 'abductors', 'calves'];
                             
                             const targetLower = (ex.primaryMuscle || ex.target || '').toLowerCase();
                             if (upperTargets.includes(targetLower)) {
@@ -4776,6 +4783,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 const data = await response.json();
                 const reply = (data.reply || '').trim();
                 const routineData = data.routine || null;
+                console.log('Chat reply length:', reply.length, '| Has <exercise>:', reply.includes('<exercise>'));
 
                 thinking.remove();
 
@@ -4860,7 +4868,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     const optLabel = f.optional ? ' <span style="font-weight:400;font-size:12px;color:#86868b;">(optional)</span>' : '';
                     return `<label style="font-size:13px; font-weight:600;">${f.label}${optLabel}
                         <input id="${f.id}" list="${listId}" value="${f.val}" autocomplete="off" style="display:block; width:100%; margin-top:4px; border:1.5px solid #d2d2d7; border-radius:8px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;"/>
-                        <datalist id="${listId}">${MUSCLE_OPTIONS.map(m => `<option value="${m}">`).join('')}</datalist></label>`;
+                        <datalist id="${listId}">${MUSCLE_OPTIONS_GLOBAL.map(m => `<option value="${m}">`).join('')}</datalist></label>`;
                 }
                 return `<label style="font-size:13px; font-weight:600;">${f.label}
                     <input id="${f.id}" value="${f.val}" style="display:block; width:100%; margin-top:4px; border:1.5px solid #d2d2d7; border-radius:8px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;"/></label>`;
@@ -6626,8 +6634,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     if (increases.length > 0) return increases.slice(0, 3);
                 }
 
-                // 3. Recency-weighted random selection
-                // Get all unique primary muscles from the stretch library
+                // 4. Recency-weighted random selection
                 const stretchMuscles = [...new Set(
                     exList
                         .filter(e => e.phase === 'Static Stretching')
@@ -6637,12 +6644,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
                 if (stretchMuscles.length === 0) return [];
 
-                // Score each muscle: higher = more neglected
-                // Each exercise contributes to its primary muscle (full weight),
-                // secondary muscle (0.5 weight), and tertiary muscle (0.2 weight)
                 const muscleRecencyScore = {};
                 stretchMuscles.forEach(muscle => {
-                    // Accumulate weighted recency across all exercises that hit this muscle
                     let totalWeight = 0;
                     let totalContribution = 0;
                     exList.forEach(e => {
@@ -6654,7 +6657,6 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     muscleRecencyScore[muscle] = totalWeight > 0 ? totalContribution / totalWeight : 1.0;
                 });
 
-                // Weighted random selection — muscles more neglected have higher chance
                 const targets = [];
                 const available = [...stretchMuscles];
                 const count = Math.min(3, available.length);
@@ -7898,17 +7900,38 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     cardIndex++;
                     const _animClass = _doAnimate ? ' animate-in' : '';
                     const _animDelay = _doAnimate ? `animation-delay:${delay.toFixed(0)}ms;` : '';
+                    // P/S/M badge — only for Jumi routines
+                    let psmBadge = '';
+                    if (currentJumiRoutine) {
+                        const block = getJumiBlock();
+                        if (block) {
+                            const primary = new Set(block.primaryMuscles || block.primary || []);
+                            const secondary = new Set(block.secondaryMuscles || block.secondary || []);
+                            const muscle = ex.primaryMuscle;
+                            if (primary.has(muscle)) {
+                                psmBadge = `<span style="font-size:10px;font-weight:500;color:white;background:#667eea;width:18px;height:18px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">P</span>`;
+                            } else if (secondary.has(muscle)) {
+                                psmBadge = `<span style="font-size:10px;font-weight:500;color:white;background:#888780;width:18px;height:18px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">S</span>`;
+                            } else {
+                                psmBadge = `<span style="width:18px;height:18px;flex-shrink:0;display:inline-flex;"></span>`;
+                            }
+                        }
+                    }
+
                     html += `
                         <div class="exercise-card${_animClass}" style="position:relative;overflow:hidden;${_animDelay}">
                             <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--phase-${phaseClass});border-radius:0;"></div>
-                            <div>
-                                <div class="exercise-name">${ex.exercise}</div>
-                                <div class="exercise-details">
-                                    <span style="display:contents;">${muscleDisplay(ex)}</span>
-                                    <span>•</span>
-                                    <span>${ex.position}</span>
-                                    <span>•</span>
-                                    <span>${sidesStr}</span>
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                ${psmBadge}
+                                <div>
+                                    <div class="exercise-name">${ex.exercise}</div>
+                                    <div class="exercise-details">
+                                        <span style="display:contents;">${muscleDisplay(ex)}</span>
+                                        <span>•</span>
+                                        <span>${ex.position}</span>
+                                        <span>•</span>
+                                        <span>${sidesStr}</span>
+                                    </div>
                                 </div>
                             </div>
                             <div class="exercise-time">${timeStr}</div>
@@ -7934,14 +7957,17 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         </div>
                         <div class="exercise-card${_doAnimate ? ' animate-in' : ''}" style="position:relative;overflow:hidden;${_doAnimate ? `animation-delay:${cardIndex * 120}ms;` : ''}">
                             <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--phase-finalrest);border-radius:0;"></div>
-                            <div>
-                                <div class="exercise-name">${savasanaEx.exercise}</div>
-                                <div class="exercise-details">
-                                    <span style="display:contents;">${muscleDisplay(savasanaEx)}</span>
-                                    <span>•</span>
-                                    <span>${savasanaEx.position}</span>
-                                    <span>•</span>
-                                    <span>1x</span>
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                ${currentJumiRoutine ? `<span style="width:18px;height:18px;flex-shrink:0;display:inline-flex;"></span>` : ''}
+                                <div>
+                                    <div class="exercise-name">${savasanaEx.exercise}</div>
+                                    <div class="exercise-details">
+                                        <span style="display:contents;">${muscleDisplay(savasanaEx)}</span>
+                                        <span>•</span>
+                                        <span>${savasanaEx.position}</span>
+                                        <span>•</span>
+                                        <span>1x</span>
+                                    </div>
                                 </div>
                             </div>
                             <div class="exercise-time">${(() => {
@@ -8955,74 +8981,397 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
         }
 
         // ── JUMI: Build system prompt + user message from slots ──
-        function buildJumiPrompt(goals, contextTable, slots, userPrompt) {
-            const durationLabel = selectedTime === 999 ? 'no time limit (all exercises)' : selectedTime + ' minutes';
+        // ── JUMI: Build full context for authoring a routine ──
+        // Jumi receives everything it needs to pick specific exercises and write an explanation.
+        // No candidate pools. No rankings. No priorities. Jumi is the author.
+        function buildJumiContext(goals, userPrompt) {
+            const targetMinutes = selectedTime === 999 ? null : (selectedTime || 35);
+            const holdStyle = (selectedHold || appSettings.quickStartHold || 'short') === 'long' ? 'long hold (45s stretches, 90s deep stretches)' : 'short hold (45s stretches, 45s deep stretches)';
+            const bodyType = selectedType || 'full';
 
-            // Build the slot brief
-            let slotBrief = '';
-            for (const [phase, data] of Object.entries(slots.phases)) {
-                if (data.pool.length === 0) continue;
-                const n = data.candidateBudget === 999 ? 'all' : data.candidateBudget;
-                slotBrief += `\n${phase} (return your top ${n} ranked candidates):\n`;
-                slotBrief += data.pool.map(name => `  - ${name}`).join('\n') + '\n';
+            // Approximate exercise counts by duration to guide Jumi
+            const exerciseGuide = targetMinutes ? {
+                25: 'approx 16-18 exercises total',
+                30: 'approx 18-20 exercises total',
+                35: 'approx 20-23 exercises total',
+                40: 'approx 23-26 exercises total',
+                45: 'approx 26-30 exercises total',
+                60: 'approx 32-38 exercises total',
+            }[Object.keys({25:25,30:30,35:35,40:40,45:45,60:60}).find(k => parseInt(k) >= targetMinutes) || 60] || 'approx 20-25 exercises total' : 'all exercises';
+
+            // Build exercise library grouped by phase
+            const exercisesForCtx = exercises.map(ex => {
+                const muscles = [ex.primaryMuscle];
+                if (ex.secondaryMuscle) muscles.push(`secondary: ${ex.secondaryMuscle}`);
+                if (ex.tertiaryMuscle) muscles.push(`tertiary: ${ex.tertiaryMuscle}`);
+                const time = ex.duration * ex.sides + ex.rest * ex.sides;
+                return {
+                    name: ex.exercise,
+                    phase: ex.phase,
+                    muscles: muscles.join(', '),
+                    bodyPart: ex.bodyPart,
+                    sides: ex.sides,
+                    approxSeconds: time
+                };
+            });
+
+            const phaseOrder = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
+            const byPhase = {};
+            phaseOrder.forEach(p => { byPhase[p] = []; });
+            exercisesForCtx.forEach(ex => {
+                if (byPhase[ex.phase]) byPhase[ex.phase].push(ex);
+            });
+
+            // Filter by body type
+            const bodyFilter = (ex) => {
+                if (bodyType === 'full') return true;
+                if (bodyType === 'upper') return ex.bodyPart === 'upper' || ex.bodyPart === 'full';
+                if (bodyType === 'lower') return ex.bodyPart === 'lower' || ex.bodyPart === 'full';
+                return true;
+            };
+
+            let libraryText = '';
+            phaseOrder.forEach(phase => {
+                const phaseExs = (byPhase[phase] || []).filter(bodyFilter);
+                if (phaseExs.length === 0) return;
+                libraryText += `\n${phase}:\n`;
+                phaseExs.forEach(ex => {
+                    libraryText += `  - ${ex.name} | ${ex.muscles} | ${ex.sides === 2 ? 'bilateral' : 'unilateral'} | ~${ex.approxSeconds}s\n`;
+                });
+            });
+
+            // History summary — plain language
+            const allHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
+            const now = Date.now();
+            const fourWeeks = 28 * 24 * 60 * 60 * 1000;
+            const twoWeeks = 14 * 24 * 60 * 60 * 1000;
+
+            // Per-exercise recency
+            const exLastSeen = {};
+            const exCount4w = {};
+            allHistory.forEach(s => {
+                const sMs = new Date(s.date).getTime();
+                const daysAgo = Math.round((now - sMs) / (24 * 60 * 60 * 1000));
+                (s.routine || []).forEach(ex => {
+                    if (!exLastSeen[ex.exercise] || sMs > exLastSeen[ex.exercise]) exLastSeen[ex.exercise] = sMs;
+                    if (now - sMs <= fourWeeks) exCount4w[ex.exercise] = (exCount4w[ex.exercise] || 0) + 1;
+                });
+            });
+
+            // Muscle recency from flex history
+            const muscleLastSeen = {};
+            allHistory.forEach(s => {
+                const sMs = new Date(s.date).getTime();
+                (s.routine || []).forEach(ex => {
+                    const muscles = [ex.primaryMuscle, ex.secondaryMuscle, ex.tertiaryMuscle].filter(Boolean);
+                    muscles.forEach(m => {
+                        if (!muscleLastSeen[m] || sMs > muscleLastSeen[m]) muscleLastSeen[m] = sMs;
+                    });
+                });
+            });
+
+            const muscleRecencyLines = Object.entries(muscleLastSeen)
+                .map(([m, ms]) => ({ muscle: m, daysAgo: Math.round((now - ms) / (24 * 60 * 60 * 1000)) }))
+                .sort((a, b) => b.daysAgo - a.daysAgo)
+                .map(({ muscle, daysAgo }) => `  ${muscle}: last worked ${daysAgo} days ago`);
+
+            // Recent exercises (last 2 weeks)
+            const recentExercises = Object.entries(exLastSeen)
+                .filter(([, ms]) => now - ms <= twoWeeks)
+                .map(([name]) => name);
+
+            // Training frequency
+            const sessionsLast4w = allHistory.filter(s => now - new Date(s.date).getTime() <= fourWeeks).length;
+            const avgPerWeek = allHistory.length >= 4 ? Math.round((sessionsLast4w / 4) * 10) / 10 : null;
+
+            let historySection = '';
+            if (allHistory.length === 0) {
+                historySection = '\nFLEX HISTORY: No sessions recorded yet.';
+            } else {
+                historySection = `\nFLEX HISTORY:`;
+                if (avgPerWeek !== null) historySection += `\nTraining frequency: ~${avgPerWeek} sessions/week (last 4 weeks)`;
+                historySection += `\n\nMuscle recency (days since last worked):\n${muscleRecencyLines.join('\n') || '  No data'}`;
+                if (recentExercises.length > 0) historySection += `\n\nExercises done in last 2 weeks (avoid repeating unless clearly warranted):\n  ${recentExercises.join(', ')}`;
             }
 
-            const focusSection = userPrompt
-                ? `\nFOCUS HANDLING:\n\nTODAY'S FOCUS: "${userPrompt}"\n\nInterpret this using your anatomical and exercise knowledge.\nIdentify the relevant muscles and movement patterns.\nEnsure this focus is clearly represented across multiple phases where appropriate.\nThis is not optional — the routine should be visibly shaped by this focus.\n`
-                : '';
+            // Plan block
+            const block = getJumiBlock();
+            const primaryMuscles = block ? (block.primaryMuscles || block.primary || []) : [];
+            const secondaryMuscles = block ? (block.secondaryMuscles || block.secondary || []) : [];
+            const blockSection = block ? `\n\n${formatBlockForContext(block)}\n\nThis focus defines the session's purpose. Exercises targeting these primary muscles (${primaryMuscles.join(', ')}) must appear across multiple phases. Secondary muscles (${secondaryMuscles.join(', ')}) should support the session.` : '';
 
-            const systemPrompt = `You are Jumi, a long-term flexibility coach. You think in terms of months of progress, not just today's session. Your job is to rank exercise candidates for a routine based on the user's goals, training history, and (if present) today's focus. Use British English throughout.
+            // Fitbod
+            const fitbodSection = buildFitbodContext() ? `\n\n${buildFitbodContext()}\n\nInfer which muscles were loaded from these exercises. Muscles trained within 72 hours should receive lighter mobility/static work. Do not override long-term flexibility deficits unless the load was within 72 hours.` : '';
 
-MUSCLE LOAD TIERS: Each exercise in the library lists muscles at three tiers. primaryMuscle = direct target (~100% load). secondaryMuscle = meaningfully engaged (~50% load). tertiaryMuscle = lightly involved (~20% load). When reasoning about muscle balance and cumulative load across the session, weight these tiers accordingly — a secondary hit counts for roughly half as much as a primary, a tertiary for roughly a fifth.
+            // User prompt
+            const focusSection = userPrompt ? `\n\nTODAY'S FOCUS: "${userPrompt}" — this must visibly shape the routine across multiple phases.` : '';
 
-PRIORITY ORDER (highest to lowest):
-1. Today's focus (if provided) — this must strongly shape the routine
-2. Long-term gaps and imbalances from training history
-3. Variation from recent sessions (last 2 weeks)
+            const systemPrompt = `You are Jumi, a long-term flexibility and mobility coach. Use British English throughout.
 
-Do not treat these equally. Always prioritise higher rules over lower ones.
+You are the author of this routine. You choose every exercise. The app only handles timing and formatting.
 
-RANKING PHILOSOPHY:
+YOUR JOB:
+1. Review all the context provided
+2. Choose specific exercises from the library for each phase
+3. Write a 100-150 word explanation of your choices
 
-Use training history to identify what the user has been neglecting, overusing, or progressing on over time.
-Rank exercises that address meaningful gaps and support long-term progress.
-Avoid overloading a single muscle group unless today's focus explicitly requires it.
-Avoid repeating exercises that have been heavily used in the last 2 weeks unless they directly serve today's focus.
-${focusSection}
-RULES:
+SELECTION PRINCIPLES:
+- The strategic plan (if set) defines the session's purpose. Primary focus muscles must appear across multiple phases — prep phases should prepare them, stretch phases should work them, cool down should settle them.
+- Training history tells you what has been neglected, overused, or progressed. Use it.
+- Fitbod data tells you what was recently loaded in strength training. Avoid deep work on muscles trained within 72 hours.
+- Today's focus (if provided) overrides everything else.
+- Prefer variety across muscle groups within each phase unless the plan or focus demands repetition.
+- Strong preference to include all phases: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Cool Down, Final Rest. You may omit a phase only if there is a clear reason, and you must explain why.
+- Savasana (Final Rest) must always be included.
 
-Only use exercises from the candidate pools below. Use exact names only. Do not invent or modify exercises.
-Do NOT set durations, counts, or timing — the app handles this.
-For each phase, return the top candidates in priority order (best first), up to the provided budget.
-Avoid ranking multiple near-identical exercises within the same phase.
-Do not default to a generic full-body routine unless no focus is provided.
-Prefer specific, intentional choices over safe, generic ones.
+TIMING GUIDANCE:
+- Target: ${targetMinutes ? targetMinutes + ' minutes' : 'no time limit'} (${holdStyle})
+- Aim for ${exerciseGuide}
+- Each exercise's approximate duration is shown in the library
+- The app will trim or pad slightly if needed — do not over-engineer the count
 
-OUTPUT:
+OUTPUT FORMAT — respond with valid JSON only, no other text:
+{
+  "exercises": [
+    {"exercise": "exact exercise name from library", "phase": "exact phase name from library", "priority": 85}
+  ]
+}
 
-Use the generate_routine tool. Always include 1-2 priorities in the priorities field — these are the explicit decisions that drove your exercise selection. Valid target values are: ${[...getPriorityTargetEnum()].sort().join(', ')}.
-Use snake_case phase keys: warm_up, foam_roller, mobility, static_stretching, active_stretch, deep_stretch, cool_down.
-IMPORTANT: Candidates listed under "Active Stretch" must be returned under the active_stretch key. Candidates listed under "Deep Stretch" must be returned under the deep_stretch key. Even if an exercise looks like a static stretch, always use the phase key it was listed under.
+Only include exercises you want in the routine. Do not include exercises you are not selecting.
 
-CANDIDATE POOLS (rank these, do not add others):
-${slotBrief}`;
+Priority scoring (1-100) for your selected exercises:
+- 90-100: Essential to this session's purpose — directly serves the primary plan focus or today's stated focus
+- 70-89: Important — serves secondary focus or provides key preparation/recovery for primary muscles
+- 50-69: Valuable — supports maintenance muscles or provides useful variety
+- 30-49: Supplementary — general fitness value but not critical to this session's goals
+- 1-29: Dispensable — nice to have but first to cut if time is tight
 
-            const userMessage = `Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
-Duration: ${durationLabel}
-Training history:
-${contextTable}
+Be precise — spread your scores across the full range. Do not cluster everything at 70+.
 
-Please rank the candidates for each phase using the generate_routine tool.`;
+Only use exercise names and phase names exactly as they appear in the library. Do not invent exercises.`;
 
-            const fitbodContext = buildFitbodContext();
-            const fitbodSection = fitbodContext
-                ? `\n\n${fitbodContext}\n\nUse your anatomy knowledge to infer which muscles were loaded by these exercises. Treat this as an important secondary signal — use it to avoid overloading recently trained muscles and identify complementary flexibility opportunities, but do not override long-term flexibility deficits unless the evidence is strong. When flexibility history and strength-training history conflict, prioritise long-term flexibility deficits unless the strength load occurred within the last 72 hours. For muscles trained within 72 hours, favour lighter mobility and static work. For muscles trained multiple times in the last 2 weeks but not within 72 hours, consider their cumulative load but do not automatically deprioritise them for deeper work.`
-                : '';
+            const userMessage = `Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}${focusSection}${blockSection}${historySection}${fitbodSection}
 
-            return { systemPrompt, userMessage: userMessage + fitbodSection };
+EXERCISE LIBRARY:
+${libraryText}
+
+Please build the routine now.`;
+
+            return { systemPrompt, userMessage };
         }
 
-        // ── FITBOD EXTERNAL DATA ──────────────────────────────────────────────────
+        // ── JUMI BLOCK (persistent strategic focus) ──────────────────────────────
+
+        function getJumiBlock() {
+            try { return JSON.parse(localStorage.getItem('jumiBlock') || 'null'); } catch(e) { return null; }
+        }
+
+        function saveJumiBlock(block) {
+            localStorage.setItem('jumiBlock', JSON.stringify(block));
+        }
+
+        function clearJumiBlock() {
+            localStorage.removeItem('jumiBlock');
+        }
+
+        function formatBlockForDisplay(block) {
+            if (!block) return '';
+            const date = new Date(block.createdAt).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
+            let html = `<div style="font-size:11px;color:#86868b;margin-bottom:12px;">Created ${date}</div>`;
+            // New goal-based structure
+            if (block.primaryGoal) {
+                html += `<div style="margin-bottom:8px;"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#667eea;">Primary</span><br><span style="font-size:15px;font-weight:600;color:#1d1d1f;">${block.primaryGoal}</span>`;
+                if (block.primaryMuscles?.length) html += `<br><span style="font-size:12px;color:#86868b;">${block.primaryMuscles.join(', ')}</span>`;
+                html += `</div>`;
+            } else if (block.primary?.length) {
+                html += `<div style="margin-bottom:8px;"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#667eea;">Primary</span><br><span style="font-size:14px;font-weight:500;color:#1d1d1f;">${block.primary.join(', ')}</span></div>`;
+            }
+            if (block.secondaryGoal) {
+                html += `<div style="margin-bottom:12px;"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#86868b;">Secondary</span><br><span style="font-size:15px;font-weight:500;color:#1d1d1f;">${block.secondaryGoal}</span>`;
+                if (block.secondaryMuscles?.length) html += `<br><span style="font-size:12px;color:#86868b;">${block.secondaryMuscles.join(', ')}</span>`;
+                html += `</div>`;
+            } else if (block.secondary?.length) {
+                html += `<div style="margin-bottom:8px;"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#86868b;">Secondary</span><br><span style="font-size:14px;color:#1d1d1f;">${block.secondary.join(', ')}</span></div>`;
+            }
+            if (block.maintenance?.length) html += `<div style="margin-bottom:12px;"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#c0c0c8;">Maintenance</span><br><span style="font-size:14px;color:#86868b;">${block.maintenance.join(', ')}</span></div>`;
+            if (block.rationale) html += `<div style="font-size:13px;color:#555;line-height:1.6;border-top:1px solid #f0f0f5;padding-top:12px;">${block.rationale}</div>`;
+            return html;
+        }
+
+        function formatBlockForContext(block) {
+            if (!block) return null;
+            const date = new Date(block.createdAt).toLocaleDateString('en-GB', {day:'numeric', month:'short'});
+            let ctx = `CURRENT TRAINING FOCUS (set ${date}):\n`;
+            if (block.primaryGoal) {
+                ctx += `Primary goal: ${block.primaryGoal}\n`;
+                if (block.primaryMuscles?.length) ctx += `Primary muscles: ${block.primaryMuscles.join(', ')}\n`;
+            } else if (block.primary?.length) {
+                ctx += `Primary focus: ${block.primary.join(', ')}\n`;
+            }
+            if (block.secondaryGoal) {
+                ctx += `Secondary goal: ${block.secondaryGoal}\n`;
+                if (block.secondaryMuscles?.length) ctx += `Secondary muscles: ${block.secondaryMuscles.join(', ')}\n`;
+            } else if (block.secondary?.length) {
+                ctx += `Secondary focus: ${block.secondary.join(', ')}\n`;
+            }
+            if (block.maintenance?.length) ctx += `Maintenance: ${block.maintenance.join(', ')}\n`;
+            if (block.rationale) ctx += `Rationale: ${block.rationale}`;
+            return ctx;
+        }
+
+        // Build a new Jumi plan by asking Jumi to assess history and propose a block
+        window.buildJumiPlan = async function() {
+            const btn = document.getElementById('jumiPlanBtn');
+            const output = document.getElementById('jumiPlanOutput');
+            if (!btn || !output) return;
+
+            // Read goal text fields if present
+            const primaryGoalInput = document.getElementById('jumiPrimaryGoalInput');
+            const secondaryGoalInput = document.getElementById('jumiSecondaryGoalInput');
+            const primaryGoal = primaryGoalInput ? primaryGoalInput.value.trim() : '';
+            const secondaryGoal = secondaryGoalInput ? secondaryGoalInput.value.trim() : '';
+
+            if (!primaryGoal) {
+                output.innerHTML = '<div style="color:#ff3b30;font-size:13px;padding:12px;">Please enter a primary goal.</div>';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Thinking…';
+            output.innerHTML = '<div style="color:#86868b;font-size:13px;padding:12px;">Jumi is reviewing your history…</div>';
+
+            try {
+                const allHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
+                const contextTable = allHistory.length >= 3 ? buildChatContext() : null;
+                const fitbodCtx = buildFitbodContext();
+                const currentBlock = getJumiBlock();
+                const validMuscles = [...getPriorityTargetEnum()].sort().join(', ');
+
+                const currentBlockNote = currentBlock
+                    ? `\n\nPREVIOUS FOCUS (for reference):\n${formatBlockForContext(currentBlock)}`
+                    : '';
+
+                const historyNote = contextTable
+                    ? `\n\nTRAINING HISTORY:\n${contextTable}`
+                    : '\n\nNo significant training history yet.';
+
+                const fitbodNote = fitbodCtx ? `\n\n${fitbodCtx}` : '';
+
+                const message = `You are Jumi, a flexibility coach. The user has set their training goals. Identify the most relevant muscles from the library to serve those goals.
+
+Primary goal: "${primaryGoal}"
+${secondaryGoal ? `Secondary goal: "${secondaryGoal}"` : 'No secondary goal.'}
+${historyNote}${fitbodNote}${currentBlockNote}
+
+Think in this order:
+1. What does the PRIMARY goal require anatomically? Which muscles, when more flexible, would most directly serve this goal? List up to 4 muscles. Do not anchor on recent history — start from the goal itself.
+2. Use training history only to understand which of those muscles are most neglected or underdeveloped. That informs priority, not the muscle selection.
+3. If a secondary goal exists, repeat the same process for it. List up to 2 muscles.
+4. Write a rationale of 3-4 sentences: explain the muscles chosen and why they serve the goal, then explicitly explain why other major muscle groups were NOT included — e.g. recently trained, no deficit, not relevant to the goal. Be specific about what the data shows.
+
+The previous block is provided for context only. Do not copy its muscle selections.
+
+Valid muscle names — use ONLY names from this exact list:
+${validMuscles}
+
+Respond ONLY with a JSON object in this exact format, no other text:
+{"primaryMuscles":["Muscle1","Muscle2","Muscle3"],"secondaryMuscles":["Muscle4"],"rationale":"Your rationale here."}`;
+
+                const response = await fetch('https://flexibilityapp3849.netlify.app/.netlify/functions/coach', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mode: 'jumi_plan',
+                        system: 'You are Jumi, a flexibility coach. Respond only with a valid JSON object, no other text.',
+                        messages: [{ role: 'user', content: message }]
+                    })
+                });
+
+                const data = await response.json();
+                const text = (data.reply || (data.content || []).map(b => b.text || '').join('')).trim();
+                const clean = text.replace(/```json|```/g, '').trim();
+                const parsed = JSON.parse(clean);
+
+                // Validate muscle names against library
+                const validMuscleSet = getPriorityTargetEnum();
+                const validateMuscles = (arr) => (arr || []).filter(m => validMuscleSet.has(m));
+
+                const block = {
+                    primaryGoal,
+                    secondaryGoal: secondaryGoal || '',
+                    primaryMuscles:   validateMuscles(parsed.primaryMuscles),
+                    secondaryMuscles: validateMuscles(parsed.secondaryMuscles),
+                    rationale:  parsed.rationale || '',
+                    createdAt:  new Date().toISOString(),
+                    createdBy:  'jumi'
+                };
+
+                if (!block.primaryMuscles || block.primaryMuscles.length === 0) throw new Error('No valid primary muscles identified');
+
+                window._pendingJumiBlock = block;
+
+                output.innerHTML = `
+                    <div style="margin-bottom:16px;">${formatBlockForDisplay(block)}</div>
+                    <div style="display:flex;gap:8px;">
+                        <button onclick="acceptJumiPlan()" style="flex:1;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">Accept Plan</button>
+                        <button onclick="buildJumiPlan()" style="flex:1;background:white;border:1.5px solid #d2d2d7;color:#1d1d1f;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">Try Again</button>
+                    </div>`;
+
+            } catch(err) {
+                console.error('Plan generation error:', err);
+                output.innerHTML = `<div style="color:#ff3b30;font-size:13px;padding:12px;">Could not generate plan. Please try again.</div>`;
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Create Plan';
+        };
+
+        window.acceptJumiPlan = function() {
+            const block = window._pendingJumiBlock;
+            if (!block) return;
+            saveJumiBlock(block);
+            window._pendingJumiBlock = null;
+            renderJumiPlanPanel();
+        };
+
+        function renderJumiPlanPanel() {
+            const container = document.getElementById('jumiPlanContainer');
+            if (!container) return;
+
+            const block = getJumiBlock();
+            const existingPrimary = block?.primaryGoal || '';
+            const existingSecondary = block?.secondaryGoal || '';
+
+            const currentBlockHtml = block ? `
+                <div style="background:white;border:1.5px solid #ebebf0;border-radius:14px;padding:20px;margin-bottom:16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+                        <div style="font-size:13px;font-weight:700;color:#1d1d1f;">Current Focus</div>
+                        <button onclick="clearJumiBlock();renderJumiPlanPanel();" style="background:none;border:none;font-size:11px;color:#ff3b30;cursor:pointer;font-weight:600;">Clear</button>
+                    </div>
+                    ${formatBlockForDisplay(block)}
+                </div>` : `
+                <div style="background:#f8f7ff;border:1.5px solid #e8e4f8;border-radius:14px;padding:20px;margin-bottom:16px;text-align:center;">
+                    <div style="font-size:32px;margin-bottom:8px;">✦</div>
+                    <div style="font-size:14px;font-weight:600;color:#1d1d1f;margin-bottom:6px;">No focus set</div>
+                    <div style="font-size:13px;color:#86868b;line-height:1.5;">Set your goals and Jumi will build every routine toward them.</div>
+                </div>`;
+
+            container.innerHTML = `
+                ${currentBlockHtml}
+                <div style="background:white;border:1.5px solid #ebebf0;border-radius:14px;padding:20px;margin-bottom:12px;">
+                    <div style="font-size:13px;font-weight:700;color:#1d1d1f;margin-bottom:16px;">${block ? 'Update Goals' : 'Set Your Goals'}</div>
+                    <div style="margin-bottom:12px;">
+                        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#667eea;display:block;margin-bottom:6px;">Primary goal</label>
+                        <input id="jumiPrimaryGoalInput" type="text" placeholder="e.g. getting my front splits" value="${existingPrimary}" style="width:100%;font-size:14px;padding:10px 12px;border:1.5px solid #d2d2d7;border-radius:10px;outline:none;box-sizing:border-box;"/>
+                    </div>
+                    <div style="margin-bottom:16px;">
+                        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#86868b;display:block;margin-bottom:6px;">Secondary goal <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+                        <input id="jumiSecondaryGoalInput" type="text" placeholder="e.g. ease my knee pain" value="${existingSecondary}" style="width:100%;font-size:14px;padding:10px 12px;border:1.5px solid #d2d2d7;border-radius:10px;outline:none;box-sizing:border-box;"/>
+                    </div>
+                    <button id="jumiPlanBtn" onclick="buildJumiPlan()" style="width:100%;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;padding:12px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Create Plan</button>
+                </div>
+                <div id="jumiPlanOutput"></div>`;
+        }
 
         window.importFitbodCSV = function(input) {
             const file = input.files[0];
@@ -9314,6 +9663,8 @@ Please rank the candidates for each phase using the generate_routine tool.`;
                 return `${e.exercise} (${e.phase}, ${muscles})`;
             }).join(', ');
             const focusNote = userPrompt ? ` The user's focus today was: "${userPrompt}".` : '';
+            const block = getJumiBlock();
+            const blockNote = block ? `\n\n${formatBlockForContext(block)}\n\nThis block is the strategic context for all sessions. Reference it in your explanation — today's session should be framed as part of this ongoing plan, not a standalone routine.` : '';
             const fitbodContext = buildFitbodContext();
             const fitbodNote = fitbodContext
                 ? `\n\n${fitbodContext}\n\nUse your anatomy knowledge to infer which muscles were loaded. Where the strength training data influenced this session's decisions, reference it explicitly — particularly if muscles were trained within the last 72 hours or trained frequently in the last 2 weeks. Do not let recent strength training override long-term flexibility deficits unless the load was within 72 hours.`
@@ -9368,7 +9719,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
 - Splits: sport-specific positions; progressive loading toward full range
 - Cool Down: parasympathetic reset; consolidates the session's work
 - Final Rest: full body stillness; integrates the session neurologically`;
-            const initialMessage = `Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}.${focusNote}${historyNote}${fitbodNote}${priorityNote}\n\nThis session's exercises:\n${exerciseList}\n\nWrite 3 paragraphs (100-150 words total). Paragraph 1: describe a real behavioural pattern from the history in plain language — what has been relied on, avoided, or neglected. Paragraph 2: explain the decision this session makes — what changes, what trade-off is being made. If priorities are provided, anchor this paragraph to them explicitly. Where relevant, briefly note how the prep phases lead into the stretches and the cool down settles the same muscles — only if this adds meaning. Paragraph 3: explain what this builds toward, linked to the goals. Translate all data into natural language. Never reference column names. Name exercises only as evidence. Write like a coach, not an analyst.`;
+            const initialMessage = `Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}.${focusNote}${historyNote}${blockNote}${fitbodNote}${priorityNote}\n\nThis session's exercises:\n${exerciseList}\n\nWrite 3 paragraphs (100-150 words total). Paragraph 1: describe a real behavioural pattern from the history in plain language — what has been relied on, avoided, or neglected. Paragraph 2: explain the decision this session makes — what changes, what trade-off is being made. If priorities are provided, anchor this paragraph to them explicitly. Where relevant, briefly note how the prep phases lead into the stretches and the cool down settles the same muscles — only if this adds meaning. Paragraph 3: explain what this builds toward, linked to the goals. Translate all data into natural language. Never reference column names. Name exercises only as evidence. Write like a coach, not an analyst.`;
             try {
                 const response = await fetch('https://flexibilityapp3849.netlify.app/.netlify/functions/coach', {
                     method: 'POST',
@@ -9405,25 +9756,21 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
             }
         }
 
-        // ── JUMI: AI-driven routine generation (Path A — main card button) ──
+        // ── JUMI: AI-driven routine generation — Jumi is the author ──
         async function generateJumiRoutine(userPrompt) {
             const btn = document.getElementById('jumiQuickBtn');
             if (btn) btn.disabled = true;
             const _jqs = document.getElementById('jumiQuickSubtitle');
             if (_jqs) _jqs.textContent = 'Thinking…';
 
-            // Disable any stale chat Confirm buttons to prevent double-generation
             document.querySelectorAll('.chat-action-row button').forEach(b => {
-                b.disabled = true;
-                b.style.opacity = '0.5';
-                b.style.cursor = 'default';
+                b.disabled = true; b.style.opacity = '0.5'; b.style.cursor = 'default';
             });
 
             if (!selectedTime) selectedTime = 35;
             if (!selectedType) selectedType = appSettings.quickStartType || 'full';
             if (!selectedHold) { selectedHold = appSettings.quickStartHold || 'short'; longSession = selectedHold === 'long'; }
 
-            // Show thinking placeholder in routine panel
             document.getElementById('jumiExplanation').style.display = 'none';
             document.getElementById('routineDisplayWrapper').style.display = 'block';
             document.getElementById('customDisplay').style.display = 'none';
@@ -9435,79 +9782,169 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
             }
 
             const goals = getJumiGoals();
-            const contextTable = buildChatContext();
-            const slots = buildJumiSlots();
-            const { systemPrompt, userMessage } = buildJumiPrompt(goals, contextTable, slots, userPrompt);
+            const { systemPrompt, userMessage } = buildJumiContext(goals, userPrompt);
 
             try {
                 const response = await fetch('https://flexibilityapp3849.netlify.app/.netlify/functions/coach', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        mode: 'jumi_generate',
+                        mode: 'jumi_author',
                         system: systemPrompt,
                         messages: [{ role: 'user', content: userMessage }]
                     })
                 });
 
                 const data = await response.json();
-                const routineData = data.routine || null;
-                const replyText = (data.reply || '').trim();
+                console.log('Coach response keys:', Object.keys(data));
+                console.log('Raw reply length:', (data.reply || '').length);
+                console.log('Raw reply preview:', (data.reply || '').substring(0, 200));
 
-                // Priorities now come directly from the tool call via coach.js
-                const jumiPriorities = Array.isArray(data.priorities) ? data.priorities : [];
-                const coverage = {}; // populated after routine generation
+                // Parse Jumi's response — expect JSON with exercises[] and explanation
+                let jumiResult = null;
+                const rawReply = data.reply || data.content || '';
 
-                if (!routineData) {
-                    if (domCache.routineDisplay) domCache.routineDisplay.innerHTML = '<div style="padding:40px;text-align:center;color:#86868b;">Jumi could not build a routine \u2014 please try again.</div>';
+
+                try {
+                    // Try to extract JSON from the reply
+                    const jsonMatch = rawReply.match(/\{[\s\S]*\}/);
+                    console.log('JSON match found:', !!jsonMatch, jsonMatch ? jsonMatch[0].substring(0, 100) : 'none');
+                    if (jsonMatch) jumiResult = JSON.parse(jsonMatch[0]);
+                    console.log('jumiResult exercises count:', jumiResult?.exercises?.length);
+                } catch(e) {
+                    console.warn('Could not parse Jumi JSON response:', e.message);
+                }
+
+                // Also check if coach.js returned structured routine data
+                if (!jumiResult && data.routine) {
+                    // Fallback: coach returned old-format routine data
+                    jumiResult = { exercises: null, explanation: rawReply };
+                }
+
+                if (!jumiResult || !jumiResult.exercises || jumiResult.exercises.length === 0) {
+                    if (domCache.routineDisplay) domCache.routineDisplay.innerHTML = '<div style="padding:40px;text-align:center;color:#86868b;">Jumi could not build a routine — please try again.</div>';
                     if (btn) btn.disabled = false;
                     if (_jqs) _jqs.textContent = 'AI routine';
                     return;
                 }
 
-                // Apply Jumi's choices, inject priority, run generateRoutine cleanly
+                // ── RENDER: Jumi's exercise list → full routine ──
                 longSession = selectedHold === 'long';
-                selectedType = routineData.body_type || 'full';
-                // Sync type buttons to reflect Jumi's chosen body type
-                document.querySelectorAll('.type-btn').forEach(b => { b.classList.remove('selected'); b.classList.toggle('selected', b.dataset.type === selectedType); });
+                const exercisesWithDurations = exercises.map(ex => {
+                    const e = {...ex};
+                    applyDurationSettings([e]);
+                    return e;
+                });
+                const exerciseLookup = {};
+                exercisesWithDurations.forEach(ex => { exerciseLookup[ex.exercise] = ex; });
 
-                // Filter priorities to only those relevant to the current scope (body type)
-                // If Upper Body is selected, Hamstring priorities are pointless — remove them
-                const scopedPriorities = jumiPriorities.filter(p => {
-                    // Derive muscle→bodyPart mapping from exercise library
-                    const lowerMuscles = new Set();
-                    const upperMuscles = new Set();
-                    (window._exercises || []).forEach(ex => {
-                        const bp = (ex.bodyPart || '').toLowerCase();
-                        const muscles = [ex.primaryMuscle, ex.secondaryMuscle, ex.tertiaryMuscle].filter(Boolean);
-                        muscles.forEach(m => {
-                            if (bp === 'lower') lowerMuscles.add(m);
-                            if (bp === 'upper') upperMuscles.add(m);
-                        });
-                    });
-                    if (selectedType === 'upper' && lowerMuscles.has(p.target) && !upperMuscles.has(p.target)) return false;
-                    if (selectedType === 'lower' && upperMuscles.has(p.target) && !lowerMuscles.has(p.target)) return false;
-                    return true;
+                // Build routine from Jumi's selected exercises
+                let jumiRoutine = [];
+                const usedNames = new Set();
+                const phaseOrder = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down'];
+
+                jumiResult.exercises.forEach(item => {
+                    const name = item.exercise;
+                    const phase = item.phase;
+                    const priority = typeof item.priority === 'number' ? item.priority : 50;
+                    if (!name || !phase || usedNames.has(name)) return;
+                    const found = exerciseLookup[name];
+                    if (!found) { console.warn(`Jumi picked unknown exercise: ${name}`); return; }
+                    jumiRoutine.push({...found, phase, _priority: priority});
+                    usedNames.add(name);
                 });
 
-                // Apply priority bias first, then Jumi's ranked order
-                const { result: biasedRoutineData } = applyPriorityBias(routineData, scopedPriorities);
-                const prioritised = applyJumiPriority(biasedRoutineData);
-                window._lastJumiPriorities = scopedPriorities; // expose for selectSessionTargets
-                await generateRoutine(prioritised);
+                // Sort helper
+                const sortByPhase = (arr) => arr.sort((a, b) => {
+                    const ai = phaseOrder.indexOf(a.phase);
+                    const bi = phaseOrder.indexOf(b.phase);
+                    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+                });
+                sortByPhase(jumiRoutine);
 
-                // Calculate coverage — how many selected exercises matched each priority
-                if (scopedPriorities.length > 0 && currentRoutine) {
-                    for (const p of scopedPriorities) {
-                        coverage[p.target] = currentRoutine.filter(ex =>
-                            (ex.primaryMuscle || '').toLowerCase() === p.target.toLowerCase()
-                        ).length;
+                // Hard cap prep phases at 3 exercises — remove lowest priority if over
+                const PREP_CAP = 3;
+                const CAPPED_PHASES = new Set(['Warm-Up', 'Foam Roller', 'Mobility']);
+                CAPPED_PHASES.forEach(phase => {
+                    const phaseExs = jumiRoutine.filter(ex => ex.phase === phase);
+                    if (phaseExs.length > PREP_CAP) {
+                        const sorted = [...phaseExs].sort((a, b) => (a._priority || 50) - (b._priority || 50));
+                        const toRemove = new Set(sorted.slice(0, phaseExs.length - PREP_CAP).map(ex => ex.exercise));
+                        jumiRoutine = jumiRoutine.filter(ex => ex.phase !== phase || !toRemove.has(ex.exercise));
+                    }
+                });
+                const savasana = exerciseLookup['Savasana'];
+                if (savasana && !usedNames.has('Savasana')) {
+                    jumiRoutine.push({...savasana, phase: 'Final Rest', _priority: 100});
+                    usedNames.add('Savasana');
+                }
+
+                if (selectedTime !== 999) {
+                    const targetSeconds = selectedTime * 60;
+                    let total = jumiRoutine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0);
+
+                    // TRIM — remove lowest priority exercises until under target
+                    if (total > targetSeconds) {
+                        console.log(`Trimming: total=${total}s, target=${targetSeconds}s, exercises=${jumiRoutine.length}`);
+                        const PHASE_TRIM_ORDER = ['Warm-Up', 'Cool Down', 'Mobility', 'Foam Roller', 'Static Stretching', 'Active Stretch', 'Deep Stretch'];
+                        const trimmable = jumiRoutine
+                            .filter(ex => ex.phase !== 'Final Rest')
+                            .map(ex => ({ ex, priority: ex._priority || 50 }))
+                            .sort((a, b) => {
+                                if (a.priority !== b.priority) return a.priority - b.priority;
+                                const ao = PHASE_TRIM_ORDER.indexOf(a.ex.phase);
+                                const bo = PHASE_TRIM_ORDER.indexOf(b.ex.phase);
+                                return (ao === -1 ? 99 : ao) - (bo === -1 ? 99 : bo);
+                            });
+                        const toRemove = new Set();
+                        for (const item of trimmable) {
+                            if (total <= targetSeconds) break;
+                            toRemove.add(item.ex.exercise);
+                            total -= calculateExerciseTime(item.ex);
+                        }
+                        jumiRoutine = jumiRoutine.filter(ex => !toRemove.has(ex.exercise));
+                        total = jumiRoutine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0);
+                        console.log(`After trim: total=${total}s, removed=${toRemove.size} exercises`);
+                    }
+
+                    // PAD — only if more than 60s under target, and never exceed target
+                    if (total < targetSeconds - 60) {
+                        // Build recency weights from history
+                        const padRecencyWeights = {};
+                        const history = JSON.parse(localStorage.getItem('routineHistory') || '[]');
+                        const now = Date.now();
+                        if (history.length >= 1) (history[history.length-1].routine||[]).forEach(ex => { padRecencyWeights[ex.exercise] = 0.25; });
+                        if (history.length >= 2) (history[history.length-2].routine||[]).forEach(ex => { if (!padRecencyWeights[ex.exercise]) padRecencyWeights[ex.exercise] = 0.5; });
+                        if (history.length >= 3) (history[history.length-3].routine||[]).forEach(ex => { if (!padRecencyWeights[ex.exercise]) padRecencyWeights[ex.exercise] = 0.75; });
+
+                        // Get available exercises not already in routine, shuffle by recency
+                        const available = exercisesWithDurations
+                            .filter(ex => !usedNames.has(ex.exercise) && ex.phase !== 'Final Rest')
+                            .map(ex => ({ ex, sort: Math.random() * (padRecencyWeights[ex.exercise] || 1.0) }))
+                            .sort((a, b) => b.sort - a.sort)
+                            .map(x => x.ex);
+
+                        for (const ex of available) {
+                            // Don't pad into prep phases that are already at their cap
+                            const phaseCount = jumiRoutine.filter(r => r.phase === ex.phase).length;
+                            if (CAPPED_PHASES.has(ex.phase) && phaseCount >= PREP_CAP) continue;
+                            const exTime = calculateExerciseTime(ex);
+                            if (total + exTime <= targetSeconds) {
+                                jumiRoutine.push(ex);
+                                usedNames.add(ex.exercise);
+                                total += exTime;
+                            }
+                        }
+                        sortByPhase(jumiRoutine);
                     }
                 }
 
-                // Save and display
+                // Set as current routine and display
+                currentRoutine = jumiRoutine;
                 currentJumiRoutine = currentRoutine.map(e => ({...e}));
+                appState.jumiRoutine = currentJumiRoutine;
 
+                displayRoutine();
                 document.getElementById('routineDisplayWrapper').style.display = 'block';
                 document.getElementById('customDisplay').style.display = 'none';
                 const _jcr = document.getElementById('customNavActions');
@@ -9515,17 +9952,71 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
 
                 initAudio();
                 document.getElementById('floatingEditBtn').style.display = 'flex';
-    
                 const _ji = document.getElementById('jumiQuickIcon');
                 if (_ji) _ji.textContent = '↺';
+                updateFloatingButtons();
 
-                // Get explanation based on actual built routine, then show in chat
-                const goals = getJumiGoals();
-                const actualExplanation = await getJumiExplanation(currentRoutine, goals, userPrompt, contextTable, scopedPriorities, coverage);
-                if (actualExplanation) {
-                    appendChatMessage('jumi', actualExplanation);
+                // Post-generation validation — check which plan muscles were served
+                const block2 = getJumiBlock();
+                if (block2) {
+                    const routineMuscles = new Set(currentRoutine.flatMap(ex => [ex.primaryMuscle, ex.secondaryMuscle, ex.tertiaryMuscle].filter(Boolean)));
+                    const primaryMs = block2.primaryMuscles || block2.primary || [];
+                    const secondaryMs = block2.secondaryMuscles || block2.secondary || [];
+                    const checkMuscles = [...primaryMs, ...secondaryMs];
+                    if (checkMuscles.length > 0) {
+                        const validation = checkMuscles.map(m => `${m}: ${routineMuscles.has(m) ? '✓' : '✗'}`);
+                        console.log('Plan coverage:', validation.join(', '));
+                    }
                 }
-                window.openJumiChat && window.openJumiChat();
+                // Jumi now knows exactly what's in the routine and writes an honest explanation
+                const finalisedList = currentRoutine
+                    .filter(ex => ex.phase !== 'Final Rest')
+                    .map(ex => `${ex.exercise} (${ex.phase})`)
+                    .join(', ');
+
+                const block = getJumiBlock();
+                const blockCtx = block
+                    ? `Current focus: ${block.primaryGoal || (block.primary||[]).join(', ')}${block.secondaryGoal ? `. Secondary: ${block.secondaryGoal}` : (block.secondary?.length ? `. Secondary muscles: ${block.secondary.join(', ')}` : '')}.`
+                    : '';
+                const fitbodCtx = buildFitbodContext() ? buildFitbodContext() : '';
+
+                const explanationPrompt = `You are Jumi, a flexibility coach. Write a 100-150 word explanation of this routine directly to the user. Use British English.
+
+${blockCtx}
+${fitbodCtx ? fitbodCtx + '\n' : ''}
+Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
+${userPrompt ? `Today's focus: "${userPrompt}"` : ''}
+
+This is the exact finalised routine:
+${finalisedList}
+
+Structure your explanation around three things:
+1. Where we are with the current focus — what is being targeted and why, referencing history and Fitbod data where relevant
+2. What today's session specifically contributes — how it moves things forward
+3. What comes next — what this session sets up
+
+Tone: direct and clinical. Short sentences. Facts and reasoning only. No metaphors, no emotional language, no encouragement, no filler. Do not call it a "block" — refer to it naturally as "your current focus" or "what we're working on". Do not start with filler words like "Right", "So", or "Well". Do not list exercises by name. Do not use bullet points, headers, or markdown. Only reference what is actually in the routine above.`;
+
+                try {
+                    const expResponse = await fetch('https://flexibilityapp3849.netlify.app/.netlify/functions/coach', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            mode: 'jumi_author',
+                            system: 'You are Jumi, a flexibility coach. Write a concise explanation in British English. Plain prose only, no lists, no markdown.',
+                            messages: [{ role: 'user', content: explanationPrompt }]
+                        })
+                    });
+                    const expData = await expResponse.json();
+                    const explanation = (expData.reply || '').trim();
+                    if (explanation) {
+                        appendChatMessage('jumi', explanation);
+                        window.openJumiChat && window.openJumiChat();
+                    }
+                } catch(expErr) {
+                    console.warn('Explanation call failed:', expErr.message);
+                    // Non-fatal — routine is already displayed
+                }
 
             } catch(err) {
                 console.error('Jumi generation error:', err.message, err.stack);
@@ -11498,6 +11989,7 @@ function showStats() {
                             <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #86868b; margin-bottom: 6px; padding-left:4px;">Jumi</div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
                                 <button id="settingsGoalsBtn" class="sidebar-nav-btn" style="display:flex;align-items:center;gap:9px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Goals</button>
+                                <button id="settingsPlanBtn" class="sidebar-nav-btn" style="display:flex;align-items:center;gap:9px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Plan</button>
                             </div>
                         </div>
                         <div>
@@ -11917,10 +12409,16 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">4.37</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.27</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
+                </div>
+
+                <div id="settingsPlanContent" class="settings-content-panel" style="display: none;">
+                    <h2 style="margin:0 0 6px; font-size:24px; font-weight:800; letter-spacing:-0.5px; color:#1d1d1f;">Plan</h2>
+                    <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">Jumi's strategic focus for your sessions. Routines will consistently work toward this plan until you update it.</p>
+                    <div id="jumiPlanContainer"></div>
                 </div>
 
                 <div id="settingsExternalDataContent" class="settings-content-panel" style="display: none;">
