@@ -93,8 +93,8 @@ exports.handler = async function(event) {
         }
 
         const requestBody = {
-            model: isAuthor ? 'claude-sonnet-4-20250514' : 'claude-haiku-4-5-20251001',
-            max_tokens: isAuthor ? 8000 : isJumiGen ? 4000 : 2000,
+            model: (isAuthor || isChat) ? 'claude-sonnet-4-20250514' : 'claude-haiku-4-5-20251001',
+            max_tokens: isAuthor ? 8000 : isChat ? 4000 : isJumiGen ? 4000 : 2000,
             system,
             messages,
         };
