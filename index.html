@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499293 -->
+<!-- Version: 1775499294 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1639,7 +1639,7 @@
         }
     </style>
 <meta name="build-date" content="04 Jun 2026">
-<meta name="app-version" content="5.42">
+<meta name="app-version" content="5.43">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -2339,7 +2339,7 @@
             });
 
             // Settings tab navigation
-            const settingsNavBtns = ['settingsPlanBtn', 'settingsQuickStartBtn', 'settingsExerciseDurationBtn', 'settingsSoundBtn', 'settingsFrontSplitsBtn', 'settingsCustomExercisesBtn', 'settingsBackupBtn', 'settingsVersionBtn', 'settingsKeyboardBtn', 'settingsExternalDataBtn'];
+            const settingsNavBtns = ['settingsGoalsBtn', 'settingsQuickStartBtn', 'settingsExerciseDurationBtn', 'settingsSoundBtn', 'settingsFrontSplitsBtn', 'settingsCustomExercisesBtn', 'settingsBackupBtn', 'settingsVersionBtn', 'settingsKeyboardBtn', 'settingsExternalDataBtn'];
             settingsNavBtns.filter(id => id !== 'settingsCustomExercisesBtn').forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.addEventListener('click', () => {
@@ -2347,7 +2347,7 @@
                     if (nb) nb.style.display = 'none';
                 });
             });
-            const settingsContentPanels = ['settingsPlanContent', 'settingsQuickStartContent', 'settingsExerciseDurationContent', 'settingsSoundContent', 'settingsFrontSplitsContent', 'settingsCustomExercisesContent', 'settingsBackupContent', 'settingsVersionContent', 'settingsKeyboardContent', 'settingsExternalDataContent'];
+            const settingsContentPanels = ['settingsGoalsContent', 'settingsQuickStartContent', 'settingsExerciseDurationContent', 'settingsSoundContent', 'settingsFrontSplitsContent', 'settingsCustomExercisesContent', 'settingsBackupContent', 'settingsVersionContent', 'settingsKeyboardContent', 'settingsExternalDataContent'];
 
             function activateSettingsTab(activeId, activeContent) {
                 settingsNavBtns.forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('active'); });
@@ -2766,10 +2766,50 @@
                 activateSettingsTab('settingsBackupBtn', 'settingsBackupContent');
             });
 
-            document.getElementById('settingsPlanBtn').addEventListener('click', function() {
-                activateSettingsTab('settingsPlanBtn', 'settingsPlanContent');
-                renderJumiPlanPanel();
+            document.getElementById('settingsGoalsBtn').addEventListener('click', function() {
+                activateSettingsTab('settingsGoalsBtn', 'settingsGoalsContent');
+                const saved = JSON.parse(localStorage.getItem('jumiGoals') || '{}');
+                ['maintenance','relaxation','posture','recovery','mobility','flexibility','alignment','frontsplits','sidesplits'].forEach(id => {
+                    const el = document.getElementById('goal_' + id);
+                    if (el) el.checked = saved[id] || false;
+                });
+                const custom = document.getElementById('goal_custom');
+                if (custom) custom.value = saved.custom || '';
+                document.querySelectorAll('.goal-pill').forEach(pill => {
+                    const cb = document.getElementById(pill.dataset.goal);
+                    const selected = cb && cb.checked;
+                    pill.style.background = selected ? '#667eea' : 'white';
+                    pill.style.borderColor = selected ? '#667eea' : '#e5e5e7';
+                    pill.style.color = selected ? 'white' : '#3a3a3a';
+                    pill.style.fontWeight = selected ? '600' : '500';
+                });
             });
+
+            document.getElementById('goalPillsContainer').addEventListener('click', function(e) {
+                const pill = e.target.closest('.goal-pill');
+                if (!pill) return;
+                const cb = document.getElementById(pill.dataset.goal);
+                if (!cb) return;
+                cb.checked = !cb.checked;
+                const selected = cb.checked;
+                pill.style.background = selected ? '#667eea' : 'white';
+                pill.style.borderColor = selected ? '#667eea' : '#e5e5e7';
+                pill.style.color = selected ? 'white' : '#3a3a3a';
+                pill.style.fontWeight = selected ? '600' : '500';
+            });
+
+            window.saveGoals = function() {
+                const goals = {};
+                ['maintenance','relaxation','posture','recovery','mobility','flexibility','alignment','frontsplits','sidesplits'].forEach(id => {
+                    const el = document.getElementById('goal_' + id);
+                    if (el) goals[id] = el.checked;
+                });
+                const custom = document.getElementById('goal_custom');
+                if (custom) goals.custom = custom.value.trim();
+                localStorage.setItem('jumiGoals', JSON.stringify(goals));
+                const msg = document.getElementById('goalsSavedMsg');
+                if (msg) { msg.style.display = 'inline'; setTimeout(() => msg.style.display = 'none', 2000); }
+            };
 
             document.getElementById('settingsExternalDataBtn').addEventListener('click', function() {
                 activateSettingsTab('settingsExternalDataBtn', 'settingsExternalDataContent');
@@ -8868,14 +8908,6 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
         // ── JUMI: Build history context (last 728 days) ──
         function getJumiGoals() {
-            const block = getJumiBlock();
-            if (block) {
-                const goals = [];
-                if (block.primaryGoal) goals.push(block.primaryGoal);
-                if (block.secondaryGoal) goals.push(block.secondaryGoal);
-                if (goals.length > 0) return goals;
-            }
-            // Fallback to old jumiGoals for backwards compatibility
             const saved = JSON.parse(localStorage.getItem('jumiGoals') || '{}');
             const goalLabels = {
                 maintenance: 'General maintenance',
@@ -9335,230 +9367,6 @@ Please build the routine now.`;
             if (block.maintenance?.length) ctx += `Maintenance: ${block.maintenance.join(', ')}\n`;
             if (block.rationale) ctx += `Rationale: ${block.rationale}`;
             return ctx;
-        }
-
-        // Build a new Jumi plan by asking Jumi to assess history and propose a block
-        window.buildJumiPlan = async function() {
-            const btn = document.getElementById('jumiPlanBtn');
-            const output = document.getElementById('jumiPlanOutput');
-            if (!btn || !output) return;
-
-            // Read goal text fields if present
-            const primaryGoalInput = document.getElementById('jumiPrimaryGoalInput');
-            const secondaryGoalInput = document.getElementById('jumiSecondaryGoalInput');
-            const primaryGoal = primaryGoalInput ? primaryGoalInput.value.trim() : '';
-            const secondaryGoal = secondaryGoalInput ? secondaryGoalInput.value.trim() : '';
-
-            if (!primaryGoal) {
-                output.innerHTML = '<div style="color:#ff3b30;font-size:13px;padding:12px;">Please enter a primary goal.</div>';
-                return;
-            }
-
-            btn.disabled = true;
-            btn.textContent = 'Thinking…';
-            output.innerHTML = '<div style="color:#86868b;font-size:13px;padding:12px;">Jumi is reviewing your history…</div>';
-
-            try {
-                const allHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
-                const contextTable = allHistory.length >= 3 ? buildFullJumiContext() : null;
-                const fitbodCtx = buildFitbodContext();
-                const currentBlock = getJumiBlock();
-                const validMuscles = [...getPriorityTargetEnum()].sort().join(', ');
-
-                const currentBlockNote = currentBlock
-                    ? `\n\nPREVIOUS FOCUS (for reference):\n${formatBlockForContext(currentBlock)}`
-                    : '';
-
-                const historyNote = contextTable
-                    ? `\n\nTRAINING HISTORY:\n${contextTable}`
-                    : '\n\nNo significant training history yet.';
-
-                const fitbodNote = fitbodCtx ? `\n\n${fitbodCtx}` : '';
-
-                const message = `You are Jumi, a flexibility coach. Select muscles using the process below exactly.
-
-Primary goal: "${primaryGoal}"
-${secondaryGoal ? `Secondary goal: "${secondaryGoal}"` : 'No secondary goal.'}
-${historyNote}${fitbodNote}${currentBlockNote}
-
-STEP 1 — RANK ALL MUSCLES FROM THE DATA ONLY.
-Using ONLY the MUSCLE SUMMARY table, rank every muscle from highest to lowest priority using these signals:
-- Low recent minutes (1 month, 2 weeks) relative to total 12-month minutes indicates recent neglect
-- Upper/lower body imbalance — use the UPPER/LOWER BODY SPLIT figure. If lower body dominates, upper body muscles rank higher
-- Low absolute minutes relative to other muscles
-- Time since last worked
-Do not use anatomy. Do not use flexibility theory. Do not use assumptions about what muscles matter for flexibility. Only the data.
-
-STEP 2 — FILTER BY GOAL RELEVANCE.
-Remove muscles from the ranked list that have no plausible connection to "${primaryGoal}". You may use anatomical knowledge only to remove clearly irrelevant muscles (e.g. Wrists for a flexibility goal). Do not use it to reorder.
-
-STEP 3 — SELECT TOP 4 PRIMARY MUSCLES from what remains after filtering. The selection must follow the data ranking. If you want to skip a high-ranked muscle, you must explicitly state why in the rationale.
-
-STEP 4 — REPEAT steps 1-3 for the secondary goal if present. Select up to 2 muscles.
-
-STEP 5 — WRITE RATIONALE using actual numbers from the MUSCLE SUMMARY. State the data rank of each selected muscle. If you overrode the data ranking, explain why. "Full-body flexibility" means balanced development across upper body, spine, hips and lower body — do not assume lower-body muscles are more important unless the data supports that conclusion.
-
-Valid muscle names — use ONLY names from this exact list:
-${validMuscles}
-
-Respond ONLY with a JSON object in this exact format, no other text:
-{"primaryMuscles":["Muscle1","Muscle2","Muscle3"],"secondaryMuscles":["Muscle4"],"rationale":"Your rationale here."}`;
-
-                const response = await fetch('https://flexibilityapp3849.netlify.app/.netlify/functions/coach', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        mode: 'jumi_plan',
-                        system: 'You are Jumi, a flexibility coach. Respond only with a valid JSON object, no other text.',
-                        messages: [{ role: 'user', content: message }]
-                    })
-                });
-
-                const data = await response.json();
-                const text = (data.reply || (data.content || []).map(b => b.text || '').join('')).trim();
-                const clean = text.replace(/```json|```/g, '').trim();
-                const parsed = JSON.parse(clean);
-
-                // Validate muscle names against library
-                const validMuscleSet = getPriorityTargetEnum();
-                const validateMuscles = (arr) => (arr || []).filter(m => validMuscleSet.has(m));
-
-                const block = {
-                    primaryGoal,
-                    secondaryGoal: secondaryGoal || '',
-                    primaryMuscles:   validateMuscles(parsed.primaryMuscles),
-                    secondaryMuscles: validateMuscles(parsed.secondaryMuscles),
-                    rationale:  parsed.rationale || '',
-                    createdAt:  new Date().toISOString(),
-                    createdBy:  'jumi'
-                };
-
-                if (!block.primaryMuscles || block.primaryMuscles.length === 0) throw new Error('No valid primary muscles identified');
-
-                window._pendingJumiBlock = block;
-
-                output.innerHTML = `
-                    <div style="margin-bottom:16px;">${formatBlockForDisplay(block)}</div>
-                    <div style="display:flex;gap:8px;">
-                        <button onclick="acceptJumiPlan()" style="flex:1;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">Accept Plan</button>
-                        <button onclick="buildJumiPlan()" style="flex:1;background:white;border:1.5px solid #d2d2d7;color:#1d1d1f;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">Try Again</button>
-                    </div>`;
-
-            } catch(err) {
-                console.error('Plan generation error:', err);
-                output.innerHTML = `<div style="color:#ff3b30;font-size:13px;padding:12px;">Could not generate plan. Please try again.</div>`;
-            }
-
-            btn.disabled = false;
-            btn.textContent = 'Create Plan';
-        };
-
-        window.acceptJumiPlan = function() {
-            const block = window._pendingJumiBlock;
-            if (!block) return;
-            saveJumiBlock(block);
-            window._pendingJumiBlock = null;
-            renderJumiPlanPanel();
-        };
-
-        function renderJumiPlanPanel() {
-            const container = document.getElementById('jumiPlanContainer');
-            if (!container) return;
-
-            const block = getJumiBlock();
-            const existingPrimary = block?.primaryGoal || '';
-            const existingSecondary = block?.secondaryGoal || '';
-
-            const GOAL_PILLS = [
-                'General maintenance', 'Relaxation', 'Improve flexibility', 'Improve posture',
-                'Improve mobility', 'Achieve front splits', 'Achieve side splits',
-                'Sport / running recovery', 'Alignment and control'
-            ];
-
-            const pillsHTML = (prefix) => GOAL_PILLS.map(g =>
-                `<div class="plan-goal-pill" data-prefix="${prefix}" data-goal="${g}" onclick="selectPlanGoalPill(this)"
-                    style="padding:8px 16px;border-radius:100px;font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid #e5e5e7;background:white;color:#3a3a3a;transition:all 0.15s;user-select:none;white-space:nowrap;">${g}</div>`
-            ).join('');
-
-            const currentBlockHtml = block ? `
-                <div style="background:white;border:1.5px solid #ebebf0;border-radius:14px;padding:20px;margin-bottom:16px;">
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
-                        <div style="font-size:13px;font-weight:700;color:#1d1d1f;">Current Focus</div>
-                        <button onclick="clearJumiBlock();renderJumiPlanPanel();" style="background:none;border:none;font-size:11px;color:#ff3b30;cursor:pointer;font-weight:600;">Clear</button>
-                    </div>
-                    ${formatBlockForDisplay(block)}
-                </div>` : `
-                <div style="background:#f8f7ff;border:1.5px solid #e8e4f8;border-radius:14px;padding:20px;margin-bottom:16px;text-align:center;">
-                    <div style="font-size:32px;margin-bottom:8px;">✦</div>
-                    <div style="font-size:14px;font-weight:600;color:#1d1d1f;margin-bottom:6px;">No focus set</div>
-                    <div style="font-size:13px;color:#86868b;line-height:1.5;">Set your goals and Jumi will build every routine toward them.</div>
-                </div>`;
-
-            container.innerHTML = `
-                ${currentBlockHtml}
-                <div style="background:white;border:1.5px solid #ebebf0;border-radius:14px;padding:20px;margin-bottom:12px;">
-                    <div style="font-size:13px;font-weight:700;color:#1d1d1f;margin-bottom:16px;">${block ? 'Update Goals' : 'Set Your Goals'}</div>
-
-                    <div style="margin-bottom:16px;">
-                        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#667eea;display:block;margin-bottom:8px;">Primary goal</label>
-                        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;" id="primaryPillsRow">
-                            ${pillsHTML('primary')}
-                        </div>
-                        <input id="jumiPrimaryGoalInput" type="text" placeholder="Or type your own goal…" value="${existingPrimary}" style="width:100%;font-size:14px;padding:10px 12px;border:1.5px solid #d2d2d7;border-radius:10px;outline:none;box-sizing:border-box;" oninput="clearPlanPills('primary')" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#d2d2d7'"/>
-                    </div>
-
-                    <div style="margin-bottom:16px;">
-                        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#86868b;display:block;margin-bottom:8px;">Secondary goal <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
-                        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;" id="secondaryPillsRow">
-                            ${pillsHTML('secondary')}
-                        </div>
-                        <input id="jumiSecondaryGoalInput" type="text" placeholder="Or type your own goal…" value="${existingSecondary}" style="width:100%;font-size:14px;padding:10px 12px;border:1.5px solid #d2d2d7;border-radius:10px;outline:none;box-sizing:border-box;" oninput="clearPlanPills('secondary')" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#d2d2d7'"/>
-                    </div>
-
-                    <button id="jumiPlanBtn" onclick="buildJumiPlan()" style="width:100%;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;padding:12px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Create Plan</button>
-                </div>
-                <div id="jumiPlanOutput"></div>`;
-
-            // Restore pill selections from existing goals
-            if (existingPrimary) {
-                document.querySelectorAll('.plan-goal-pill[data-prefix="primary"]').forEach(p => {
-                    if (p.dataset.goal === existingPrimary) activatePlanPill(p);
-                });
-            }
-            if (existingSecondary) {
-                document.querySelectorAll('.plan-goal-pill[data-prefix="secondary"]').forEach(p => {
-                    if (p.dataset.goal === existingSecondary) activatePlanPill(p);
-                });
-            }
-        }
-
-        window.selectPlanGoalPill = function(pill) {
-            const prefix = pill.dataset.prefix;
-            // Deselect all pills in this group
-            document.querySelectorAll(`.plan-goal-pill[data-prefix="${prefix}"]`).forEach(p => deactivatePlanPill(p));
-            // Select this pill
-            activatePlanPill(pill);
-            // Set the text input
-            const input = document.getElementById(`jumi${prefix.charAt(0).toUpperCase() + prefix.slice(1)}GoalInput`);
-            if (input) input.value = pill.dataset.goal;
-        };
-
-        window.clearPlanPills = function(prefix) {
-            document.querySelectorAll(`.plan-goal-pill[data-prefix="${prefix}"]`).forEach(p => deactivatePlanPill(p));
-        };
-
-        function activatePlanPill(p) {
-            p.style.background = '#667eea';
-            p.style.borderColor = '#667eea';
-            p.style.color = 'white';
-            p.style.fontWeight = '600';
-        }
-
-        function deactivatePlanPill(p) {
-            p.style.background = 'white';
-            p.style.borderColor = '#e5e5e7';
-            p.style.color = '#3a3a3a';
-            p.style.fontWeight = '500';
         }
 
         window.importFitbodCSV = function(input) {
@@ -12274,7 +12082,7 @@ function showStats() {
                         <div>
                             <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #86868b; margin-bottom: 6px; padding-left:4px;">Jumi</div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <button id="settingsPlanBtn" class="sidebar-nav-btn" style="display:flex;align-items:center;gap:9px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Plan</button>
+                                <button id="settingsGoalsBtn" class="sidebar-nav-btn" style="display:flex;align-items:center;gap:9px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Goals</button>
                             </div>
                         </div>
                         <div>
@@ -12562,7 +12370,7 @@ function showStats() {
                 </div>
 
                 <!-- Backup Content -->
-                <div id="settingsGoalsContent" class="settings-content-panel" style="display: none; visibility: hidden; height: 0; overflow: hidden;">
+                <div id="settingsGoalsContent" class="settings-content-panel" style="display: none;">
                     <!-- Hidden checkboxes — keep for saveGoals() JS compatibility -->
                     <input type="checkbox" id="goal_maintenance" style="display:none;">
                     <input type="checkbox" id="goal_relaxation" style="display:none;">
@@ -12694,16 +12502,10 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.42</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.43</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
-                </div>
-
-                <div id="settingsPlanContent" class="settings-content-panel" style="display: none;">
-                    <h2 style="margin:0 0 6px; font-size:24px; font-weight:800; letter-spacing:-0.5px; color:#1d1d1f;">Plan</h2>
-                    <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">Jumi's strategic focus for your sessions. Routines will consistently work toward this plan until you update it.</p>
-                    <div id="jumiPlanContainer"></div>
                 </div>
 
                 <div id="settingsExternalDataContent" class="settings-content-panel" style="display: none;">
