@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499294 -->
+<!-- Version: 1775499295 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1639,7 +1639,7 @@
         }
     </style>
 <meta name="build-date" content="04 Jun 2026">
-<meta name="app-version" content="5.43">
+<meta name="app-version" content="5.44">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -12443,6 +12443,17 @@ function showStats() {
                     </div>
 
                     <div id="backupStatus" style="font-size:13px; color:#86868b;"></div>
+
+                    <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:12px; margin-top:24px;">Jumi</div>
+                    <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.04); margin-bottom:16px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 18px;">
+                            <div>
+                                <div style="font-size:14px; font-weight:500; color:#1d1d1f;">Clear Jumi memory</div>
+                                <div style="font-size:12px; color:#86868b; margin-top:2px;">Removes stored plan block and context cache</div>
+                            </div>
+                            <button onclick="localStorage.removeItem('jumiBlock');localStorage.removeItem('jumiContextCache');this.textContent='Cleared ✓';this.style.background='#34c759';setTimeout(()=>{this.textContent='Clear';this.style.background='';},2000);" style="padding:8px 18px; background:white; color:#ff3b30; border:1.5px solid #ff3b30; border-radius:20px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; flex-shrink:0;">Clear</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Keyboard Shortcuts Content -->
@@ -12502,7 +12513,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.43</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.44</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
