@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499295 -->
+<!-- Version: 1775499298 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1638,8 +1638,11 @@
             background: white;
         }
     </style>
-<meta name="build-date" content="04 Jun 2026">
-<meta name="app-version" content="5.44">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="build-date" content="10 Jun 2026">
+<meta name="app-version" content="5.47">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -8802,13 +8805,26 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 });
             });
 
-            // Sort by 3-month minutes descending
+            // Sort by 3-month minutes descending, but also compute weighted recency score
+            // Score = (1w × 8) + (2w × 4) + (1m × 2) + (3m × 1) — higher = more recently trained
+            // Inverted priority = lower score = higher need
             const muscleSummaryRows = Object.entries(muscleTotals)
                 .sort((a,b) => (b[1].mins['3m']||0) - (a[1].mins['3m']||0))
                 .map(([muscle, m]) => {
                     const lastWorked = m.lastMs ? daysAgoStr(m.lastMs) : 'never';
-                    return `${muscle} | ${Math.round(m.mins['12m']||0)}m | ${Math.round(m.mins['3m']||0)}m | ${Math.round(m.mins['1m']||0)}m | ${Math.round(m.mins['2w']||0)}m | ${lastWorked}`;
+                    const recencyScore = Math.round(
+                        (m.mins['1w']||0) * 8 +
+                        (m.mins['2w']||0) * 4 +
+                        (m.mins['1m']||0) * 2 +
+                        (m.mins['3m']||0) * 1
+                    );
+                    return { muscle, m, lastWorked, recencyScore };
                 });
+
+            // Ranked priority list: lowest weighted score = most neglected recently
+            const musclesByPriority = [...muscleSummaryRows]
+                .sort((a, b) => a.recencyScore - b.recencyScore)
+                .map(({ muscle, recencyScore }) => `${muscle} (recency score: ${recencyScore})`);
 
             // ── 4. EXERCISE RECENCY BY MUSCLE (most neglected) ──
             // For each muscle, find when any exercise with that as primary was last done
@@ -8876,9 +8892,17 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             ctx += `Upper body: ${upperPct}% | Lower body: ${lowerPct}% (full-body exercises split 50/50)\n\n`;
 
             // Muscle summary
-            ctx += `MUSCLE SUMMARY — primary muscle, aggregated across ALL exercises (cols: total 12m mins | 3m mins | 1m mins | 2w mins | last worked)\n`;
-            ctx += `Muscle | 12m mins | 3m mins | 1m mins | 2w mins | Last worked\n`;
-            ctx += muscleSummaryRows.join('\n');
+            ctx += `MUSCLE SUMMARY — primary muscle, aggregated across ALL exercises (cols: 12m mins | 3m mins | 1m mins | 2w mins | 1w mins | recency score | last worked)\n`;
+            ctx += `NOTE: Recency score = (1w×8)+(2w×4)+(1m×2)+(3m×1). Lower score = more neglected recently = higher priority.\n`;
+            ctx += `Muscle | 12m mins | 3m mins | 1m mins | 2w mins | 1w mins | Recency score | Last worked\n`;
+            ctx += muscleSummaryRows.map(({ muscle, m, lastWorked, recencyScore }) =>
+                `${muscle} | ${Math.round(m.mins['12m']||0)}m | ${Math.round(m.mins['3m']||0)}m | ${Math.round(m.mins['1m']||0)}m | ${Math.round(m.mins['2w']||0)}m | ${Math.round(m.mins['1w']||0)}m | ${recencyScore} | ${lastWorked}`
+            ).join('\n');
+            ctx += '\n\n';
+
+            // Ranked muscle priority (pre-computed for Jumi — use this to select what to focus on)
+            ctx += `MUSCLE PRIORITY RANKING (lowest recency score = most neglected recently = highest priority):\n`;
+            ctx += musclesByPriority.join(', ');
             ctx += '\n\n';
 
             // Phase coverage
@@ -9267,7 +9291,8 @@ YOUR JOB:
 
 SELECTION PRINCIPLES:
 - The strategic plan (if set) defines the session's purpose. Primary focus muscles must appear across multiple phases — prep phases should prepare them, stretch phases should work them, cool down should settle them.
-- Training history tells you what has been neglected, overused, or progressed. Use it.
+- Training history tells you what has been neglected. Use the MUSCLE PRIORITY RANKING in the history — it is pre-computed using weighted recency (1w×8, 2w×4, 1m×2, 3m×1). Lower recency score = more neglected recently = higher priority. Muscles at the top of this ranking should be prioritised unless the plan or today's focus overrides them.
+- Exercises done in the last session (visible in the EXERCISE DETAIL table as "today" or "yesterday") should be avoided unless there is a specific reason to repeat them. Exercises not done in the last 2 weeks are preferred.
 - Fitbod data tells you what was recently loaded in strength training. Avoid deep work on muscles trained within 72 hours.
 - Today's focus (if provided) overrides everything else.
 - Prefer variety across muscle groups within each phase unless the plan or focus demands repetition.
@@ -9983,15 +10008,18 @@ ${fitbodCtx ? fitbodCtx + '\n' : ''}
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
 ${userPrompt ? `Today's focus: "${userPrompt}"` : ''}
 
+TRAINING HISTORY (use this to identify what has been neglected recently):
+${buildFullJumiContext()}
+
 This is the exact finalised routine:
 ${finalisedList}
 
 Structure your explanation around three things:
-1. Where we are with the current focus — what is being targeted and why, referencing history and Fitbod data where relevant
-2. What today's session specifically contributes — how it moves things forward
-3. What comes next — what this session sets up
+1. What gaps in recent training this session addresses — use the MUSCLE PRIORITY RANKING (lowest recency score = most neglected) to identify what has been underworked recently. Name the muscles. Do not describe patterns being continued — describe deficits being filled.
+2. What today's session specifically contributes — how the phases work through those gaps
+3. What comes next — what this session sets up for future sessions
 
-Tone: direct and clinical. Short sentences. Facts and reasoning only. No metaphors, no emotional language, no encouragement, no filler. Do not call it a "block" — refer to it naturally as "your current focus" or "what we're working on". Do not start with filler words like "Right", "So", or "Well". Do not list exercises by name. Do not use bullet points, headers, or markdown. Only reference what is actually in the routine above.`;
+Tone: direct and clinical. Short sentences. Facts and reasoning only. No metaphors, no emotional language, no encouragement, no filler. Do not call it a "block". Do not start with filler words like "Right", "So", or "Well". Do not list exercises by name. Do not use bullet points, headers, or markdown. Only reference what is actually in the routine above.`;
 
                 try {
                     const expResponse = await fetch('https://flexibilityapp3849.netlify.app/.netlify/functions/coach', {
@@ -12513,7 +12541,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.44</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.47</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
