@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499278 -->
+<!-- Version: 1775499293 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1639,7 +1639,7 @@
         }
     </style>
 <meta name="build-date" content="04 Jun 2026">
-<meta name="app-version" content="5.27">
+<meta name="app-version" content="5.42">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -2304,7 +2304,7 @@
                 document.getElementById('settingsCustomExercisesContent').style.display = 'none';
                 
                 // Reset all buttons to inactive state
-                ['settingsGoalsBtn', 'settingsQuickStartBtn', 'settingsExerciseDurationBtn', 'settingsSoundBtn', 'settingsFrontSplitsBtn', 'settingsCustomExercisesBtn', 'settingsBackupBtn', 'settingsVersionBtn', 'settingsKeyboardBtn'].forEach(id => {
+                ['settingsQuickStartBtn', 'settingsExerciseDurationBtn', 'settingsSoundBtn', 'settingsFrontSplitsBtn', 'settingsCustomExercisesBtn', 'settingsBackupBtn', 'settingsVersionBtn', 'settingsKeyboardBtn'].forEach(id => {
                     document.getElementById(id).classList.remove('active');
                 });
                 
@@ -2339,7 +2339,7 @@
             });
 
             // Settings tab navigation
-            const settingsNavBtns = ['settingsGoalsBtn', 'settingsPlanBtn', 'settingsQuickStartBtn', 'settingsExerciseDurationBtn', 'settingsSoundBtn', 'settingsFrontSplitsBtn', 'settingsCustomExercisesBtn', 'settingsBackupBtn', 'settingsVersionBtn', 'settingsKeyboardBtn', 'settingsExternalDataBtn'];
+            const settingsNavBtns = ['settingsPlanBtn', 'settingsQuickStartBtn', 'settingsExerciseDurationBtn', 'settingsSoundBtn', 'settingsFrontSplitsBtn', 'settingsCustomExercisesBtn', 'settingsBackupBtn', 'settingsVersionBtn', 'settingsKeyboardBtn', 'settingsExternalDataBtn'];
             settingsNavBtns.filter(id => id !== 'settingsCustomExercisesBtn').forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.addEventListener('click', () => {
@@ -2347,7 +2347,7 @@
                     if (nb) nb.style.display = 'none';
                 });
             });
-            const settingsContentPanels = ['settingsGoalsContent', 'settingsPlanContent', 'settingsQuickStartContent', 'settingsExerciseDurationContent', 'settingsSoundContent', 'settingsFrontSplitsContent', 'settingsCustomExercisesContent', 'settingsBackupContent', 'settingsVersionContent', 'settingsKeyboardContent', 'settingsExternalDataContent'];
+            const settingsContentPanels = ['settingsPlanContent', 'settingsQuickStartContent', 'settingsExerciseDurationContent', 'settingsSoundContent', 'settingsFrontSplitsContent', 'settingsCustomExercisesContent', 'settingsBackupContent', 'settingsVersionContent', 'settingsKeyboardContent', 'settingsExternalDataContent'];
 
             function activateSettingsTab(activeId, activeContent) {
                 settingsNavBtns.forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('active'); });
@@ -2789,54 +2789,6 @@
             document.getElementById('settingsKeyboardBtn').addEventListener('click', function() {
                 activateSettingsTab('settingsKeyboardBtn', 'settingsKeyboardContent');
             });
-
-            document.getElementById('settingsGoalsBtn').addEventListener('click', function() {
-                activateSettingsTab('settingsGoalsBtn', 'settingsGoalsContent');
-                // Load saved goals into hidden checkboxes
-                const saved = JSON.parse(localStorage.getItem('jumiGoals') || '{}');
-                ['maintenance','relaxation','posture','recovery','mobility','flexibility','alignment','frontsplits','sidesplits'].forEach(id => {
-                    const el = document.getElementById('goal_' + id);
-                    if (el) el.checked = saved[id] || false;
-                });
-                const custom = document.getElementById('goal_custom');
-                if (custom) custom.value = saved.custom || '';
-                // Sync pill selected states from checkboxes
-                document.querySelectorAll('.goal-pill').forEach(pill => {
-                    const cb = document.getElementById(pill.dataset.goal);
-                    const selected = cb && cb.checked;
-                    pill.style.background = selected ? '#667eea' : 'white';
-                    pill.style.borderColor = selected ? '#667eea' : '#e5e5e7';
-                    pill.style.color = selected ? 'white' : '#3a3a3a';
-                    pill.style.fontWeight = selected ? '600' : '500';
-                });
-            });
-
-            // Pill click handlers — toggle pill and sync to hidden checkbox
-            document.getElementById('goalPillsContainer').addEventListener('click', function(e) {
-                const pill = e.target.closest('.goal-pill');
-                if (!pill) return;
-                const cb = document.getElementById(pill.dataset.goal);
-                if (!cb) return;
-                cb.checked = !cb.checked;
-                const selected = cb.checked;
-                pill.style.background = selected ? '#667eea' : 'white';
-                pill.style.borderColor = selected ? '#667eea' : '#e5e5e7';
-                pill.style.color = selected ? 'white' : '#3a3a3a';
-                pill.style.fontWeight = selected ? '600' : '500';
-            });
-
-            window.saveGoals = function() {
-                const goals = {};
-                ['maintenance','relaxation','posture','recovery','mobility','flexibility','alignment','frontsplits','sidesplits'].forEach(id => {
-                    const el = document.getElementById('goal_' + id);
-                    if (el) goals[id] = el.checked;
-                });
-                const custom = document.getElementById('goal_custom');
-                if (custom) goals.custom = custom.value.trim();
-                localStorage.setItem('jumiGoals', JSON.stringify(goals));
-                const msg = document.getElementById('goalsSavedMsg');
-                if (msg) { msg.style.display = 'inline'; setTimeout(() => msg.style.display = 'none', 2000); }
-            };
 
             // Close settings and save
             document.getElementById('settingsCloseBtn').addEventListener('click', () => {
@@ -4726,7 +4678,7 @@
             container.scrollTop = container.scrollHeight;
 
             const goals = getJumiGoals();
-            const contextTable = buildChatContext();
+            const contextTable = buildFullJumiContext();
             const exerciseLibraryList = exercises.map(e => {
                 const muscles = [e.primaryMuscle, e.secondaryMuscle ? `secondary: ${e.secondaryMuscle}` : null, e.tertiaryMuscle ? `tertiary: ${e.tertiaryMuscle}` : null].filter(Boolean).join(', ');
                 return `${e.exercise} (${e.phase} | ${muscles})`;
@@ -4739,9 +4691,32 @@
                   }).join('\n')
                 : 'No routine currently on screen.';
 
+            const chatBlock = getJumiBlock();
+            let chatBlockCtx = '';
+            if (chatBlock) {
+                const primaryGoal = chatBlock.primaryGoal || (chatBlock.primary||[]).join(', ');
+                const primaryMuscles = (chatBlock.primaryMuscles || chatBlock.primary || []).join(', ');
+                const secondaryGoal = chatBlock.secondaryGoal || (chatBlock.secondary||[]).join(', ');
+                const secondaryMuscles = (chatBlock.secondaryMuscles || chatBlock.secondary || []).join(', ');
+                const date = new Date(chatBlock.createdAt).toLocaleDateString('en-GB', {day:'numeric', month:'short'});
+
+                chatBlockCtx = `
+
+TRAINING PLAN (set ${date}):
+
+PRIMARY GOAL — treat this independently. When the user asks about the primary goal, answer using only this goal's reasoning. Do not reference the secondary goal unless the user explicitly connects them.
+Goal: ${primaryGoal}
+Muscles: ${primaryMuscles}
+
+SECONDARY GOAL — completely separate from the primary. Do not blend these two goals when answering questions.
+Goal: ${secondaryGoal}
+Muscles: ${secondaryMuscles}
+${chatBlock.rationale ? `\nPlan rationale: ${chatBlock.rationale}` : ''}`;
+            }
+
             const systemPrompt = `You are Jumi, a flexibility and mobility coach with access to this user's training history and current routine. You can also use web search when useful to provide links, videos, or external resources. Use British English throughout.
 
-Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
+Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}${chatBlockCtx}
 Target duration: ${selectedTime === 999 ? 'No time limit' : selectedTime + ' minutes'}
 
 Exercise library — these ${exercises.length} exercises are already in the user's library. Do not recommend or add these as new exercises:
@@ -4749,7 +4724,7 @@ ${exerciseLibraryList}
 
 Current routine on screen (live data): ${currentRoutineSummary}
 
-Training history (exercise | phase | muscle | position | sides | count 12m | 6m | 3m | 1m | 2w | 1w | mins 12m | 6m | 3m | 1m | 2w | 1w | last done):
+Training history and data:
 ${contextTable}
 
 RULES:
@@ -4758,6 +4733,8 @@ Respond in clear conversational text. No markdown, bullet points, or list format
 Use the user's training data where relevant.
 Be specific and practical. Avoid filler.
 Prefer specific, intentional responses over safe, generic ones.
+The primary and secondary goals are distinct. If the user asks a question about the primary goal, answer it using only the primary goal's reasoning. Do not reference the secondary goal unless the user explicitly asks about it or the connection is directly relevant. Never lead with the secondary goal when the question is about the primary.
+When reasoning about a muscle's total work, use the MUSCLE SUMMARY section which has already aggregated across all exercises. Use the EXERCISE DETAIL section only for specific exercise-level queries.
 
 You may discuss exercises already in the user's library, but do not recommend them as new additions.
 
@@ -4906,7 +4883,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             if (!selectedHold) { selectedHold = appSettings.quickStartHold || 'short'; longSession = selectedHold === 'long'; }
 
             const goals = getJumiGoals();
-            const contextTable = buildChatContext();
+            const contextTable = buildFullJumiContext();
             const slots = buildJumiSlots();
             const jumiNote = (document.getElementById('jumiPromptInput') || {}).value || '';
             const { systemPrompt, userMessage } = buildJumiPrompt(goals, contextTable, slots, jumiNote);
@@ -4931,7 +4908,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         // Get explanation from actual routine
                         const goals = getJumiGoals();
                         const note = (document.getElementById('jumiPromptInput') || {}).value || '';
-                        const actualExplanation = await getJumiExplanation(currentRoutine, goals, note, buildChatContext(), []);
+                        const actualExplanation = await getJumiExplanation(currentRoutine, goals, note, buildFullJumiContext(), []);
                         if (actualExplanation) appendChatMessage('jumi', actualExplanation);
                     } catch(e) {
                         appendChatMessage('jumi', '(Could not build routine — please try again.)');
@@ -8705,8 +8682,200 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
         let currentCompletionOverlay = null; // Global reference for completion popup
         let routineAlreadySaved = false; // Prevent duplicate saves
         
+        // ── JUMI: Full context builder — used by both chat and routine generation ──
+        function buildFullJumiContext() {
+            const now = Date.now();
+            const allHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
+            const wins = [
+                { label: '12m', ms: 365*24*60*60*1000 },
+                { label: '6m',  ms: 182*24*60*60*1000 },
+                { label: '3m',  ms:  91*24*60*60*1000 },
+                { label: '1m',  ms:  28*24*60*60*1000 },
+                { label: '2w',  ms:  14*24*60*60*1000 },
+                { label: '1w',  ms:   7*24*60*60*1000 },
+            ];
+
+            const daysAgoStr = ms => {
+                const d = Math.round((now - ms)/(24*60*60*1000));
+                return d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`;
+            };
+
+            // ── 1. SESSION-LEVEL PATTERNS ──
+            const totalSessions = allHistory.length;
+            const avgMins = totalSessions ? Math.round(allHistory.reduce((s,h)=>s+(h.totalTime||0),0)/totalSessions/60) : 0;
+            const lastSession = allHistory[allHistory.length-1];
+            const lastDate = lastSession ? new Date(lastSession.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'never';
+            const sessionsLast4w = allHistory.filter(s => now - new Date(s.date).getTime() <= 28*24*60*60*1000).length;
+            const avgPerWeek = totalSessions >= 4 ? Math.round((sessionsLast4w/4)*10)/10 : null;
+
+            // Training gaps — find longest gap between sessions in last 3 months
+            const recent = allHistory.filter(s => now - new Date(s.date).getTime() <= 91*24*60*60*1000);
+            let longestGap = 0;
+            for (let i = 1; i < recent.length; i++) {
+                const gap = Math.round((new Date(recent[i].date) - new Date(recent[i-1].date))/(24*60*60*1000));
+                if (gap > longestGap) longestGap = gap;
+            }
+            const daysSinceLastSession = lastSession ? Math.round((now - new Date(lastSession.date).getTime())/(24*60*60*1000)) : null;
+
+            // Duration trend — compare last 4 sessions avg to previous 4
+            const durTrend = (() => {
+                if (allHistory.length < 8) return null;
+                const last4 = allHistory.slice(-4).reduce((s,h)=>s+(h.totalTime||0),0)/4/60;
+                const prev4 = allHistory.slice(-8,-4).reduce((s,h)=>s+(h.totalTime||0),0)/4/60;
+                const diff = Math.round(last4 - prev4);
+                return diff > 0 ? `+${diff}m vs previous 4 sessions` : diff < 0 ? `${diff}m vs previous 4 sessions` : 'stable';
+            })();
+
+            // ── 2. UPPER/LOWER BODY SPLIT (last 3 months) ──
+            const bodyTotals = { upper: 0, lower: 0, full: 0 };
+            recent.forEach(s => {
+                (s.routine||[]).forEach(ex => {
+                    const bp = (ex.bodyPart||'').toLowerCase();
+                    const dur = (ex.duration||30) * (ex.sides||1);
+                    if (bp === 'upper') bodyTotals.upper += dur;
+                    else if (bp === 'lower') bodyTotals.lower += dur;
+                    else bodyTotals.full += dur;
+                });
+            });
+            const bodyTotal = bodyTotals.upper + bodyTotals.lower + bodyTotals.full;
+            const upperPct = bodyTotal ? Math.round((bodyTotals.upper + bodyTotals.full/2) / bodyTotal * 100) : 50;
+            const lowerPct = bodyTotal ? Math.round((bodyTotals.lower + bodyTotals.full/2) / bodyTotal * 100) : 50;
+
+            // ── 3. MUSCLE-LEVEL SUMMARY ──
+            // Aggregate primary muscle minutes and counts across ALL exercises sharing that muscle
+            const muscleTotals = {}; // { muscleName: { counts: {12m,6m,3m,1m,2w,1w}, mins: {12m,6m,3m,1m,2w,1w}, lastMs } }
+            allHistory.forEach(s => {
+                const sMs = new Date(s.date).getTime();
+                (s.routine||[]).forEach(ex => {
+                    const pm = ex.primaryMuscle || ex.target;
+                    if (!pm || pm === 'None') return;
+                    if (!muscleTotals[pm]) muscleTotals[pm] = { counts: {}, mins: {}, lastMs: 0 };
+                    const m = muscleTotals[pm];
+                    const dur = ((ex.duration||30) * (ex.sides||1)) / 60; // mins
+                    wins.forEach(w => {
+                        if (now - sMs <= w.ms) {
+                            m.counts[w.label] = (m.counts[w.label]||0) + 1;
+                            m.mins[w.label] = (m.mins[w.label]||0) + dur;
+                        }
+                    });
+                    if (sMs > m.lastMs) m.lastMs = sMs;
+                });
+            });
+
+            // Sort by 3-month minutes descending
+            const muscleSummaryRows = Object.entries(muscleTotals)
+                .sort((a,b) => (b[1].mins['3m']||0) - (a[1].mins['3m']||0))
+                .map(([muscle, m]) => {
+                    const lastWorked = m.lastMs ? daysAgoStr(m.lastMs) : 'never';
+                    return `${muscle} | ${Math.round(m.mins['12m']||0)}m | ${Math.round(m.mins['3m']||0)}m | ${Math.round(m.mins['1m']||0)}m | ${Math.round(m.mins['2w']||0)}m | ${lastWorked}`;
+                });
+
+            // ── 4. EXERCISE RECENCY BY MUSCLE (most neglected) ──
+            // For each muscle, find when any exercise with that as primary was last done
+            const muscleLastWorked = {};
+            allHistory.forEach(s => {
+                const sMs = new Date(s.date).getTime();
+                (s.routine||[]).forEach(ex => {
+                    const pm = ex.primaryMuscle || ex.target;
+                    if (!pm || pm === 'None') return;
+                    if (!muscleLastWorked[pm] || sMs > muscleLastWorked[pm]) muscleLastWorked[pm] = sMs;
+                });
+            });
+
+            // ── 5. PHASE COVERAGE (last 3 months) ──
+            const phaseCounts = {};
+            recent.forEach(s => {
+                const phases = new Set((s.routine||[]).map(ex => ex.phase));
+                phases.forEach(p => { phaseCounts[p] = (phaseCounts[p]||0) + 1; });
+            });
+            const totalRecent = recent.length || 1;
+            const phaseCoverage = Object.entries(phaseCounts)
+                .map(([phase, count]) => `${phase}: ${Math.round(count/totalRecent*100)}% of sessions`)
+                .join(', ');
+
+            // ── 6. PER-EXERCISE TABLE (unchanged — for detail queries) ──
+            const exStats = {};
+            const phaseOrder = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
+            allHistory.forEach(s => {
+                const sMs = new Date(s.date).getTime();
+                (s.routine||[]).forEach(ex => {
+                    if (!exStats[ex.exercise]) {
+                        exStats[ex.exercise] = {
+                            phase: ex.phase, primaryMuscle: ex.primaryMuscle||ex.target||'—',
+                            secondaryMuscle: ex.secondaryMuscle||'', tertiaryMuscle: ex.tertiaryMuscle||'',
+                            position: ex.position||'—', sides: ex.sides||1,
+                            counts: {}, mins: {}, lastMs: 0
+                        };
+                    }
+                    const e = exStats[ex.exercise];
+                    const dur = ((ex.duration||30)*(ex.sides||1))/60;
+                    wins.forEach(w => {
+                        if (now - sMs <= w.ms) {
+                            e.counts[w.label] = (e.counts[w.label]||0) + 1;
+                            e.mins[w.label]   = (e.mins[w.label]||0)   + dur;
+                        }
+                    });
+                    if (sMs > e.lastMs) e.lastMs = sMs;
+                });
+            });
+
+            // ── ASSEMBLE ──
+            let ctx = '';
+
+            // Session patterns
+            ctx += `TRAINING OVERVIEW\n`;
+            ctx += `Total sessions: ${totalSessions} | Avg duration: ${avgMins}m | Last session: ${lastDate}`;
+            if (daysSinceLastSession !== null) ctx += ` (${daysAgoStr(now - daysSinceLastSession*24*60*60*1000 + 1)})`;
+            if (avgPerWeek !== null) ctx += ` | Frequency: ~${avgPerWeek} sessions/week (last 4 weeks)`;
+            if (durTrend) ctx += ` | Duration trend: ${durTrend}`;
+            if (longestGap > 0 && recent.length > 1) ctx += ` | Longest recent gap: ${longestGap} days`;
+            ctx += '\n\n';
+
+            // Upper/lower split
+            ctx += `UPPER/LOWER BODY SPLIT (last 3 months)\n`;
+            ctx += `Upper body: ${upperPct}% | Lower body: ${lowerPct}% (full-body exercises split 50/50)\n\n`;
+
+            // Muscle summary
+            ctx += `MUSCLE SUMMARY — primary muscle, aggregated across ALL exercises (cols: total 12m mins | 3m mins | 1m mins | 2w mins | last worked)\n`;
+            ctx += `Muscle | 12m mins | 3m mins | 1m mins | 2w mins | Last worked\n`;
+            ctx += muscleSummaryRows.join('\n');
+            ctx += '\n\n';
+
+            // Phase coverage
+            ctx += `PHASE COVERAGE (last 3 months): ${phaseCoverage}\n\n`;
+
+            // Per-exercise detail table
+            ctx += `EXERCISE DETAIL — per exercise (for specific exercise queries)\n`;
+            ctx += `Exercise | Phase | Primary | Secondary | Tertiary | Position | Sides | Count 12m | Count 3m | Count 1m | Mins 12m | Mins 3m | Mins 1m | Last done\n`;
+            ctx += `${'---'} | `.repeat(13).slice(0,-3) + '\n';
+            phaseOrder.forEach(phase => {
+                Object.entries(exStats)
+                    .filter(([,e]) => e.phase === phase)
+                    .forEach(([name, e]) => {
+                        ctx += [
+                            name, phase,
+                            e.primaryMuscle, e.secondaryMuscle||'—', e.tertiaryMuscle||'—',
+                            e.position, e.sides,
+                            e.counts['12m']||0, e.counts['3m']||0, e.counts['1m']||0,
+                            Math.round(e.mins['12m']||0), Math.round(e.mins['3m']||0), Math.round(e.mins['1m']||0),
+                            daysAgoStr(e.lastMs)
+                        ].join(' | ') + '\n';
+                    });
+            });
+
+            return ctx;
+        }
+
         // ── JUMI: Build history context (last 728 days) ──
         function getJumiGoals() {
+            const block = getJumiBlock();
+            if (block) {
+                const goals = [];
+                if (block.primaryGoal) goals.push(block.primaryGoal);
+                if (block.secondaryGoal) goals.push(block.secondaryGoal);
+                if (goals.length > 0) return goals;
+            }
+            // Fallback to old jumiGoals for backwards compatibility
             const saved = JSON.parse(localStorage.getItem('jumiGoals') || '{}');
             const goalLabels = {
                 maintenance: 'General maintenance',
@@ -8725,9 +8894,6 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
         }
 
         function buildChatContext() {
-            const cached = JSON.parse(localStorage.getItem('jumiContextCache') || '{}');
-            const now = Date.now();
-            if (cached.ts && (now - cached.ts) < 24*60*60*1000 && cached.table) return cached.table;
 
             const allHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
             const phaseOrder = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
@@ -9040,59 +9206,11 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 });
             });
 
-            // History summary — plain language
+            // History — use the shared full context builder
             const allHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
-            const now = Date.now();
-            const fourWeeks = 28 * 24 * 60 * 60 * 1000;
-            const twoWeeks = 14 * 24 * 60 * 60 * 1000;
-
-            // Per-exercise recency
-            const exLastSeen = {};
-            const exCount4w = {};
-            allHistory.forEach(s => {
-                const sMs = new Date(s.date).getTime();
-                const daysAgo = Math.round((now - sMs) / (24 * 60 * 60 * 1000));
-                (s.routine || []).forEach(ex => {
-                    if (!exLastSeen[ex.exercise] || sMs > exLastSeen[ex.exercise]) exLastSeen[ex.exercise] = sMs;
-                    if (now - sMs <= fourWeeks) exCount4w[ex.exercise] = (exCount4w[ex.exercise] || 0) + 1;
-                });
-            });
-
-            // Muscle recency from flex history
-            const muscleLastSeen = {};
-            allHistory.forEach(s => {
-                const sMs = new Date(s.date).getTime();
-                (s.routine || []).forEach(ex => {
-                    const muscles = [ex.primaryMuscle, ex.secondaryMuscle, ex.tertiaryMuscle].filter(Boolean);
-                    muscles.forEach(m => {
-                        if (!muscleLastSeen[m] || sMs > muscleLastSeen[m]) muscleLastSeen[m] = sMs;
-                    });
-                });
-            });
-
-            const muscleRecencyLines = Object.entries(muscleLastSeen)
-                .map(([m, ms]) => ({ muscle: m, daysAgo: Math.round((now - ms) / (24 * 60 * 60 * 1000)) }))
-                .sort((a, b) => b.daysAgo - a.daysAgo)
-                .map(({ muscle, daysAgo }) => `  ${muscle}: last worked ${daysAgo} days ago`);
-
-            // Recent exercises (last 2 weeks)
-            const recentExercises = Object.entries(exLastSeen)
-                .filter(([, ms]) => now - ms <= twoWeeks)
-                .map(([name]) => name);
-
-            // Training frequency
-            const sessionsLast4w = allHistory.filter(s => now - new Date(s.date).getTime() <= fourWeeks).length;
-            const avgPerWeek = allHistory.length >= 4 ? Math.round((sessionsLast4w / 4) * 10) / 10 : null;
-
-            let historySection = '';
-            if (allHistory.length === 0) {
-                historySection = '\nFLEX HISTORY: No sessions recorded yet.';
-            } else {
-                historySection = `\nFLEX HISTORY:`;
-                if (avgPerWeek !== null) historySection += `\nTraining frequency: ~${avgPerWeek} sessions/week (last 4 weeks)`;
-                historySection += `\n\nMuscle recency (days since last worked):\n${muscleRecencyLines.join('\n') || '  No data'}`;
-                if (recentExercises.length > 0) historySection += `\n\nExercises done in last 2 weeks (avoid repeating unless clearly warranted):\n  ${recentExercises.join(', ')}`;
-            }
+            const historySection = allHistory.length === 0
+                ? '\nFLEX HISTORY: No sessions recorded yet.'
+                : `\n\nFLEX HISTORY:\n${buildFullJumiContext()}`;
 
             // Plan block
             const block = getJumiBlock();
@@ -9242,7 +9360,7 @@ Please build the routine now.`;
 
             try {
                 const allHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
-                const contextTable = allHistory.length >= 3 ? buildChatContext() : null;
+                const contextTable = allHistory.length >= 3 ? buildFullJumiContext() : null;
                 const fitbodCtx = buildFitbodContext();
                 const currentBlock = getJumiBlock();
                 const validMuscles = [...getPriorityTargetEnum()].sort().join(', ');
@@ -9257,19 +9375,28 @@ Please build the routine now.`;
 
                 const fitbodNote = fitbodCtx ? `\n\n${fitbodCtx}` : '';
 
-                const message = `You are Jumi, a flexibility coach. The user has set their training goals. Identify the most relevant muscles from the library to serve those goals.
+                const message = `You are Jumi, a flexibility coach. Select muscles using the process below exactly.
 
 Primary goal: "${primaryGoal}"
 ${secondaryGoal ? `Secondary goal: "${secondaryGoal}"` : 'No secondary goal.'}
 ${historyNote}${fitbodNote}${currentBlockNote}
 
-Think in this order:
-1. What does the PRIMARY goal require anatomically? Which muscles, when more flexible, would most directly serve this goal? List up to 4 muscles. Do not anchor on recent history — start from the goal itself.
-2. Use training history only to understand which of those muscles are most neglected or underdeveloped. That informs priority, not the muscle selection.
-3. If a secondary goal exists, repeat the same process for it. List up to 2 muscles.
-4. Write a rationale of 3-4 sentences: explain the muscles chosen and why they serve the goal, then explicitly explain why other major muscle groups were NOT included — e.g. recently trained, no deficit, not relevant to the goal. Be specific about what the data shows.
+STEP 1 — RANK ALL MUSCLES FROM THE DATA ONLY.
+Using ONLY the MUSCLE SUMMARY table, rank every muscle from highest to lowest priority using these signals:
+- Low recent minutes (1 month, 2 weeks) relative to total 12-month minutes indicates recent neglect
+- Upper/lower body imbalance — use the UPPER/LOWER BODY SPLIT figure. If lower body dominates, upper body muscles rank higher
+- Low absolute minutes relative to other muscles
+- Time since last worked
+Do not use anatomy. Do not use flexibility theory. Do not use assumptions about what muscles matter for flexibility. Only the data.
 
-The previous block is provided for context only. Do not copy its muscle selections.
+STEP 2 — FILTER BY GOAL RELEVANCE.
+Remove muscles from the ranked list that have no plausible connection to "${primaryGoal}". You may use anatomical knowledge only to remove clearly irrelevant muscles (e.g. Wrists for a flexibility goal). Do not use it to reorder.
+
+STEP 3 — SELECT TOP 4 PRIMARY MUSCLES from what remains after filtering. The selection must follow the data ranking. If you want to skip a high-ranked muscle, you must explicitly state why in the rationale.
+
+STEP 4 — REPEAT steps 1-3 for the secondary goal if present. Select up to 2 muscles.
+
+STEP 5 — WRITE RATIONALE using actual numbers from the MUSCLE SUMMARY. State the data rank of each selected muscle. If you overrode the data ranking, explain why. "Full-body flexibility" means balanced development across upper body, spine, hips and lower body — do not assume lower-body muscles are more important unless the data supports that conclusion.
 
 Valid muscle names — use ONLY names from this exact list:
 ${validMuscles}
@@ -9342,6 +9469,17 @@ Respond ONLY with a JSON object in this exact format, no other text:
             const existingPrimary = block?.primaryGoal || '';
             const existingSecondary = block?.secondaryGoal || '';
 
+            const GOAL_PILLS = [
+                'General maintenance', 'Relaxation', 'Improve flexibility', 'Improve posture',
+                'Improve mobility', 'Achieve front splits', 'Achieve side splits',
+                'Sport / running recovery', 'Alignment and control'
+            ];
+
+            const pillsHTML = (prefix) => GOAL_PILLS.map(g =>
+                `<div class="plan-goal-pill" data-prefix="${prefix}" data-goal="${g}" onclick="selectPlanGoalPill(this)"
+                    style="padding:8px 16px;border-radius:100px;font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid #e5e5e7;background:white;color:#3a3a3a;transition:all 0.15s;user-select:none;white-space:nowrap;">${g}</div>`
+            ).join('');
+
             const currentBlockHtml = block ? `
                 <div style="background:white;border:1.5px solid #ebebf0;border-radius:14px;padding:20px;margin-bottom:16px;">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
@@ -9360,17 +9498,67 @@ Respond ONLY with a JSON object in this exact format, no other text:
                 ${currentBlockHtml}
                 <div style="background:white;border:1.5px solid #ebebf0;border-radius:14px;padding:20px;margin-bottom:12px;">
                     <div style="font-size:13px;font-weight:700;color:#1d1d1f;margin-bottom:16px;">${block ? 'Update Goals' : 'Set Your Goals'}</div>
-                    <div style="margin-bottom:12px;">
-                        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#667eea;display:block;margin-bottom:6px;">Primary goal</label>
-                        <input id="jumiPrimaryGoalInput" type="text" placeholder="e.g. getting my front splits" value="${existingPrimary}" style="width:100%;font-size:14px;padding:10px 12px;border:1.5px solid #d2d2d7;border-radius:10px;outline:none;box-sizing:border-box;"/>
-                    </div>
+
                     <div style="margin-bottom:16px;">
-                        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#86868b;display:block;margin-bottom:6px;">Secondary goal <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
-                        <input id="jumiSecondaryGoalInput" type="text" placeholder="e.g. ease my knee pain" value="${existingSecondary}" style="width:100%;font-size:14px;padding:10px 12px;border:1.5px solid #d2d2d7;border-radius:10px;outline:none;box-sizing:border-box;"/>
+                        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#667eea;display:block;margin-bottom:8px;">Primary goal</label>
+                        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;" id="primaryPillsRow">
+                            ${pillsHTML('primary')}
+                        </div>
+                        <input id="jumiPrimaryGoalInput" type="text" placeholder="Or type your own goal…" value="${existingPrimary}" style="width:100%;font-size:14px;padding:10px 12px;border:1.5px solid #d2d2d7;border-radius:10px;outline:none;box-sizing:border-box;" oninput="clearPlanPills('primary')" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#d2d2d7'"/>
                     </div>
+
+                    <div style="margin-bottom:16px;">
+                        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#86868b;display:block;margin-bottom:8px;">Secondary goal <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+                        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;" id="secondaryPillsRow">
+                            ${pillsHTML('secondary')}
+                        </div>
+                        <input id="jumiSecondaryGoalInput" type="text" placeholder="Or type your own goal…" value="${existingSecondary}" style="width:100%;font-size:14px;padding:10px 12px;border:1.5px solid #d2d2d7;border-radius:10px;outline:none;box-sizing:border-box;" oninput="clearPlanPills('secondary')" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#d2d2d7'"/>
+                    </div>
+
                     <button id="jumiPlanBtn" onclick="buildJumiPlan()" style="width:100%;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;padding:12px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Create Plan</button>
                 </div>
                 <div id="jumiPlanOutput"></div>`;
+
+            // Restore pill selections from existing goals
+            if (existingPrimary) {
+                document.querySelectorAll('.plan-goal-pill[data-prefix="primary"]').forEach(p => {
+                    if (p.dataset.goal === existingPrimary) activatePlanPill(p);
+                });
+            }
+            if (existingSecondary) {
+                document.querySelectorAll('.plan-goal-pill[data-prefix="secondary"]').forEach(p => {
+                    if (p.dataset.goal === existingSecondary) activatePlanPill(p);
+                });
+            }
+        }
+
+        window.selectPlanGoalPill = function(pill) {
+            const prefix = pill.dataset.prefix;
+            // Deselect all pills in this group
+            document.querySelectorAll(`.plan-goal-pill[data-prefix="${prefix}"]`).forEach(p => deactivatePlanPill(p));
+            // Select this pill
+            activatePlanPill(pill);
+            // Set the text input
+            const input = document.getElementById(`jumi${prefix.charAt(0).toUpperCase() + prefix.slice(1)}GoalInput`);
+            if (input) input.value = pill.dataset.goal;
+        };
+
+        window.clearPlanPills = function(prefix) {
+            document.querySelectorAll(`.plan-goal-pill[data-prefix="${prefix}"]`).forEach(p => deactivatePlanPill(p));
+        };
+
+        function activatePlanPill(p) {
+            p.style.background = '#667eea';
+            p.style.borderColor = '#667eea';
+            p.style.color = 'white';
+            p.style.fontWeight = '600';
+        }
+
+        function deactivatePlanPill(p) {
+            p.style.background = 'white';
+            p.style.borderColor = '#e5e5e7';
+            p.style.color = '#3a3a3a';
+            p.style.fontWeight = '500';
         }
 
         window.importFitbodCSV = function(input) {
@@ -11483,6 +11671,102 @@ function showStats() {
             }
         }
         
+        function renderBodySplitSection(history, append) {
+            const sessions = history.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+            if (sessions.length === 0) return;
+
+            const sessionData = sessions.map(s => {
+                let upper = 0, lower = 0, full = 0;
+                (s.routine || []).forEach(ex => {
+                    const bp = (ex.bodyPart || '').toLowerCase();
+                    const dur = (ex.duration || 30) * (ex.sides || 1);
+                    if (bp === 'upper') upper += dur;
+                    else if (bp === 'lower') lower += dur;
+                    else full += dur;
+                });
+                const total = upper + lower + full;
+                if (total === 0) return null;
+                const halfFull = full / 2;
+                return {
+                    date: new Date(s.date),
+                    upperPct: (upper + halfFull) / total,
+                    lowerPct: (lower + halfFull) / total,
+                    upperMins: Math.round((upper + halfFull) / 60),
+                    lowerMins: Math.round((lower + halfFull) / 60),
+                };
+            }).filter(Boolean);
+
+            if (sessionData.length === 0) return;
+
+            const W = 800, H = 140, padL = 44, padR = 20, padT = 12, padB = 28;
+            const availW = W - padL - padR;
+            const innerPad = 24;
+            const plotW = availW - innerPad * 2;
+            const chartH = H - padT - padB;
+            const barW = Math.max(4, Math.min(40, plotW / sessionData.length - 3));
+            const cx = i => padL + innerPad + (sessionData.length === 1 ? plotW / 2 : (i / (sessionData.length - 1)) * plotW);
+
+            // Y axis — fixed 0%, 50%, 100%
+            const yScale = pct => padT + (1 - pct) * chartH;
+            const yTicksHTML = [0, 0.5, 1].map(v => `
+                <text x="${padL - 6}" y="${yScale(v).toFixed(1)}" text-anchor="end" dominant-baseline="middle" font-size="10" fill="#86868b">${Math.round(v * 100)}%</text>
+                <line x1="${padL}" y1="${yScale(v).toFixed(1)}" x2="${W - padR}" y2="${yScale(v).toFixed(1)}" stroke="#f0f0f5" stroke-width="1"/>`
+            ).join('');
+
+            // X axis labels
+            const xLabelCount = Math.min(8, sessionData.length);
+            const xLabelIndices = sessionData.length === 1 ? [0] : Array.from({length: xLabelCount}, (_, i) => Math.round(i * (sessionData.length - 1) / (xLabelCount - 1)));
+            const xLabelsHTML = xLabelIndices.map(i =>
+                `<text x="${cx(i).toFixed(1)}" y="${H - padB + 14}" text-anchor="middle" font-size="10" fill="#86868b">${sessionData[i].date.toLocaleDateString('en-GB', {day:'numeric', month:'short'})}</text>`
+            ).join('');
+
+            // Tooltip data
+            const tooltipData = JSON.stringify(sessionData.map((s, i) => ({
+                i, cx: cx(i),
+                label: `__B__${s.date.toLocaleDateString('en-GB', {day:'numeric', month:'short'})}__/B____BR__Upper: ${Math.round(s.upperPct * 100)}% (${s.upperMins}m)__BR__Lower: ${Math.round(s.lowerPct * 100)}% (${s.lowerMins}m)`
+            }))).replace(/"/g, '&quot;');
+
+            // 100% stacked bars — upper from top, lower fills remainder
+            const barsHTML = sessionData.map((s, i) => {
+                const x = Math.max(padL + 1, Math.min(W - padR - barW - 1, cx(i) - barW / 2));
+                const upperH = s.upperPct * chartH;
+                const lowerH = s.lowerPct * chartH;
+                return `
+                    <rect x="${x.toFixed(1)}" y="${padT.toFixed(1)}" width="${barW}" height="${upperH.toFixed(1)}" fill="#667eea" opacity="0.85"/>
+                    <rect x="${x.toFixed(1)}" y="${(padT + upperH).toFixed(1)}" width="${barW}" height="${lowerH.toFixed(1)}" fill="#764ba2" opacity="0.85"/>`;
+            }).join('');
+
+            const svgHTML = `
+                <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
+                     style="width:100%;height:auto;display:block;overflow:visible;cursor:crosshair;"
+                     data-weeks="${tooltipData}"
+                     data-w="${W}" data-padl="${padL}" data-padr="${padR}" data-padt="${padT}" data-padb="${padB}" data-barw="${barW}"
+                     onmousemove="weekChartHover(event,this)"
+                     onmouseleave="hideChartTooltip()">
+                    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H - padB}" stroke="#e5e5e7" stroke-width="1"/>
+                    <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="#e5e5e7" stroke-width="1"/>
+                    ${yTicksHTML}${xLabelsHTML}${barsHTML}
+                </svg>`;
+
+            const html = `
+                <h2 style="margin-top: 0;">Upper / Lower Body Split</h2>
+                <div style="background:white;border:1px solid #e5e5e7;padding:20px 24px 12px;border-radius:12px;margin-bottom:40px;">
+                    ${svgHTML}
+                    <div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:#86868b;">
+                        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;background:#667eea;border-radius:2px;display:inline-block;"></span>Upper body</span>
+                        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;background:#764ba2;border-radius:2px;display:inline-block;"></span>Lower body</span>
+                        <span style="color:#aeaeb2;">Full-body exercises split 50/50</span>
+                    </div>
+                </div>`;
+
+            const el = document.getElementById('statsContent');
+            if (append) {
+                el.insertAdjacentHTML('beforeend', html);
+            } else {
+                el.innerHTML = html;
+            }
+        }
+
         function renderProgressSection(history, append) {
             if (history.length < 2) return; // Need at least 2 points for a line
 
@@ -11887,6 +12171,7 @@ function showStats() {
                     renderSummarySection(history, allHistory);
                     renderDurationSection(history, true);
                     renderProgressSection(history, true);
+                    renderBodySplitSection(history, true);
                     break;
                 case 'exercise':
                     renderExerciseSection(history);
@@ -11898,6 +12183,7 @@ function showStats() {
                     renderSummarySection(history, allHistory);
                     renderDurationSection(history, true);
                     renderProgressSection(history, true);
+                    renderBodySplitSection(history, true);
             }
         }
         
@@ -11988,7 +12274,6 @@ function showStats() {
                         <div>
                             <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #86868b; margin-bottom: 6px; padding-left:4px;">Jumi</div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <button id="settingsGoalsBtn" class="sidebar-nav-btn" style="display:flex;align-items:center;gap:9px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Goals</button>
                                 <button id="settingsPlanBtn" class="sidebar-nav-btn" style="display:flex;align-items:center;gap:9px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Plan</button>
                             </div>
                         </div>
@@ -12277,7 +12562,7 @@ function showStats() {
                 </div>
 
                 <!-- Backup Content -->
-                <div id="settingsGoalsContent" class="settings-content-panel" style="display: none;">
+                <div id="settingsGoalsContent" class="settings-content-panel" style="display: none; visibility: hidden; height: 0; overflow: hidden;">
                     <!-- Hidden checkboxes — keep for saveGoals() JS compatibility -->
                     <input type="checkbox" id="goal_maintenance" style="display:none;">
                     <input type="checkbox" id="goal_relaxation" style="display:none;">
@@ -12409,7 +12694,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.27</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.42</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
