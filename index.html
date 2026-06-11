@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499298 -->
+<!-- Version: 1775499310 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1642,7 +1642,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="10 Jun 2026">
-<meta name="app-version" content="5.47">
+<meta name="app-version" content="5.59">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -2702,6 +2702,10 @@
                                 <label style="font-size:13px;font-weight:600;">Sides<select id="exSides" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"><option value="1"${v.sides===1?' selected':''}>1</option><option value="2"${v.sides===2?' selected':''}>2</option></select></label>
                                 <label style="font-size:13px;font-weight:600;">Body Part<select id="exBodyPart" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;">${BODYPART_OPTIONS.map(b => '<option value="' + b + '"' + (b===v.bodyPart?' selected':'') + '>' + b + '</option>').join('')}</select></label>
                             </div>
+                            <label style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;cursor:pointer;">
+                                <input type="checkbox" id="exPnf" ${v.pnf ? 'checked' : ''} style="width:16px;height:16px;accent-color:#667eea;cursor:pointer;"/>
+                                PNF eligible <span style="font-weight:400;font-size:12px;color:#86868b;">(can be used in Active Stretch phase)</span>
+                            </label>
                         </div>
                         <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
                             <button onclick="document.getElementById('exModalOverlay').remove()" style="background:white;border:1.5px solid #d2d2d7;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
@@ -2731,6 +2735,7 @@
                     position: document.getElementById('exPosition').value.trim(),
                     sides: parseInt(document.getElementById('exSides').value),
                     bodyPart: document.getElementById('exBodyPart').value,
+                    pnf: document.getElementById('exPnf').checked,
                     duration: existing ? existing.duration : 45,
                     rest: existing ? existing.rest : 15
                 };
@@ -4117,7 +4122,28 @@
                         console.log('✓ Backfilled secondary/tertiary muscles from defaults');
                     }
 
-                    // Migrate old format (splits: boolean) to new format (bodyPart: string)
+                    // Backfill pnf field from defaults
+                    const PNF_ELIGIBLE = new Set([
+                        'Butterfly Stretch','Half Seated Frog','Pancake','Frog Pose','One Legged Frog',
+                        'Kneeling Bent Knee Calf Stretch','Pigeon Pose','Cow Face (Legs)','Seated Figure 4 Stretch',
+                        'Supine Figure 4 Stretch','Runners Stretch','Seated Forward Fold','Standing Forward Fold',
+                        'Pyramid Stretch','Splits On Wall','Twisted Reclined Big Toe Pose','Wide Legged Forward Fold',
+                        'Low Lunge','High Lunge','Supine Lizard','Gate Pose','Saddle','Half Saddle',
+                        'Standing Quad Stretch','Cow Face (Arms)','Cross Body Shoulder Stretch','Overhead Tricep Stretch',
+                        'Deep Squat','Front Splits','Supine Split','Standing IT Band Stretch','Supine IT Band Stretch'
+                    ]);
+                    let needsPnfFill = false;
+                    exercises = exercises.map(ex => {
+                        if (!ex.hasOwnProperty('pnf')) {
+                            needsPnfFill = true;
+                            return {...ex, pnf: PNF_ELIGIBLE.has(ex.exercise)};
+                        }
+                        return ex;
+                    });
+                    if (needsPnfFill) {
+                        saveExercises();
+                        console.log('✓ Backfilled pnf field');
+                    }
                     let needsMigration = false;
                     exercises = exercises.map(ex => {
                         // If exercise has 'splits' property but no 'bodyPart', migrate it
@@ -6445,6 +6471,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     primaryMuscle:   col('primarymuscle'),
                     secondaryMuscle: col('secondarymuscle') || undefined,
                     tertiaryMuscle:  col('tertiarymuscle') || undefined,
+                    pnf:             col('pnf') === '1' ? true : false,
                 };
 
                 // Sanity check: primaryMuscle should not look like a position
@@ -8787,21 +8814,25 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             // ── 3. MUSCLE-LEVEL SUMMARY ──
             // Aggregate primary muscle minutes and counts across ALL exercises sharing that muscle
             const muscleTotals = {}; // { muscleName: { counts: {12m,6m,3m,1m,2w,1w}, mins: {12m,6m,3m,1m,2w,1w}, lastMs } }
+            const addMuscleContribution = (muscle, dur, sMs, weight) => {
+                if (!muscle || muscle === 'None') return;
+                if (!muscleTotals[muscle]) muscleTotals[muscle] = { counts: {}, mins: {}, lastMs: 0 };
+                const m = muscleTotals[muscle];
+                wins.forEach(w => {
+                    if (now - sMs <= w.ms) {
+                        m.counts[w.label] = (m.counts[w.label]||0) + weight;
+                        m.mins[w.label] = (m.mins[w.label]||0) + (dur * weight);
+                    }
+                });
+                if (sMs > m.lastMs) m.lastMs = sMs;
+            };
             allHistory.forEach(s => {
                 const sMs = new Date(s.date).getTime();
                 (s.routine||[]).forEach(ex => {
-                    const pm = ex.primaryMuscle || ex.target;
-                    if (!pm || pm === 'None') return;
-                    if (!muscleTotals[pm]) muscleTotals[pm] = { counts: {}, mins: {}, lastMs: 0 };
-                    const m = muscleTotals[pm];
-                    const dur = ((ex.duration||30) * (ex.sides||1)) / 60; // mins
-                    wins.forEach(w => {
-                        if (now - sMs <= w.ms) {
-                            m.counts[w.label] = (m.counts[w.label]||0) + 1;
-                            m.mins[w.label] = (m.mins[w.label]||0) + dur;
-                        }
-                    });
-                    if (sMs > m.lastMs) m.lastMs = sMs;
+                    const dur = ((ex.duration||30) * (ex.sides||1)) / 60;
+                    addMuscleContribution(ex.primaryMuscle || ex.target, dur, sMs, 1.0);
+                    addMuscleContribution(ex.secondaryMuscle, dur, sMs, 0.3);
+                    addMuscleContribution(ex.tertiaryMuscle, dur, sMs, 0.1);
                 });
             });
 
@@ -9202,10 +9233,125 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             return result;
         }
 
+        // ── JUMI: Compute target muscles from scored history + Fitbod ──
+        function computeTargetMuscles(count) {
+            const now = Date.now();
+            const allHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
+
+            // Build weighted muscle scores from flex history
+            const muscleScores = {};
+            const wins = [
+                { label: '1w', ms: 7*24*60*60*1000 },
+                { label: '2w', ms: 14*24*60*60*1000 },
+                { label: '1m', ms: 28*24*60*60*1000 },
+                { label: '3m', ms: 91*24*60*60*1000 },
+            ];
+            const tierWeights = { primary: 1.0, secondary: 0.3, tertiary: 0.1 };
+
+            const addScore = (muscle, dur, sMs, tier) => {
+                if (!muscle || muscle === 'None') return;
+                if (!muscleScores[muscle]) muscleScores[muscle] = { '1w': 0, '2w': 0, '1m': 0, '3m': 0 };
+                const w = tierWeights[tier] || 1.0;
+                wins.forEach(win => {
+                    if (now - sMs <= win.ms) {
+                        muscleScores[muscle][win.label] += dur * w;
+                    }
+                });
+            };
+
+            allHistory.forEach(s => {
+                const sMs = new Date(s.date).getTime();
+                (s.routine||[]).forEach(ex => {
+                    const dur = ((ex.duration||30) * (ex.sides||1)) / 60;
+                    addScore(ex.primaryMuscle || ex.target, dur, sMs, 'primary');
+                    addScore(ex.secondaryMuscle, dur, sMs, 'secondary');
+                    addScore(ex.tertiaryMuscle, dur, sMs, 'tertiary');
+                });
+            });
+
+            // Compute base recency score per muscle
+            const scored = Object.entries(muscleScores).map(([muscle, m]) => {
+                let score = (m['1w']*8) + (m['2w']*4) + (m['1m']*2) + (m['3m']*1);
+
+                // Fitbod adjustment: muscles worked recently in strength training need MORE stretching
+                const fitbodRaw = JSON.parse(localStorage.getItem('fitbodData') || '[]');
+                const fitbodData = Array.isArray(fitbodRaw) ? fitbodRaw : (fitbodRaw.sessions || []);
+                const now2 = Date.now();
+                fitbodData.forEach(session => {
+                    const sMs = new Date(session.date).getTime();
+                    const hoursAgo = (now2 - sMs) / (1000 * 60 * 60);
+                    if (hoursAgo > 72) return;
+                    (session.exercises || []).forEach(ex => {
+                        // Map Fitbod exercise name to muscle — simple keyword match
+                        const name = (ex.exercise || '').toLowerCase();
+                        const muscleL = muscle.toLowerCase();
+                        if (name.includes(muscleL) ||
+                            (muscleL === 'hamstrings' && (name.includes('hamstring') || name.includes('deadlift') || name.includes('leg curl'))) ||
+                            (muscleL === 'glutes' && (name.includes('glute') || name.includes('hip thrust') || name.includes('squat'))) ||
+                            (muscleL === 'quadriceps' && (name.includes('quad') || name.includes('squat') || name.includes('leg press') || name.includes('lunge'))) ||
+                            (muscleL === 'hip flexors' && (name.includes('hip') || name.includes('lunge'))) ||
+                            (muscleL === 'chest' && (name.includes('chest') || name.includes('bench') || name.includes('press') || name.includes('fly'))) ||
+                            (muscleL === 'shoulders' && (name.includes('shoulder') || name.includes('press') || name.includes('lateral raise') || name.includes('overhead'))) ||
+                            (muscleL === 'lats' && (name.includes('lat') || name.includes('pull') || name.includes('row'))) ||
+                            (muscleL === 'triceps' && (name.includes('tricep') || name.includes('pushdown') || name.includes('extension'))) ||
+                            (muscleL === 'biceps' && (name.includes('bicep') || name.includes('curl'))) ||
+                            (muscleL === 'calves' && (name.includes('calf') || name.includes('calves'))) ||
+                            (muscleL === 'lower back' && (name.includes('lower back') || name.includes('deadlift') || name.includes('back extension')))
+                        ) {
+                            const reduction = hoursAgo <= 24 ? 0.30 : hoursAgo <= 48 ? 0.20 : 0.10;
+                            score = score * (1 - reduction);
+                        }
+                    });
+                });
+
+                return { muscle, score };
+            });
+
+            // Sort ascending — lowest score = most neglected = highest priority
+            scored.sort((a, b) => a.score - b.score);
+
+            return scored.slice(0, count).map(s => s.muscle);
+        }
+
+        // ── JUMI: Assign target muscles to phases ──
+        function assignMusclestoPhases(targetMuscles, phases, exerciseLibrary) {
+            const assignment = {};
+            const allPhaseExercises = (phase) => exerciseLibrary.filter(ex => {
+                const srcPhase = (phase === 'Active Stretch' || phase === 'Deep Stretch') ? 'Static Stretching' : phase;
+                return ex.phase === srcPhase;
+            });
+
+            // Build a ranked fallback list from the exercise library
+            const muscleScored = JSON.parse(localStorage.getItem('_jumiMuscleRanking') || '[]');
+
+            phases.forEach(phase => {
+                // Try to assign each target muscle to this phase
+                let assigned = null;
+                for (const muscle of targetMuscles) {
+                    const hasExercise = allPhaseExercises(phase).some(ex =>
+                        ex.primaryMuscle === muscle || ex.target === muscle
+                    );
+                    if (hasExercise) { assigned = muscle; break; }
+                }
+
+                if (!assigned) {
+                    // Fallback: find next-ranked muscle that has an exercise in this phase
+                    const phaseExs = allPhaseExercises(phase);
+                    if (phaseExs.length > 0) {
+                        // Just assign the phase without a muscle constraint — Jumi picks freely
+                        assigned = null;
+                    }
+                }
+
+                assignment[phase] = assigned; // null means no target constraint for this phase
+            });
+
+            return assignment;
+        }
+
         // ── JUMI: Build system prompt + user message from slots ──
         // ── JUMI: Build full context for authoring a routine ──
-        // Jumi receives everything it needs to pick specific exercises and write an explanation.
-        // No candidate pools. No rankings. No priorities. Jumi is the author.
+        // Jumi receives target muscles (code-selected) and phase assignments, then picks exercises.
         function buildJumiContext(goals, userPrompt) {
             const targetMinutes = selectedTime === 999 ? null : (selectedTime || 35);
             const holdStyle = (selectedHold || appSettings.quickStartHold || 'short') === 'long' ? 'long hold (45s stretches, 90s deep stretches)' : 'short hold (45s stretches, 45s deep stretches)';
@@ -9233,7 +9379,10 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     muscles: muscles.join(', '),
                     bodyPart: ex.bodyPart,
                     sides: ex.sides,
-                    approxSeconds: time
+                    approxSeconds: time,
+                    primaryMuscle: ex.primaryMuscle,
+                    target: ex.target,
+                    pnf: ex.pnf || false
                 };
             });
 
@@ -9258,11 +9407,32 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 if (phaseExs.length === 0) return;
                 libraryText += `\n${phase}:\n`;
                 phaseExs.forEach(ex => {
-                    libraryText += `  - ${ex.name} | ${ex.muscles} | ${ex.sides === 2 ? 'bilateral' : 'unilateral'} | ~${ex.approxSeconds}s\n`;
+                    const pnfTag = ex.pnf ? ' [PNF]' : '';
+                    libraryText += `  - ${ex.name}${pnfTag} | ${ex.muscles} | ${ex.sides === 2 ? 'bilateral' : 'unilateral'} | ~${ex.approxSeconds}s\n`;
                 });
             });
 
-            // History — use the shared full context builder
+            // ── Compute target muscles in code ──
+            const targetMuscles = computeTargetMuscles(2);
+
+            // ── Assign muscles to phases ──
+            const activePhases = phaseOrder.filter(p => p !== 'Final Rest');
+            const phaseAssignment = assignMusclestoPhases(targetMuscles, activePhases, exercisesForCtx);
+
+            // Build phase assignment instructions for Jumi
+            let phaseInstructions = '\nPHASE MUSCLE TARGETS (code-selected — you must respect these):\n';
+            phaseOrder.forEach(phase => {
+                if (phase === 'Final Rest') return;
+                const muscle = phaseAssignment[phase];
+                if (muscle) {
+                    phaseInstructions += `  ${phase}: prioritise exercises targeting ${muscle}\n`;
+                } else {
+                    phaseInstructions += `  ${phase}: no specific muscle constraint — choose freely based on goals and variety\n`;
+                }
+            });
+            phaseInstructions += `\nThese target muscles (${targetMuscles.join(', ')}) must form the throughline of the session — they should appear across multiple phases from warm-up through to cool down.\n`;
+
+            // History
             const allHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
             const historySection = allHistory.length === 0
                 ? '\nFLEX HISTORY: No sessions recorded yet.'
@@ -9275,29 +9445,32 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             const blockSection = block ? `\n\n${formatBlockForContext(block)}\n\nThis focus defines the session's purpose. Exercises targeting these primary muscles (${primaryMuscles.join(', ')}) must appear across multiple phases. Secondary muscles (${secondaryMuscles.join(', ')}) should support the session.` : '';
 
             // Fitbod
-            const fitbodSection = buildFitbodContext() ? `\n\n${buildFitbodContext()}\n\nInfer which muscles were loaded from these exercises. Muscles trained within 72 hours should receive lighter mobility/static work. Do not override long-term flexibility deficits unless the load was within 72 hours.` : '';
+            const fitbodSection = buildFitbodContext() ? `\n\n${buildFitbodContext()}\n\nMuscles trained within 72 hours should receive lighter mobility/static work. Do not override long-term flexibility deficits unless the load was within 72 hours.` : '';
 
             // User prompt
             const focusSection = userPrompt ? `\n\nTODAY'S FOCUS: "${userPrompt}" — this must visibly shape the routine across multiple phases.` : '';
 
             const systemPrompt = `You are Jumi, a long-term flexibility and mobility coach. Use British English throughout.
 
-You are the author of this routine. You choose every exercise. The app only handles timing and formatting.
+You are the author of this routine. You choose specific exercises from the library. The app handles timing and formatting.
 
 YOUR JOB:
-1. Review all the context provided
-2. Choose specific exercises from the library for each phase
-3. Write a 100-150 word explanation of your choices
+1. Review the phase muscle targets — these are computed from training history and must be respected
+2. Decide which phases to include based on goals (you may omit phases with clear reason)
+3. Choose specific exercises from the library for each phase, respecting the muscle targets
+4. If a phase has no exercise matching the target muscle, choose the next best option from the available exercises
 
-SELECTION PRINCIPLES:
-- The strategic plan (if set) defines the session's purpose. Primary focus muscles must appear across multiple phases — prep phases should prepare them, stretch phases should work them, cool down should settle them.
-- Training history tells you what has been neglected. Use the MUSCLE PRIORITY RANKING in the history — it is pre-computed using weighted recency (1w×8, 2w×4, 1m×2, 3m×1). Lower recency score = more neglected recently = higher priority. Muscles at the top of this ranking should be prioritised unless the plan or today's focus overrides them.
-- Exercises done in the last session (visible in the EXERCISE DETAIL table as "today" or "yesterday") should be avoided unless there is a specific reason to repeat them. Exercises not done in the last 2 weeks are preferred.
-- Fitbod data tells you what was recently loaded in strength training. Avoid deep work on muscles trained within 72 hours.
-- Today's focus (if provided) overrides everything else.
-- Prefer variety across muscle groups within each phase unless the plan or focus demands repetition.
-- Strong preference to include all phases: Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Deep Stretch, Cool Down, Final Rest. You may omit a phase only if there is a clear reason, and you must explain why.
-- Savasana (Final Rest) must always be included.
+THROUGHLINE RULE: The target muscles must thread through the session — preparation phases warm them up, stretch phases work them, cool down settles them. Do not scatter unrelated muscles across phases.
+
+PHASE DEFINITIONS — you must include all of these unless there is a clear reason to omit:
+- Warm-Up: dynamic movement to raise temperature and prepare joints
+- Foam Roller: myofascial release before stretching
+- Mobility: controlled articular rotations and dynamic range work
+- Static Stretching: passive holds using gravity or body weight
+- Active Stretch: holding a stretch using your own opposing muscle strength (static active), or alternating passive stretches and active resistance holds (PNF). Must be included in every routine. IMPORTANT: Active Stretch may ONLY contain exercises flagged as PNF-eligible in the library. Non-PNF exercises must go in Static Stretching instead.
+- Deep Stretch: longer passive holds for end-range tissue adaptation
+- Cool Down: gentle settling work after deep stretching
+- Final Rest: Savasana, always last
 
 TIMING GUIDANCE:
 - Target: ${targetMinutes ? targetMinutes + ' minutes' : 'no time limit'} (${holdStyle})
@@ -9312,20 +9485,18 @@ OUTPUT FORMAT — respond with valid JSON only, no other text:
   ]
 }
 
-Only include exercises you want in the routine. Do not include exercises you are not selecting.
+Priority scoring (1-100):
+- 90-100: Essential — directly serves target muscle throughline
+- 70-89: Important — serves secondary focus or key preparation
+- 50-69: Valuable — supports variety and maintenance
+- 30-49: Supplementary — general value but not critical
+- 1-29: Dispensable — first to cut if time is tight
 
-Priority scoring (1-100) for your selected exercises:
-- 90-100: Essential to this session's purpose — directly serves the primary plan focus or today's stated focus
-- 70-89: Important — serves secondary focus or provides key preparation/recovery for primary muscles
-- 50-69: Valuable — supports maintenance muscles or provides useful variety
-- 30-49: Supplementary — general fitness value but not critical to this session's goals
-- 1-29: Dispensable — nice to have but first to cut if time is tight
+Spread scores across the full range. Do not cluster at 70+.
+Only use exercise names exactly as they appear in the library. Do not invent exercises.
+Savasana (Final Rest) must always be the last exercise.`;
 
-Be precise — spread your scores across the full range. Do not cluster everything at 70+.
-
-Only use exercise names and phase names exactly as they appear in the library. Do not invent exercises.`;
-
-            const userMessage = `Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}${focusSection}${blockSection}${historySection}${fitbodSection}
+            const userMessage = `Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}${focusSection}${phaseInstructions}${blockSection}${historySection}${fitbodSection}
 
 EXERCISE LIBRARY:
 ${libraryText}
@@ -9832,6 +10003,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                     console.log('JSON match found:', !!jsonMatch, jsonMatch ? jsonMatch[0].substring(0, 100) : 'none');
                     if (jsonMatch) jumiResult = JSON.parse(jsonMatch[0]);
                     console.log('jumiResult exercises count:', jumiResult?.exercises?.length);
+                    console.log('jumiResult phases:', jumiResult?.exercises?.map(e=>e.phase).filter((v,i,a)=>a.indexOf(v)===i).join(', '));
                 } catch(e) {
                     console.warn('Could not parse Jumi JSON response:', e.message);
                 }
@@ -9883,9 +10055,18 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                 });
                 sortByPhase(jumiRoutine);
 
+                // Enforce PNF eligibility — Active Stretch must only contain PNF-eligible exercises
+                jumiRoutine = jumiRoutine.map(ex => {
+                    if (ex.phase === 'Active Stretch' && ex.pnf === false) {
+                        return {...ex, phase: 'Static Stretching'};
+                    }
+                    return ex;
+                });
+                sortByPhase(jumiRoutine);
+
                 // Hard cap prep phases at 3 exercises — remove lowest priority if over
                 const PREP_CAP = 3;
-                const CAPPED_PHASES = new Set(['Warm-Up', 'Foam Roller', 'Mobility']);
+                const CAPPED_PHASES = new Set(['Warm-Up', 'Foam Roller', 'Mobility', 'Cool Down']);
                 CAPPED_PHASES.forEach(phase => {
                     const phaseExs = jumiRoutine.filter(ex => ex.phase === phase);
                     if (phaseExs.length > PREP_CAP) {
@@ -10001,25 +10182,81 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                     : '';
                 const fitbodCtx = buildFitbodContext() ? buildFitbodContext() : '';
 
-                const explanationPrompt = `You are Jumi, a flexibility coach. Write a 100-150 word explanation of this routine directly to the user. Use British English.
+                const targetMuscles = computeTargetMuscles(2);
+
+                // Build normalised muscle priority list (100 = most neglected, 0 = most recently worked)
+                const allHistory2 = JSON.parse(localStorage.getItem('routineHistory') || '[]');
+                const now2 = Date.now();
+                const rawScores = {};
+                const wins2 = [{label:'1w',ms:7*24*60*60*1000},{label:'2w',ms:14*24*60*60*1000},{label:'1m',ms:28*24*60*60*1000},{label:'3m',ms:91*24*60*60*1000}];
+                allHistory2.forEach(s => {
+                    const sMs = new Date(s.date).getTime();
+                    (s.routine||[]).forEach(ex => {
+                        const dur = ((ex.duration||30)*(ex.sides||1))/60;
+                        [[ex.primaryMuscle||ex.target,1.0],[ex.secondaryMuscle,0.3],[ex.tertiaryMuscle,0.1]].forEach(([m,w])=>{
+                            if (!m||m==='None') return;
+                            if (!rawScores[m]) rawScores[m]={};
+                            wins2.forEach(win => { if (now2-sMs<=win.ms) rawScores[m][win.label]=(rawScores[m][win.label]||0)+dur*w; });
+                        });
+                    });
+                });
+                const computed = Object.entries(rawScores).map(([muscle,m])=>{
+                    let score = ((m['1w']||0)*8)+((m['2w']||0)*4)+((m['1m']||0)*2)+((m['3m']||0)*1);
+                    return {muscle, score};
+                });
+                const maxScore = Math.max(...computed.map(x=>x.score), 1);
+                // Sort descending by priority score (highest = most neglected first)
+                const muscleScoreList = computed
+                    .map(({muscle,score})=>({muscle, normalised: Math.round((1 - score/maxScore)*100)}))
+                    .sort((a,b)=>b.normalised-a.normalised)
+                    .map(({muscle,normalised})=>{
+                        const isTarget = targetMuscles.includes(muscle);
+                        return `• ${muscle}: ${normalised}${isTarget ? ' ★ today\'s focus' : ''}`;
+                    }).join('\n');
+
+                // Build focus muscle exercise breakdown from the finalised routine
+                const focusMuscleBreakdown = targetMuscles.map(muscle => {
+                    const matches = currentRoutine
+                        .filter(ex => ex.phase !== 'Final Rest')
+                        .flatMap(ex => {
+                            const hits = [];
+                            if ((ex.primaryMuscle||ex.target) === muscle) hits.push(`${ex.exercise} (P)`);
+                            else if (ex.secondaryMuscle === muscle) hits.push(`${ex.exercise} (S)`);
+                            else if (ex.tertiaryMuscle === muscle) hits.push(`${ex.exercise} (T)`);
+                            return hits;
+                        });
+                    return matches.length > 0
+                        ? `${muscle} — ${matches.join(', ')}`
+                        : `${muscle} — no direct exercises in today's routine`;
+                }).join('\n');
+
+                const explanationPrompt = `You are Jumi, a flexibility coach. Write a brief explanation of this routine directly to the user. Use British English.
 
 ${blockCtx}
 ${fitbodCtx ? fitbodCtx + '\n' : ''}
 Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}
 ${userPrompt ? `Today's focus: "${userPrompt}"` : ''}
 
-TRAINING HISTORY (use this to identify what has been neglected recently):
-${buildFullJumiContext()}
+Today's target muscles (selected by training history scoring): ${targetMuscles.join(', ')}
 
 This is the exact finalised routine:
 ${finalisedList}
 
-Structure your explanation around three things:
-1. What gaps in recent training this session addresses — use the MUSCLE PRIORITY RANKING (lowest recency score = most neglected) to identify what has been underworked recently. Name the muscles. Do not describe patterns being continued — describe deficits being filled.
-2. What today's session specifically contributes — how the phases work through those gaps
-3. What comes next — what this session sets up for future sessions
+Write exactly this structure — no deviations:
 
-Tone: direct and clinical. Short sentences. Facts and reasoning only. No metaphors, no emotional language, no encouragement, no filler. Do not call it a "block". Do not start with filler words like "Right", "So", or "Well". Do not list exercises by name. Do not use bullet points, headers, or markdown. Only reference what is actually in the routine above.`;
+PARAGRAPH 1 (1-2 sentences): Why today focuses on ${targetMuscles.join(' and ')} — plain language, based on recent training gaps. No jargon.
+
+MUSCLE PRIORITY LIST — output this exactly, do not change it or reorder it:
+${muscleScoreList}
+
+FOCUS MUSCLES — output this exactly, do not change it:
+${focusMuscleBreakdown}
+
+PARAGRAPH 2 (1-2 sentences): What comes next — what the next session should address based on the priority list.
+
+PNF GUIDANCE: Review the Active Stretch exercises in the routine: ${currentRoutine.filter(ex=>ex.phase==='Active Stretch').map(ex=>ex.exercise).join(', ') || 'none'}. For any that lend themselves well to PNF (alternating passive stretch and active resistance holds), briefly explain how to apply PNF to that specific exercise. Skip this section if none are suitable. Keep it concise — one sentence per exercise maximum.
+
+Do not add any other text, headers, or markdown.`;
 
                 try {
                     const expResponse = await fetch('https://flexibilityapp3849.netlify.app/.netlify/functions/coach', {
@@ -10027,7 +10264,7 @@ Tone: direct and clinical. Short sentences. Facts and reasoning only. No metapho
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             mode: 'jumi_author',
-                            system: 'You are Jumi, a flexibility coach. Write a concise explanation in British English. Plain prose only, no lists, no markdown.',
+                            system: 'You are Jumi, a flexibility coach. Follow the output structure exactly as instructed. Use British English.',
                             messages: [{ role: 'user', content: explanationPrompt }]
                         })
                     });
@@ -12541,7 +12778,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.47</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.59</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
