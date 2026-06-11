@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499310 -->
+<!-- Version: 1775499313 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1641,8 +1641,8 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="build-date" content="10 Jun 2026">
-<meta name="app-version" content="5.59">
+<meta name="build-date" content="11 Jun 2026">
+<meta name="app-version" content="5.62">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -2702,9 +2702,11 @@
                                 <label style="font-size:13px;font-weight:600;">Sides<select id="exSides" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"><option value="1"${v.sides===1?' selected':''}>1</option><option value="2"${v.sides===2?' selected':''}>2</option></select></label>
                                 <label style="font-size:13px;font-weight:600;">Body Part<select id="exBodyPart" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;">${BODYPART_OPTIONS.map(b => '<option value="' + b + '"' + (b===v.bodyPart?' selected':'') + '>' + b + '</option>').join('')}</select></label>
                             </div>
-                            <label style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;cursor:pointer;">
-                                <input type="checkbox" id="exPnf" ${v.pnf ? 'checked' : ''} style="width:16px;height:16px;accent-color:#667eea;cursor:pointer;"/>
-                                PNF eligible <span style="font-weight:400;font-size:12px;color:#86868b;">(can be used in Active Stretch phase)</span>
+                            <label style="font-size:13px;font-weight:600;">PNF eligible <span style="font-weight:400;font-size:12px;color:#86868b;">(can be used in Active Stretch)</span>
+                                <select id="exPnf" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;">
+                                    <option value="0" ${!v.pnf ? 'selected' : ''}>No</option>
+                                    <option value="1" ${v.pnf ? 'selected' : ''}>Yes</option>
+                                </select>
                             </label>
                         </div>
                         <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
@@ -2735,7 +2737,7 @@
                     position: document.getElementById('exPosition').value.trim(),
                     sides: parseInt(document.getElementById('exSides').value),
                     bodyPart: document.getElementById('exBodyPart').value,
-                    pnf: document.getElementById('exPnf').checked,
+                    pnf: document.getElementById('exPnf').value === '1',
                     duration: existing ? existing.duration : 45,
                     rest: existing ? existing.rest : 15
                 };
@@ -4919,6 +4921,12 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 return `<label style="font-size:13px; font-weight:600;">${f.label}
                     <input id="${f.id}" value="${f.val}" style="display:block; width:100%; margin-top:4px; border:1.5px solid #d2d2d7; border-radius:8px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;"/></label>`;
             }).join('');
+            // PNF dropdown
+            container.innerHTML += `<label style="font-size:13px;font-weight:600;">PNF eligible <span style="font-weight:400;font-size:12px;color:#86868b;">(can be used in Active Stretch)</span>
+                <select id="apPnf" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;">
+                    <option value="0" ${!ex.pnf ? 'selected' : ''}>No</option>
+                    <option value="1" ${ex.pnf ? 'selected' : ''}>Yes</option>
+                </select></label>`;
             // Show queue count
             const queueInfo = document.getElementById('apQueueInfo');
             const current = _pendingExercisesTotal - _pendingExercises.length + 1;
@@ -5001,6 +5009,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 position: document.getElementById('apPosition').value.trim(),
                 sides: parseInt(document.getElementById('apSides').value),
                 bodyPart: document.getElementById('apBodyPart').value,
+                pnf: document.getElementById('apPnf') ? document.getElementById('apPnf').value === '1' : false,
                 duration: 45,
                 rest: 15
             };
@@ -10252,9 +10261,7 @@ ${muscleScoreList}
 FOCUS MUSCLES — output this exactly, do not change it:
 ${focusMuscleBreakdown}
 
-PARAGRAPH 2 (1-2 sentences): What comes next — what the next session should address based on the priority list.
-
-PNF GUIDANCE: Review the Active Stretch exercises in the routine: ${currentRoutine.filter(ex=>ex.phase==='Active Stretch').map(ex=>ex.exercise).join(', ') || 'none'}. For any that lend themselves well to PNF (alternating passive stretch and active resistance holds), briefly explain how to apply PNF to that specific exercise. Skip this section if none are suitable. Keep it concise — one sentence per exercise maximum.
+PNF GUIDANCE: Every exercise in Active Stretch is PNF-eligible. For each one, provide one sentence explaining how to apply PNF: ${currentRoutine.filter(ex=>ex.phase==='Active Stretch').map(ex=>ex.exercise).join(', ') || 'none'}. Do not skip any.
 
 Do not add any other text, headers, or markdown.`;
 
@@ -12778,7 +12785,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.59</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.62</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
