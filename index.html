@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499313 -->
+<!-- Version: 1775499314 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1642,7 +1642,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="11 Jun 2026">
-<meta name="app-version" content="5.62">
+<meta name="app-version" content="5.63">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -10229,14 +10229,14 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                         .filter(ex => ex.phase !== 'Final Rest')
                         .flatMap(ex => {
                             const hits = [];
-                            if ((ex.primaryMuscle||ex.target) === muscle) hits.push(`${ex.exercise} (P)`);
-                            else if (ex.secondaryMuscle === muscle) hits.push(`${ex.exercise} (S)`);
-                            else if (ex.tertiaryMuscle === muscle) hits.push(`${ex.exercise} (T)`);
+                            if ((ex.primaryMuscle||ex.target) === muscle) hits.push(`  - ${ex.exercise} (P)`);
+                            else if (ex.secondaryMuscle === muscle) hits.push(`  - ${ex.exercise} (S)`);
+                            else if (ex.tertiaryMuscle === muscle) hits.push(`  - ${ex.exercise} (T)`);
                             return hits;
                         });
                     return matches.length > 0
-                        ? `${muscle} — ${matches.join(', ')}`
-                        : `${muscle} — no direct exercises in today's routine`;
+                        ? `${muscle}:\n${matches.join('\n')}`
+                        : `${muscle}:\n  - no direct exercises in today's routine`;
                 }).join('\n');
 
                 const explanationPrompt = `You are Jumi, a flexibility coach. Write a brief explanation of this routine directly to the user. Use British English.
@@ -10261,7 +10261,7 @@ ${muscleScoreList}
 FOCUS MUSCLES — output this exactly, do not change it:
 ${focusMuscleBreakdown}
 
-PNF GUIDANCE: Every exercise in Active Stretch is PNF-eligible. For each one, provide one sentence explaining how to apply PNF: ${currentRoutine.filter(ex=>ex.phase==='Active Stretch').map(ex=>ex.exercise).join(', ') || 'none'}. Do not skip any.
+PNF GUIDANCE: Every exercise in Active Stretch is PNF-eligible. For each one, output on a separate line in this format: "Exercise name - [one sentence PNF instruction]". Do not use em-dashes (—), only regular dashes (-). Exercises: ${currentRoutine.filter(ex=>ex.phase==='Active Stretch').map(ex=>ex.exercise).join(', ') || 'none'}. Do not skip any.
 
 Do not add any other text, headers, or markdown.`;
 
@@ -10271,7 +10271,7 @@ Do not add any other text, headers, or markdown.`;
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             mode: 'jumi_author',
-                            system: 'You are Jumi, a flexibility coach. Follow the output structure exactly as instructed. Use British English.',
+                            system: 'You are Jumi, a flexibility coach. Follow the output structure exactly as instructed. Use British English. Never use em-dashes (—), only regular dashes (-).',
                             messages: [{ role: 'user', content: explanationPrompt }]
                         })
                     });
@@ -12785,7 +12785,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.62</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.63</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
