@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499314 -->
+<!-- Version: 1775499317 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1642,7 +1642,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="11 Jun 2026">
-<meta name="app-version" content="5.63">
+<meta name="app-version" content="5.66">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -9316,10 +9316,19 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 return { muscle, score };
             });
 
+            // Only consider muscles that have at least one exercise as primary in the library
+            const musclesWithPrimary = new Set(
+                (window._exercises || []).map(ex => ex.primaryMuscle).filter(Boolean)
+            );
+
             // Sort ascending — lowest score = most neglected = highest priority
             scored.sort((a, b) => a.score - b.score);
+            // Exclude muscles with no primary exercises in the library
+            const eligible = scored.filter(s => musclesWithPrimary.has(s.muscle));
+            console.log('Muscle scores (top 5):', eligible.slice(0, 5).map(s => `${s.muscle}: ${Math.round(s.score)}`).join(', '));
+            console.log('Selected targets:', eligible.slice(0, count).map(s => s.muscle).join(', '));
 
-            return scored.slice(0, count).map(s => s.muscle);
+            return eligible.slice(0, count).map(s => s.muscle);
         }
 
         // ── JUMI: Assign target muscles to phases ──
@@ -9959,6 +9968,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
 
         // ── JUMI: AI-driven routine generation — Jumi is the author ──
         async function generateJumiRoutine(userPrompt) {
+            const targetMuscles = computeTargetMuscles(2);
             const btn = document.getElementById('jumiQuickBtn');
             if (btn) btn.disabled = true;
             const _jqs = document.getElementById('jumiQuickSubtitle');
@@ -10084,6 +10094,22 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                         jumiRoutine = jumiRoutine.filter(ex => ex.phase !== phase || !toRemove.has(ex.exercise));
                     }
                 });
+
+                // Cap each target muscle to max 1 exercise per phase as primary
+                targetMuscles.forEach(muscle => {
+                    const allPhases = [...new Set(jumiRoutine.map(ex => ex.phase))];
+                    allPhases.forEach(phase => {
+                        const primaryInPhase = jumiRoutine.filter(ex =>
+                            ex.phase === phase && (ex.primaryMuscle || ex.target) === muscle
+                        );
+                        if (primaryInPhase.length > 1) {
+                            // Keep highest priority, remove rest
+                            const sorted = [...primaryInPhase].sort((a, b) => (b._priority||50) - (a._priority||50));
+                            const toRemove = new Set(sorted.slice(1).map(ex => ex.exercise));
+                            jumiRoutine = jumiRoutine.filter(ex => ex.phase !== phase || !toRemove.has(ex.exercise));
+                        }
+                    });
+                });
                 const savasana = exerciseLookup['Savasana'];
                 if (savasana && !usedNames.has('Savasana')) {
                     jumiRoutine.push({...savasana, phase: 'Final Rest', _priority: 100});
@@ -10191,7 +10217,9 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                     : '';
                 const fitbodCtx = buildFitbodContext() ? buildFitbodContext() : '';
 
-                const targetMuscles = computeTargetMuscles(2);
+                const musclesWithPrimary = new Set(
+                    (window._exercises || []).map(ex => ex.primaryMuscle).filter(Boolean)
+                );
 
                 // Build normalised muscle priority list (100 = most neglected, 0 = most recently worked)
                 const allHistory2 = JSON.parse(localStorage.getItem('routineHistory') || '[]');
@@ -10218,6 +10246,7 @@ PHASE GLOSSARY — use this to understand what each phase achieves, but do not n
                 const muscleScoreList = computed
                     .map(({muscle,score})=>({muscle, normalised: Math.round((1 - score/maxScore)*100)}))
                     .sort((a,b)=>b.normalised-a.normalised)
+                    .filter(({muscle}) => musclesWithPrimary.has(muscle))
                     .map(({muscle,normalised})=>{
                         const isTarget = targetMuscles.includes(muscle);
                         return `• ${muscle}: ${normalised}${isTarget ? ' ★ today\'s focus' : ''}`;
@@ -12785,7 +12814,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.63</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.66</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
