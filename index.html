@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499318 -->
+<!-- Version: 1775499319 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1642,7 +1642,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="11 Jun 2026">
-<meta name="app-version" content="5.67">
+<meta name="app-version" content="5.68">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -9339,29 +9339,33 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 return ex.phase === srcPhase;
             });
 
-            // Build a ranked fallback list from the exercise library
-            const muscleScored = JSON.parse(localStorage.getItem('_jumiMuscleRanking') || '[]');
-
             phases.forEach(phase => {
-                // Try to assign each target muscle to this phase
+                const phaseExs = allPhaseExercises(phase);
                 let assigned = null;
-                for (const muscle of targetMuscles) {
-                    const hasExercise = allPhaseExercises(phase).some(ex =>
-                        ex.primaryMuscle === muscle || ex.target === muscle
-                    );
-                    if (hasExercise) { assigned = muscle; break; }
-                }
+                let tier = null;
 
+                // Try primary first, then secondary, then tertiary
+                for (const muscle of targetMuscles) {
+                    if (phaseExs.some(ex => (ex.primaryMuscle || ex.target) === muscle)) {
+                        assigned = muscle; tier = 'primary'; break;
+                    }
+                }
                 if (!assigned) {
-                    // Fallback: find next-ranked muscle that has an exercise in this phase
-                    const phaseExs = allPhaseExercises(phase);
-                    if (phaseExs.length > 0) {
-                        // Just assign the phase without a muscle constraint — Jumi picks freely
-                        assigned = null;
+                    for (const muscle of targetMuscles) {
+                        if (phaseExs.some(ex => ex.secondaryMuscle === muscle)) {
+                            assigned = muscle; tier = 'secondary'; break;
+                        }
+                    }
+                }
+                if (!assigned) {
+                    for (const muscle of targetMuscles) {
+                        if (phaseExs.some(ex => ex.tertiaryMuscle === muscle)) {
+                            assigned = muscle; tier = 'tertiary'; break;
+                        }
                     }
                 }
 
-                assignment[phase] = assigned; // null means no target constraint for this phase
+                assignment[phase] = assigned ? { muscle: assigned, tier } : null;
             });
 
             return assignment;
@@ -9466,9 +9470,10 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             let phaseInstructions = '\nPHASE MUSCLE TARGETS (code-selected — you must respect these):\n';
             phaseOrder.forEach(phase => {
                 if (phase === 'Final Rest') return;
-                const muscle = phaseAssignment[phase];
-                if (muscle) {
-                    phaseInstructions += `  ${phase}: prioritise exercises targeting ${muscle}\n`;
+                const a = phaseAssignment[phase];
+                if (a) {
+                    const tierNote = a.tier === 'primary' ? '' : ` (via ${a.tier} muscle engagement)`;
+                    phaseInstructions += `  ${phase}: prioritise exercises targeting ${a.muscle}${tierNote}\n`;
                 } else {
                     phaseInstructions += `  ${phase}: no specific muscle constraint — choose freely based on goals and variety\n`;
                 }
@@ -12840,7 +12845,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.67</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.68</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
