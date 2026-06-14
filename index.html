@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<!-- Version: 1775499317 -->
+<!-- Version: 1775499318 -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1642,7 +1642,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="11 Jun 2026">
-<meta name="app-version" content="5.66">
+<meta name="app-version" content="5.67">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -9419,6 +9419,29 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 return true;
             };
 
+            // Compute per-exercise recency scores
+            const allHistoryEx = JSON.parse(localStorage.getItem('routineHistory') || '[]');
+            const nowEx = Date.now();
+            const exRecency = {};
+            allHistoryEx.forEach(s => {
+                const sMs = new Date(s.date).getTime();
+                (s.routine||[]).forEach(ex => {
+                    const name = ex.exercise;
+                    const dur = ((ex.duration||30)*(ex.sides||1))/60;
+                    if (!exRecency[name]) exRecency[name] = {s1w:0, s2w:0, s1m:0, s3m:0};
+                    if (nowEx - sMs <= 7*24*60*60*1000)  exRecency[name].s1w += dur;
+                    if (nowEx - sMs <= 14*24*60*60*1000) exRecency[name].s2w += dur;
+                    if (nowEx - sMs <= 28*24*60*60*1000) exRecency[name].s1m += dur;
+                    if (nowEx - sMs <= 91*24*60*60*1000) exRecency[name].s3m += dur;
+                });
+            });
+            const getExScore = (name) => {
+                const r = exRecency[name];
+                if (!r) return 0;
+                return (r.s1w*8) + (r.s2w*4) + (r.s1m*2) + (r.s3m*1);
+            };
+            const maxExScore = Math.max(...Object.values(exRecency).map(r => (r.s1w*8)+(r.s2w*4)+(r.s1m*2)+(r.s3m*1)), 1);
+
             let libraryText = '';
             phaseOrder.forEach(phase => {
                 const phaseExs = (byPhase[phase] || []).filter(bodyFilter);
@@ -9426,7 +9449,9 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 libraryText += `\n${phase}:\n`;
                 phaseExs.forEach(ex => {
                     const pnfTag = ex.pnf ? ' [PNF]' : '';
-                    libraryText += `  - ${ex.name}${pnfTag} | ${ex.muscles} | ${ex.sides === 2 ? 'bilateral' : 'unilateral'} | ~${ex.approxSeconds}s\n`;
+                    const score = getExScore(ex.name);
+                    const priority = Math.round((1 - score/maxExScore)*100);
+                    libraryText += `  - ${ex.name}${pnfTag} | ${ex.muscles} | ${ex.sides === 2 ? 'bilateral' : 'unilateral'} | ~${ex.approxSeconds}s | recency:${priority}\n`;
                 });
             });
 
@@ -9512,7 +9537,8 @@ Priority scoring (1-100):
 
 Spread scores across the full range. Do not cluster at 70+.
 Only use exercise names exactly as they appear in the library. Do not invent exercises.
-Savasana (Final Rest) must always be the last exercise.`;
+Savasana (Final Rest) must always be the last exercise.
+For non-focus exercises, prefer exercises with a higher recency score (shown as recency:N in the library, where 100 = not done recently, 0 = done very recently). Higher recency score = higher priority for selection. Give non-focus exercises with recency below 30 a low priority score.`;
 
             const userMessage = `Goals: ${goals.length ? goals.join(', ') : 'General flexibility maintenance'}${focusSection}${phaseInstructions}${blockSection}${historySection}${fitbodSection}
 
@@ -12814,7 +12840,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.66</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.67</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
