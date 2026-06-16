@@ -1642,7 +1642,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="11 Jun 2026">
-<meta name="app-version" content="5.87">
+<meta name="app-version" content="5.88">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -8121,7 +8121,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     const _animClass = _doAnimate ? ' animate-in' : '';
                     const _animDelay = _doAnimate ? `animation-delay:${delay.toFixed(0)}ms;` : '';
                     // F badge — green for target primary, yellow for target secondary
-                    let psmBadge = '';
+                    let psmBadge = '<span style="width:18px;height:18px;flex-shrink:0;display:inline-flex;"></span>';
                     if (currentJumiRoutine) {
                         const block = getJumiBlock();
                         if (block) {
@@ -13016,7 +13016,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.87</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.88</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
