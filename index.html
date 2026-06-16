@@ -1642,7 +1642,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="11 Jun 2026">
-<meta name="app-version" content="5.88">
+<meta name="app-version" content="5.89">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -7816,14 +7816,18 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             // Focus muscle breakdown in Jumi panel
             if (sessionTargets && sessionTargets.length > 0) {
                 const target = sessionTargets[0];
-                const matches = currentRoutine
-                    .filter(ex => ex.phase !== 'Final Rest')
-                    .flatMap(ex => {
-                        if ((ex.primaryMuscle || ex.target) === target) return [`- ${ex.exercise} (P)`];
-                        if (ex.secondaryMuscle === target) return [`- ${ex.exercise} (S)`];
-                        return [];
-                    });
-                const focusMsg = `**FOCUS: ${target}**\n\n${matches.length > 0 ? matches.join('\n') : '- no direct exercises in this routine'}`;
+                const phaseOrder = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Cool Down'];
+                const relevant = currentRoutine.filter(ex => ex.phase !== 'Final Rest');
+                const primaries = relevant.filter(ex => (ex.primaryMuscle || ex.target) === target)
+                    .sort((a, b) => phaseOrder.indexOf(a.phase) - phaseOrder.indexOf(b.phase))
+                    .map(ex => `- ${ex.exercise} · ${ex.phase}`);
+                const secondaries = relevant.filter(ex => ex.secondaryMuscle === target)
+                    .sort((a, b) => phaseOrder.indexOf(a.phase) - phaseOrder.indexOf(b.phase))
+                    .map(ex => `- ${ex.exercise} · ${ex.phase}`);
+                let focusMsg = `**FOCUS: ${target}**`;
+                if (primaries.length > 0) focusMsg += `\n\n**Primary**\n${primaries.join('\n')}`;
+                if (secondaries.length > 0) focusMsg += `\n\n**Secondary**\n${secondaries.join('\n')}`;
+                if (primaries.length === 0 && secondaries.length === 0) focusMsg += '\n\n- no direct exercises in this routine';
                 appendChatMessage('jumi', focusMsg);
             }
 
@@ -13016,7 +13020,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.88</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">5.89</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
