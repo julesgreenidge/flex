@@ -1642,7 +1642,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="11 Jun 2026">
-<meta name="app-version" content="6.19">
+<meta name="app-version" content="6.30">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -2659,33 +2659,58 @@
 
             function exerciseModalHTML(ex, idx) {
                 const isEdit = idx !== null && idx !== undefined;
-                const v = ex || { exercise:'', phase:'Static Stretching', primaryMuscle:'', position:'', sides:2, bodyPart:'lower', duration:45, rest:15 };
-                return `<div id="exModalOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:20000;display:flex;align-items:center;justify-content:center;">
-                    <div style="background:white;border-radius:20px;padding:28px;width:min(500px,92vw);max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                            <h3 style="margin:0;">${isEdit ? 'Edit Exercise' : 'Add Exercise'}</h3>
-                            <button onclick="document.getElementById('exModalOverlay').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#86868b;">✕</button>
+                const v = ex || { exercise:'', phase:'Static Stretching', primaryMuscle:'', position:'', sides:2, bodyPart:'lower', duration:45, rest:15, pnf:false };
+                const positionOptions = ['Kneeling','Lateral','Lunge','Prone','Seated','Standing','Supine','Tabletop'];
+                const phaseOpts = PHASE_OPTIONS.map(p => `<option value="${p}"${p===v.phase?' selected':''}>${p}</option>`).join('');
+                const muscleOpts = MUSCLE_OPTIONS_GLOBAL.map(m => `<option value="${m}">`).join('');
+                const positionOpts = positionOptions.map(p => `<option value="${p}">`).join('');
+                const bodyPartOpts = ['upper','lower','full'].map(b => `<option value="${b}"${b===v.bodyPart?' selected':''}>${b.charAt(0).toUpperCase()+b.slice(1)}</option>`).join('');
+                const inp = 'display:block;width:100%;margin-top:5px;border:1.5px solid #e0e0e5;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;background:white;outline:none;color:#1d1d1f;';
+                const lbl = 'font-size:13px;font-weight:600;color:#1d1d1f;';
+                const lblSub = 'font-size:13px;font-weight:600;color:#86868b;';
+
+                return `<div id="exModalOverlay" onclick="if(event.target===this)this.remove()" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);backdrop-filter:blur(3px);z-index:20000;display:flex;align-items:center;justify-content:center;">
+                    <div style="background:white;border-radius:16px;width:min(480px,94vw);max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+                        <div style="background:linear-gradient(135deg,rgba(102,126,234,0.1),rgba(118,75,162,0.1));padding:16px 24px;border-bottom:1px solid #e8e5f8;display:flex;justify-content:space-between;align-items:center;">
+                            <div style="font-size:16px;font-weight:700;color:#534AB7;">${isEdit ? 'Edit Exercise' : 'Add Exercise'}</div>
+                            <button onclick="document.getElementById('exModalOverlay').remove()" style="background:rgba(102,126,234,0.15);border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:13px;line-height:1;color:#534AB7;display:inline-flex;align-items:center;justify-content:center;padding:0;">✕</button>
                         </div>
-                        <div style="display:flex;flex-direction:column;gap:14px;">
-                            <label style="font-size:13px;font-weight:600;">Name<input id="exName" value="${v.exercise}" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"/></label>
-                            <label style="font-size:13px;font-weight:600;">Phase<select id="exPhase" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;">${PHASE_OPTIONS.map(p => '<option value="' + p + '"' + (p===v.phase?' selected':'') + '>' + p + '</option>').join('')}</select></label>
-                            <label style="font-size:13px;font-weight:600;">Primary Muscle${muscleCombo('exTarget', v.primaryMuscle, '')}</label>
-                            <label style="font-size:13px;font-weight:600;color:#555;">Secondary Muscle <span style="font-weight:400;font-size:12px;color:#86868b;">(optional)</span>${muscleCombo('exSecondary', v.secondaryMuscle || '', '')}</label>
-                            <label style="font-size:13px;font-weight:600;color:#555;">Tertiary Muscle <span style="font-weight:400;font-size:12px;color:#86868b;">(optional)</span>${muscleCombo('exTertiary', v.tertiaryMuscle || '', '')}</label>
-                            <label style="font-size:13px;font-weight:600;">Position<input id="exPosition" value="${v.position}" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"/></label>
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                                <label style="font-size:13px;font-weight:600;">Sides<select id="exSides" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;"><option value="1"${v.sides===1?' selected':''}>1</option><option value="2"${v.sides===2?' selected':''}>2</option></select></label>
-                                <label style="font-size:13px;font-weight:600;">Body Part<select id="exBodyPart" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;">${BODYPART_OPTIONS.map(b => '<option value="' + b + '"' + (b===v.bodyPart?' selected':'') + '>' + b + '</option>').join('')}</select></label>
-                            </div>
-                            <label style="font-size:13px;font-weight:600;">PNF eligible <span style="font-weight:400;font-size:12px;color:#86868b;">(can be used in Active Stretch)</span>
-                                <select id="exPnf" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;">
-                                    <option value="0" ${!v.pnf ? 'selected' : ''}>No</option>
-                                    <option value="1" ${v.pnf ? 'selected' : ''}>Yes</option>
-                                </select>
+                        <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px;">
+                            <label style="${lbl}">Name<input id="exName" value="${v.exercise}" placeholder="e.g. Pigeon Pose" style="${inp}" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e0e0e5'"/></label>
+                            <label style="${lbl}">Phase<select id="exPhase" style="${inp}">${phaseOpts}</select></label>
+                            <label style="${lbl}">Primary Muscle
+                                <input id="exTarget" list="exTargetList" value="${v.primaryMuscle||''}" autocomplete="off" placeholder="e.g. Glutes" style="${inp}" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e0e0e5'"/>
+                                <datalist id="exTargetList">${muscleOpts}</datalist>
                             </label>
+                            <label style="${lblSub}">Secondary Muscle <span style="font-weight:400;font-size:12px;">(optional)</span>
+                                <input id="exSecondary" list="exSecondaryList" value="${v.secondaryMuscle||''}" autocomplete="off" placeholder="optional" style="${inp}" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e0e0e5'"/>
+                                <datalist id="exSecondaryList">${muscleOpts}</datalist>
+                            </label>
+                            <label style="${lblSub}">Tertiary Muscle <span style="font-weight:400;font-size:12px;">(optional)</span>
+                                <input id="exTertiary" list="exTertiaryList" value="${v.tertiaryMuscle||''}" autocomplete="off" placeholder="optional" style="${inp}" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e0e0e5'"/>
+                                <datalist id="exTertiaryList">${muscleOpts}</datalist>
+                            </label>
+                            <label style="${lbl}">Position
+                                <input id="exPosition" list="exPositionList" value="${v.position||''}" autocomplete="off" placeholder="e.g. Seated" style="${inp}" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e0e0e5'"/>
+                                <datalist id="exPositionList">${positionOpts}</datalist>
+                            </label>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                <label style="${lbl}">Sides<select id="exSides" style="${inp}">
+                                    <option value="1"${v.sides===1?' selected':''}>1 — bilateral</option>
+                                    <option value="2"${v.sides===2?' selected':''}>2 — each side</option>
+                                </select></label>
+                                <label style="${lbl}">Body Part<select id="exBodyPart" style="${inp}">${bodyPartOpts}</select></label>
+                            </div>
+                            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f9f9fb;border-radius:10px;border:1.5px solid #e0e0e5;">
+                                <div>
+                                    <div style="font-size:13px;font-weight:600;color:#1d1d1f;">PNF Eligible</div>
+                                    <div style="font-size:12px;color:#86868b;margin-top:1px;">Can be used in Active Stretch</div>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" id="exPnf" ${v.pnf?'checked':''}/><span class="toggle-track"></span></label>
+                            </div>
                         </div>
-                        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
-                            <button onclick="document.getElementById('exModalOverlay').remove()" style="background:white;border:1.5px solid #d2d2d7;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
+                        <div style="padding:0 24px 20px;display:flex;justify-content:flex-end;gap:10px;">
+                            <button onclick="document.getElementById('exModalOverlay').remove()" style="background:white;border:1.5px solid #e0e0e5;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;color:#636366;">Cancel</button>
                             <button onclick="saveExerciseModal(${isEdit ? idx : 'null'})" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Save</button>
                         </div>
                     </div>
@@ -2712,7 +2737,7 @@
                     position: document.getElementById('exPosition').value.trim(),
                     sides: parseInt(document.getElementById('exSides').value),
                     bodyPart: document.getElementById('exBodyPart').value,
-                    pnf: document.getElementById('exPnf').value === '1',
+                    pnf: document.getElementById('exPnf') ? document.getElementById('exPnf').checked : false,
                     duration: existing ? existing.duration : 45,
                     rest: existing ? existing.rest : 15
                 };
@@ -4846,7 +4871,9 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         <select id="${f.id}" style="display:block; width:100%; margin-top:4px; border:1.5px solid #d2d2d7; border-radius:8px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;">
                             ${f.options.map(o => {
                                 const display = f.id === 'apBodyPart' ? o.charAt(0).toUpperCase() + o.slice(1) : o;
-                                return `<option value="${o}" ${String(o)===String(f.val)?'selected':''}>${display}</option>`;
+                                const val = f.id === 'apBodyPart' ? o.toLowerCase() : o;
+                                const selected = f.id === 'apBodyPart' ? String(o).toLowerCase()===String(f.val).toLowerCase() : String(o)===String(f.val);
+                                return `<option value="${val}" ${selected?'selected':''}>${display}</option>`;
                             }).join('')}
                         </select></label>`;
                 }
@@ -9451,7 +9478,6 @@ function showStats() {
             document.getElementById('mainView').style.display = 'none';
             document.getElementById('timerView').style.display = 'none';
             document.getElementById('statsView').style.display = 'block';
-            applyNavColour();
             
             // Sync the checkbox to match the current includeToday state
             const cb = document.getElementById('includeTodayCheckbox');
@@ -9461,10 +9487,17 @@ function showStats() {
             setStarVisible(false);
             document.getElementById('floatingEditBtn').style.display = 'none';
             
-            // Initialize to Summary section
+            // Always reset to Summary section on open
             currentStatsSection = 'summary';
             updateStatsNavigation();
             renderStatsSection();
+            // Force Summary button active and scroll to top
+            setTimeout(() => {
+                const summaryBtn = document.getElementById('statsSummaryBtn');
+                if (summaryBtn) summaryBtn.click();
+                const sc = document.getElementById('statsContent');
+                if (sc) sc.scrollTop = 0;
+            }, 30);
         }
         
         function hideStats() {
@@ -11543,7 +11576,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.19</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.27</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
