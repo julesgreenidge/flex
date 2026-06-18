@@ -1642,7 +1642,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="11 Jun 2026">
-<meta name="app-version" content="6.47">
+<meta name="app-version" content="6.48">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -6953,13 +6953,25 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                             .map(e => ({...e, phase: "Deep Stretch", duration: longSession ? 120 : 90}));
                         allPhaseExercises = [...reservedEx, ...weightedShuffle(candidates, sessionTargetPool && Object.keys(sessionTargetPool).length > 0 ? sessionTargetPool : null)];
                     } else if (phase === "Static Stretching") {
-                        allPhaseExercises = exercisesForGen.filter(e =>
+                        const target = sessionTargets[0];
+                        // Inject target primary first so it's always selected (validator requires exactly 1)
+                        const targetPrimary = target ? exercisesForGen.filter(e =>
                             e.phase === "Static Stretching" &&
+                            (e.primaryMuscle || e.target) === target &&
                             !reservedForActive.has(e.exercise) &&
                             !reservedForDeep.has(e.exercise) &&
                             !excludedFromAll.has(e.exercise) &&
                             !usedExerciseNames.has(e.exercise)
+                        ).slice(0, 1).map(e => ({...e, isReserved: true})) : [];
+                        const others = exercisesForGen.filter(e =>
+                            e.phase === "Static Stretching" &&
+                            !reservedForActive.has(e.exercise) &&
+                            !reservedForDeep.has(e.exercise) &&
+                            !excludedFromAll.has(e.exercise) &&
+                            !usedExerciseNames.has(e.exercise) &&
+                            (target ? (e.primaryMuscle || e.target) !== target : true)
                         );
+                        allPhaseExercises = [...targetPrimary, ...others];
                     } else {
                         allPhaseExercises = exercisesForGen.filter(e => e.phase === phase);
                     }
@@ -6993,7 +7005,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     
                     // Safety check: if no exercises after filtering, skip this phase
                     if (allPhaseExercises.length === 0) {
-                        console.warn(`Phase ${phase}: No exercises available after bodyPart filtering for type ${selectedType}`);
+                        if (phase !== 'Splits') console.warn(`Phase ${phase}: No exercises available after bodyPart filtering for type ${selectedType}`);
                         continue;
                     }
                     
