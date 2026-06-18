@@ -1642,7 +1642,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="11 Jun 2026">
-<meta name="app-version" content="6.32">
+<meta name="app-version" content="6.47">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -6449,6 +6449,15 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
         async function generateRoutine(prioritisedExercises) {
             // Hide start button to prevent starting outdated routine if user re-generates
             
+            // Read type and hold from currently selected UI buttons
+            const _typeBtn = document.querySelector('.type-btn.selected');
+            const _holdBtn = document.querySelector('[data-hold].selected');
+            if (_typeBtn) selectedType = _typeBtn.dataset.type;
+            if (_holdBtn) { selectedHold = _holdBtn.getAttribute('data-hold'); longSession = selectedHold === 'long'; }
+            // Final fallbacks
+            if (!selectedType) selectedType = 'full';
+            if (!selectedHold) { selectedHold = 'short'; longSession = false; }
+
             // Validate type, duration, and hold are selected
             const typeSelected = selectedType && selectedType !== '';
             const customIsActive = selectedTime !== null && selectedTime !== undefined && ![25,35,45,60,999].includes(appState.time);
@@ -6585,13 +6594,11 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 // 1. Explicit user focus — overrides everything
                 if (focus) return [focus];
 
-                // 2. Build eligible muscle list with eligibility rules:
-                //    - must have a primary exercise
-                //    - must have a Static Stretching exercise
+                // 2. Build eligible muscle list:
+                //    - must have a primary Static Stretching exercise
                 //    - must appear in 2+ of Warm-Up / Foam Roller / Mobility
                 const prepPhases = ['Warm-Up', 'Foam Roller', 'Mobility'];
-                const musclesWithPrimary = new Set(exList.map(e => e.primaryMuscle).filter(Boolean));
-                const musclesInStatic = new Set(
+                const musclesInStaticPrimary = new Set(
                     exList.filter(e => e.phase === 'Static Stretching').map(e => e.primaryMuscle).filter(Boolean)
                 );
                 const musclesPrepCoverage = {};
@@ -6602,29 +6609,33 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     }
                 });
 
-                const eligible = [...musclesWithPrimary].filter(m =>
-                    musclesInStatic.has(m) &&
+                const eligible = [...musclesInStaticPrimary].filter(m =>
                     (musclesPrepCoverage[m] || new Set()).size >= 2
                 );
 
                 if (eligible.length === 0) return [];
 
-                // 3. Split eligible muscles into upper and lower
-                const upperEligible = eligible.filter(m => {
-                    const exs = exList.filter(e => e.primaryMuscle === m);
-                    return exs.some(e => (e.bodyPart || '').toLowerCase() === 'upper');
-                });
-                const lowerEligible = eligible.filter(m => {
-                    const exs = exList.filter(e => e.primaryMuscle === m);
-                    return exs.some(e => (e.bodyPart || '').toLowerCase() === 'lower');
-                });
+                // 3. Split by bodyPart tag
+                const upperEligible = eligible.filter(m =>
+                    exList.some(e => e.primaryMuscle === m && (e.bodyPart || '').toLowerCase() === 'upper')
+                );
+                const lowerEligible = eligible.filter(m =>
+                    exList.some(e => e.primaryMuscle === m && (e.bodyPart || '').toLowerCase() === 'lower')
+                );
 
-                // 4. 50/50 coin flip: upper or lower
-                const pool = Math.random() < 0.5 ? upperEligible : lowerEligible;
-                const finalPool = pool.length > 0 ? pool : eligible; // fallback if one side empty
+                // 4. Filter by selectedType
+                let pool;
+                if (selectedType === 'upper') {
+                    pool = upperEligible.length > 0 ? upperEligible : eligible;
+                } else if (selectedType === 'lower') {
+                    pool = lowerEligible.length > 0 ? lowerEligible : eligible;
+                } else {
+                    const side = Math.random() < 0.5 ? upperEligible : lowerEligible;
+                    pool = side.length > 0 ? side : eligible;
+                }
 
                 // 5. Pick 1 at random
-                const picked = finalPool[Math.floor(Math.random() * finalPool.length)];
+                const picked = pool[Math.floor(Math.random() * pool.length)];
                 return picked ? [picked] : [];
             }
 
@@ -6637,12 +6648,47 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             let bestTimeDiff = Infinity;
             let repeatsWereNeeded = false; // Track if we had to use repeats
             
-            // Try multiple times to find a routine within the time window
-            const maxAttempts = isAllExercises ? 1 : 400;
+            // ── TARGET SELECTION AND RESERVATION ──
+            // Done ONCE before retry loop. Target, reservations, and exclusions are fixed for the generation.
             sessionTargets = [];
             let reservedForActive = new Set();
             let reservedForDeep = new Set();
             let excludedFromAll = new Set();
+            let acceptedTarget = null;
+            let acceptedReservedActive = new Set();
+            let acceptedReservedDeep = new Set();
+
+            if (!isAllExercises) {
+                sessionTargets = selectSessionTargets(exercisesForGen, {}, selectedFocus, jumiPriorities);
+                console.log(`[QS] selectedType=${selectedType} → target: ${sessionTargets[0]||'none'}`);
+                const target = sessionTargets[0];
+                if (target) {
+                    const staticPool = exercisesForGen.filter(e => e.phase === 'Static Stretching');
+
+                    // Reserve for Active: PNF-eligible, primary preferred
+                    const activeCandidate =
+                        staticPool.find(e => e.pnf === true && (e.primaryMuscle || e.target) === target) ||
+                        staticPool.find(e => e.pnf === true && e.secondaryMuscle === target);
+                    if (activeCandidate) reservedForActive.add(activeCandidate.exercise);
+
+                    // Reserve for Deep: primary preferred, not already reserved
+                    const deepCandidate =
+                        staticPool.find(e => (e.primaryMuscle || e.target) === target && !reservedForActive.has(e.exercise)) ||
+                        staticPool.find(e => e.secondaryMuscle === target && !reservedForActive.has(e.exercise));
+                    if (deepCandidate) reservedForDeep.add(deepCandidate.exercise);
+
+                    // Exclude extra target primaries beyond the one kept for Static
+                    staticPool.filter(e =>
+                        (e.primaryMuscle || e.target) === target &&
+                        !reservedForActive.has(e.exercise) &&
+                        !reservedForDeep.has(e.exercise)
+                    ).slice(1).forEach(e => excludedFromAll.add(e.exercise));
+
+                    console.log(`[QS] Target: ${target} | Active: ${[...reservedForActive].join(', ')||'none'} | Deep: ${[...reservedForDeep].join(', ')||'none'} | Excluded: ${[...excludedFromAll].join(', ')||'none'}`);
+                }
+            }
+
+            const maxAttempts = isAllExercises ? 1 : 400;
             for (let attempt = 0; attempt < maxAttempts; attempt++) {
                 let routine = [];
                 let totalTime = 0; // Exercise time only - Get Ready is not included
@@ -6820,9 +6866,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     });
                 }
 
-                // Compute session targets here so recency weights are available
-                // Session targets anchor the stretch phases — prep phases are not forced toward them
-                sessionTargets = isAllExercises ? [] : selectSessionTargets(exercisesForGen, recencyWeights, selectedFocus, jumiPriorities);
+                // Session targets fixed before retry loop
                 const sessionTargetPool = {};
                 sessionTargets.forEach(m => { sessionTargetPool[m] = 1; });
 
@@ -6866,36 +6910,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 const PREP_PHASES    = new Set(['Warm-Up','Foam Roller','Mobility']);
                 const STRETCH_PHASES = new Set(['Static Stretching','Active Stretch','Deep Stretch']);
 
-                // Reserve one target muscle exercise for Active Stretch (PNF) and one for Deep Stretch
-                // so Static Stretching doesn't consume all target muscle exercises first
-                reservedForActive = new Set();
-                reservedForDeep = new Set();
-                excludedFromAll = new Set();
-                if (sessionTargets && sessionTargets.length > 0) {
-                    const target = sessionTargets[0];
-                    const staticPool = exercisesForGen.filter(e => e.phase === 'Static Stretching');
-
-                    // Reserve for Active Stretch: PNF-eligible, prefer primary over secondary
-                    const activeCandidate =
-                        staticPool.find(e => e.pnf === true && (e.primaryMuscle || e.target) === target) ||
-                        staticPool.find(e => e.pnf === true && e.secondaryMuscle === target);
-                    if (activeCandidate) reservedForActive.add(activeCandidate.exercise);
-
-                    // Reserve for Deep Stretch: prefer primary over secondary, not already reserved for Active
-                    const deepCandidate =
-                        staticPool.find(e => (e.primaryMuscle || e.target) === target && !reservedForActive.has(e.exercise)) ||
-                        staticPool.find(e => e.secondaryMuscle === target && !reservedForActive.has(e.exercise));
-                    if (deepCandidate) reservedForDeep.add(deepCandidate.exercise);
-
-                    // Cap Static to 1 target primary — exclude any additional target primaries from everything
-                    staticPool.filter(e =>
-                        (e.primaryMuscle || e.target) === target &&
-                        !reservedForActive.has(e.exercise) &&
-                        !reservedForDeep.has(e.exercise)
-                    ).slice(1).forEach(e => excludedFromAll.add(e.exercise));
-
-                    console.log(`[QS] Target: ${target} | Active: ${[...reservedForActive].join(', ')||'none'} | Deep: ${[...reservedForDeep].join(', ')||'none'} | Excluded: ${[...excludedFromAll].join(', ')||'none'}`);
-                }
+                // Reservations computed once before retry loop
 
                 // Select exercises for each phase
                 for (let phase of phases) {
@@ -6903,22 +6918,38 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
                     // Build phase pool — reserved exercises are tagged and kept separate
                     if (phase === "Active Stretch") {
-                        // Hard-inject reserved exercise; fill remaining slots from other PNF candidates
+                        const target = sessionTargets[0];
+                        // Hard-inject reserved exercise only
                         const reservedEx = exercisesForGen
                             .filter(e => e.phase === "Static Stretching" && reservedForActive.has(e.exercise) && !usedExerciseNames.has(e.exercise))
                             .map(e => ({...e, phase: "Active Stretch", duration: longSession ? 75 : 45, isReserved: true, reservedPhase: 'activestretch'}));
+                        // Candidates: PNF eligible, not reserved, not excluded, NOT target muscle (reserved handles target)
                         const candidates = exercisesForGen
-                            .filter(e => e.phase === "Static Stretching" && !reservedForActive.has(e.exercise) && !reservedForDeep.has(e.exercise) && !excludedFromAll.has(e.exercise) && !usedExerciseNames.has(e.exercise) && e.pnf === true)
+                            .filter(e => e.phase === "Static Stretching"
+                                && !reservedForActive.has(e.exercise)
+                                && !reservedForDeep.has(e.exercise)
+                                && !excludedFromAll.has(e.exercise)
+                                && !usedExerciseNames.has(e.exercise)
+                                && e.pnf === true
+                                && (e.primaryMuscle || e.target) !== target
+                                && e.secondaryMuscle !== target)
                             .map(e => ({...e, phase: "Active Stretch", duration: longSession ? 75 : 45}));
-                        // Reserved first (never shuffled), then shuffle candidates
                         allPhaseExercises = [...reservedEx, ...weightedShuffle(candidates, sessionTargetPool && Object.keys(sessionTargetPool).length > 0 ? sessionTargetPool : null)];
                     } else if (phase === "Deep Stretch") {
-                        // Hard-inject reserved exercise; fill remaining slots from other candidates
+                        const target = sessionTargets[0];
+                        // Hard-inject reserved exercise only
                         const reservedEx = exercisesForGen
                             .filter(e => e.phase === "Static Stretching" && reservedForDeep.has(e.exercise) && !usedExerciseNames.has(e.exercise))
                             .map(e => ({...e, phase: "Deep Stretch", duration: longSession ? 120 : 90, isReserved: true, reservedPhase: 'deepstretch'}));
+                        // Candidates: not reserved, not excluded, NOT target muscle (reserved handles target)
                         const candidates = exercisesForGen
-                            .filter(e => e.phase === "Static Stretching" && !reservedForDeep.has(e.exercise) && !reservedForActive.has(e.exercise) && !excludedFromAll.has(e.exercise) && !usedExerciseNames.has(e.exercise))
+                            .filter(e => e.phase === "Static Stretching"
+                                && !reservedForDeep.has(e.exercise)
+                                && !reservedForActive.has(e.exercise)
+                                && !excludedFromAll.has(e.exercise)
+                                && !usedExerciseNames.has(e.exercise)
+                                && (e.primaryMuscle || e.target) !== target
+                                && e.secondaryMuscle !== target)
                             .map(e => ({...e, phase: "Deep Stretch", duration: longSession ? 120 : 90}));
                         allPhaseExercises = [...reservedEx, ...weightedShuffle(candidates, sessionTargetPool && Object.keys(sessionTargetPool).length > 0 ? sessionTargetPool : null)];
                     } else if (phase === "Static Stretching") {
@@ -7203,59 +7234,63 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     }
                 }
                 
-                // Check if this routine is better — prefer routines at or under target
-                const diff = totalTime - targetSeconds;
-                // Score: 0 = perfect, negative = under (good), positive = over (bad, penalise heavily)
-                const score = diff > 0 ? diff * 10 : Math.abs(diff);
-
-                // Validate reservation constraints before accepting
-                let reservationValid = true;
+                // ── FINAL VALIDATOR ──
+                // Reject routine if reserved exercises are missing from their phases
+                let routineValid = true;
                 if (!isAllExercises && sessionTargets && sessionTargets.length > 0) {
                     const target = sessionTargets[0];
                     const activeEx = routine.filter(e => e.phase === 'Active Stretch');
                     const deepEx   = routine.filter(e => e.phase === 'Deep Stretch');
-                    const activeTarget = activeEx.filter(e => (e.primaryMuscle||e.target) === target || e.secondaryMuscle === target);
-                    const deepTarget   = deepEx.filter(e => (e.primaryMuscle||e.target) === target || e.secondaryMuscle === target);
-                    const activeHasReserved = reservedForActive.size === 0 || activeEx.some(e => reservedForActive.has(e.exercise));
-                    const deepHasReserved   = reservedForDeep.size === 0   || deepEx.some(e => reservedForDeep.has(e.exercise));
-                    if (!activeHasReserved || !deepHasReserved) {
-                        reservationValid = false;
-                        console.log(`[QS] Validation failed: Active reserved=${activeHasReserved} Deep reserved=${deepHasReserved} — retrying`);
+                    const staticEx = routine.filter(e => e.phase === 'Static Stretching');
+
+                    const staticPrimaryCount = staticEx.filter(e => (e.primaryMuscle||e.target) === target).length;
+                    const activeTargetCount  = activeEx.filter(e => (e.primaryMuscle||e.target) === target || e.secondaryMuscle === target).length;
+                    const deepTargetCount    = deepEx.filter(e => (e.primaryMuscle||e.target) === target || e.secondaryMuscle === target).length;
+
+                    const staticOk = staticPrimaryCount === 1;
+                    const activeOk = activeTargetCount === 1;
+                    const deepOk   = deepTargetCount === 1;
+
+                    if (!staticOk || !activeOk || !deepOk) {
+                        routineValid = false;
+                    } else {
+                        console.log(`[QS PASS] Target: ${target} | Static: ${staticPrimaryCount} | Active: ${activeTargetCount} | Deep: ${deepTargetCount}`);
                     }
                 }
 
-                if (reservationValid && (isAllExercises || score < bestTimeDiff)) {
+                // Check if this routine is better — prefer routines at or under target
+                const diff = totalTime - targetSeconds;
+                const score = diff > 0 ? diff * 10 : Math.abs(diff);
+
+                if (routineValid && (isAllExercises || score < bestTimeDiff)) {
                     bestTimeDiff = score;
                     bestRoutine = routine;
-                    
+                    acceptedTarget = sessionTargets[0] || null;
+                    acceptedReservedActive = new Set(reservedForActive);
+                    acceptedReservedDeep = new Set(reservedForDeep);
+
                     if (isAllExercises || (totalTime >= minSeconds && totalTime <= maxSeconds)) {
                         break;
                     }
                 }
             }
             
+            // Guard against all attempts failing validation
+            if (!bestRoutine) {
+                console.warn('[QS] No valid routine found after all attempts');
+                return;
+            }
+
             currentRoutine = bestRoutine;
 
-            // Cap target muscle to max 1 primary per phase — never remove reserved exercises
-            if (sessionTargets && sessionTargets.length > 0) {
-                const target = sessionTargets[0];
-                const allPhases = [...new Set(currentRoutine.map(e => e.phase))];
-                allPhases.forEach(phase => {
-                    const primaries = currentRoutine.filter(e =>
-                        e.phase === phase && (e.primaryMuscle || e.target) === target
-                    );
-                    if (primaries.length > 1) {
-                        const reserved = primaries.filter(e => e.isReserved);
-                        const nonReserved = primaries.filter(e => !e.isReserved);
-                        const keep = new Set([...reserved.map(e => e.exercise), ...(nonReserved.length > 0 ? [nonReserved[0].exercise] : [])]);
-                        const toRemove = new Set(primaries.filter(e => !keep.has(e.exercise)).map(e => e.exercise));
-                        if (toRemove.size > 0) {
-                            currentRoutine = currentRoutine.filter(e => e.phase !== phase || !toRemove.has(e.exercise));
-                            console.log(`[QS] Capped ${phase}: removed ${[...toRemove].join(', ')}`);
-                        }
-                    }
-                });
+            // Restore accepted target/reservations that match the accepted routine
+            if (acceptedTarget) {
+                sessionTargets = [acceptedTarget];
+                reservedForActive = acceptedReservedActive;
+                reservedForDeep = acceptedReservedDeep;
             }
+
+            // Cap removed — pool construction and validator enforce target constraints
 
             // Log per-phase target coverage
             if (sessionTargets && sessionTargets.length > 0) {
@@ -7283,6 +7318,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     const swappable = nonFinal.filter(e =>
                         (e.bodyPart||'').toLowerCase() === 'lower' &&
                         !sessionTargets.includes(e.primaryMuscle || e.target) &&
+                        !e.isReserved &&
                         e.phase !== 'Active Stretch' &&
                         e.phase !== 'Deep Stretch'
                     );
@@ -7305,6 +7341,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     }
                 }
             }
+
+            // Second cap removed — pool construction handles exclusions
 
             // Deep Stretch is now generated as its own phase - no conversion needed
             
@@ -7588,8 +7626,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             } else {
             }
             
-            // Use bestRoutine directly - DO NOT filter out duplicates
-            const finalRoutine = bestRoutine;
+            // Use currentRoutine (already capped) as finalRoutine — DO NOT use bestRoutine which is pre-cap
+            const finalRoutine = currentRoutine;
             
             // Check if Savasana made it through
             const savasanaIndex = finalRoutine.findIndex(ex => ex.exercise === 'Savasana');
@@ -7605,7 +7643,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 console.error('SAVASANA MISSING FROM FINAL ROUTINE!');
             }
             
-            currentRoutine = finalRoutine;
+            // currentRoutine already set above from bestRoutine
             
             const totalTime = finalRoutine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0);
             const targetMins = Math.floor(targetSeconds / 60);
