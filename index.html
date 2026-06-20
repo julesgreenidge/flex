@@ -1642,7 +1642,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="11 Jun 2026">
-<meta name="app-version" content="6.48">
+<meta name="app-version" content="6.51">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -3584,6 +3584,16 @@
 
         window.saveExercises = function saveExercises() {
             const json = JSON.stringify(exercises);
+            // Rolling dated snapshot — separate from the lockstep backup, for real point-in-time recovery
+            try {
+                const snapKey = 'flexibilityRoutineExercises_snapshot_' + new Date().toISOString().slice(0,10);
+                localStorage.setItem(snapKey, json);
+                // Keep only the 3 most recent dated snapshots to avoid unbounded growth
+                const snapKeys = Object.keys(localStorage).filter(k => k.startsWith('flexibilityRoutineExercises_snapshot_')).sort();
+                while (snapKeys.length > 3) {
+                    localStorage.removeItem(snapKeys.shift());
+                }
+            } catch(e) { /* non-fatal */ }
             localStorage.setItem('flexibilityRoutineExercises', json);
             localStorage.setItem('flexibilityRoutineExercises_backup', json);
             window._exercises = exercises; // keep in sync
@@ -4071,13 +4081,20 @@
                     console.log('Loaded', exercises.length, 'exercises from localStorage');
                     window._exercises = exercises;
                     
-                    // Fix corrupted exercises where primaryMuscle looks like a position (bad CSV import)
+                    // Flag exercises where primaryMuscle looks like a position (bad CSV import)
+                    // NEVER reset the library — only flag for manual review, preserve original data
                     const POSITION_VALUES = new Set(['standing','seated','supine','prone','tabletop','kneeling','lunge','lateral']);
-                    const corruptedCount = exercises.filter(ex => POSITION_VALUES.has((ex.primaryMuscle || '').toLowerCase())).length;
-                    if (corruptedCount > 0) {
-                        console.warn(`⚠️ Detected ${corruptedCount} exercises with corrupted muscle data — resetting to defaults`);
-                        exercises = getDefaultExercises();
-                        saveExercises();
+                    const corrupted = exercises.filter(ex => POSITION_VALUES.has((ex.primaryMuscle || '').toLowerCase()));
+                    if (corrupted.length > 0) {
+                        console.warn(`⚠️ Detected ${corrupted.length} exercise(s) with invalid primaryMuscle (looks like a position):`, corrupted.map(e => e.exercise));
+                        exercises = exercises.map(ex =>
+                            POSITION_VALUES.has((ex.primaryMuscle || '').toLowerCase())
+                                ? {...ex, needsReview: true, reviewReason: `primaryMuscle is "${ex.primaryMuscle}" — looks like a position, not a muscle`}
+                                : ex
+                        );
+                        window._exercisesNeedingReview = corrupted.map(e => e.exercise);
+                        // Do NOT call saveExercises() here — don't persist a half-fixed state automatically.
+                        // The needsReview flag will show a banner; user fixes manually in Custom Exercises editor.
                     }
                     let needsMuscleMigration = false;
                     exercises = exercises.map(ex => {
@@ -4292,6 +4309,11 @@
             // Open Quick Start tab by default (without generating)
             enterMode('quick');
             setActiveCard('trueQuickStartBtn');
+
+            // Notify if any exercises need review (non-destructive corruption flag)
+            if (window._exercisesNeedingReview && window._exercisesNeedingReview.length > 0) {
+                customAlert(`⚠️ ${window._exercisesNeedingReview.length} exercise(s) need review:\n• ${window._exercisesNeedingReview.join('\n• ')}\n\nTheir Primary Muscle field looks like a position (e.g. "Standing") instead of a muscle name. Please fix in Custom Exercises. Your data has NOT been changed or removed.`);
+            }
             
             // Check for saved routine in progress and offer to resume
             checkForSavedRoutine();
@@ -6664,27 +6686,31 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 const target = sessionTargets[0];
                 if (target) {
                     const staticPool = exercisesForGen.filter(e => e.phase === 'Static Stretching');
+                    const allPrimaries = staticPool.filter(e => (e.primaryMuscle || e.target) === target);
 
-                    // Reserve for Active: PNF-eligible, primary preferred
+                    // 1. Reserve ONE primary for Static FIRST — this is non-negotiable, validator requires it
+                    const staticPrimary = allPrimaries[0] || null;
+
+                    // 2. Reserve for Active: PNF-eligible, prefer a DIFFERENT primary over the static one, then secondary
                     const activeCandidate =
-                        staticPool.find(e => e.pnf === true && (e.primaryMuscle || e.target) === target) ||
+                        staticPool.find(e => e.pnf === true && (e.primaryMuscle || e.target) === target && e.exercise !== (staticPrimary && staticPrimary.exercise)) ||
                         staticPool.find(e => e.pnf === true && e.secondaryMuscle === target);
                     if (activeCandidate) reservedForActive.add(activeCandidate.exercise);
 
-                    // Reserve for Deep: primary preferred, not already reserved
+                    // 3. Reserve for Deep: prefer a DIFFERENT primary over the static one, not already reserved for Active, else secondary
                     const deepCandidate =
-                        staticPool.find(e => (e.primaryMuscle || e.target) === target && !reservedForActive.has(e.exercise)) ||
+                        staticPool.find(e => (e.primaryMuscle || e.target) === target && e.exercise !== (staticPrimary && staticPrimary.exercise) && !reservedForActive.has(e.exercise)) ||
                         staticPool.find(e => e.secondaryMuscle === target && !reservedForActive.has(e.exercise));
                     if (deepCandidate) reservedForDeep.add(deepCandidate.exercise);
 
-                    // Exclude extra target primaries beyond the one kept for Static
-                    staticPool.filter(e =>
-                        (e.primaryMuscle || e.target) === target &&
+                    // 4. Exclude extra target primaries beyond the one kept for Static
+                    allPrimaries.filter(e =>
+                        e.exercise !== (staticPrimary && staticPrimary.exercise) &&
                         !reservedForActive.has(e.exercise) &&
                         !reservedForDeep.has(e.exercise)
-                    ).slice(1).forEach(e => excludedFromAll.add(e.exercise));
+                    ).forEach(e => excludedFromAll.add(e.exercise));
 
-                    console.log(`[QS] Target: ${target} | Active: ${[...reservedForActive].join(', ')||'none'} | Deep: ${[...reservedForDeep].join(', ')||'none'} | Excluded: ${[...excludedFromAll].join(', ')||'none'}`);
+                    console.log(`[QS] Target: ${target} | Static: ${staticPrimary ? staticPrimary.exercise : 'none'} | Active: ${[...reservedForActive].join(', ')||'none'} | Deep: ${[...reservedForDeep].join(', ')||'none'} | Excluded: ${[...excludedFromAll].join(', ')||'none'}`);
                 }
             }
 
@@ -7290,7 +7316,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             // Guard against all attempts failing validation
             if (!bestRoutine) {
                 console.warn('[QS] No valid routine found after all attempts');
-                return;
+                sessionTargets = []; // clear stale target so downstream code doesn't show wrong focus
+                return false;
             }
 
             currentRoutine = bestRoutine;
@@ -7695,6 +7722,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
             appState._animateNextDisplay = true;
             displayRoutine();
+            return true;
         }
 
         function updateQuickStart() {
@@ -7768,8 +7796,13 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             const rw = document.getElementById('routineDisplayWrapper');
             if (rw) rw.style.display = 'block';
             window._lastJumiPriorities = []; // clear any stale Jumi priorities
-            await generateRoutine();
+            const genSuccess = await generateRoutine();
             if (btn) { btn.innerHTML = '&#8635; Regenerate'; btn.classList.remove('shimmer'); }
+
+            if (!genSuccess) {
+                await customAlert('Could not generate a routine matching your selections within the time limit. Try a different duration, type, or hold setting.');
+                return;
+            }
 
             // Focus muscle breakdown + PNF guidance — combined into one Jumi message
             if (sessionTargets && sessionTargets.length > 0) {
