@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v4.32: muscle name lists fully dynamic — PRIORITY_TARGET_ENUM, LOWER_TARGETS, UPPER_TARGETS, and Jumi prompt all derived from exercise library at runtime — Jumi now returns correct muscle names in priorities/UPPER_TARGETS muscle names — Jumi priorities were being silently filtered; version display updated to 4.30 — top 3 upper and top 3 lower muscles by exercise count added — muscle fields updated on load to match current library — recency scoring and Jumi context updated — routineHistory updated to match current exercise library on load no longer flush to phase edge — empty primaryMuscle defaults to "None" for Final Rest; sanity check on import; auto-fix corrupted localStorage — max 2 per primary muscle per phase — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
+    <!-- v6.28: fix prep-phase exercises incorrectly saved at 45s duration (migration on load); fix 90/90 Hip Transitions primaryMuscle→Hip Flexors, secondaryMuscle→Glutes; editor now defaults duration based on selected phase; swap modal no longer filters by duration — v4.32: muscle name lists fully dynamic — PRIORITY_TARGET_ENUM, LOWER_TARGETS, UPPER_TARGETS, and Jumi prompt all derived from exercise library at runtime — Jumi now returns correct muscle names in priorities/UPPER_TARGETS muscle names — Jumi priorities were being silently filtered; version display updated to 4.30 — top 3 upper and top 3 lower muscles by exercise count added — muscle fields updated on load to match current library — recency scoring and Jumi context updated — routineHistory updated to match current exercise library on load no longer flush to phase edge — empty primaryMuscle defaults to "None" for Final Rest; sanity check on import; auto-fix corrupted localStorage — max 2 per primary muscle per phase — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -1641,7 +1641,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="build-date" content="11 Jun 2026">
+<meta name="build-date" content="2 Jul 2026">
 <meta name="app-version" content="6.51">
 </head>
 <body>
@@ -2660,6 +2660,14 @@
             function exerciseModalHTML(ex, idx) {
                 const isEdit = idx !== null && idx !== undefined;
                 const v = ex || { exercise:'', phase:'Static Stretching', primaryMuscle:'', position:'', sides:2, bodyPart:'lower', duration:45, rest:15, pnf:false };
+                // Helper: default duration for a given phase (used by phase change handler below)
+                function defaultDurationForPhase(phase) {
+                    const short = ['Warm-Up','Foam Roller','Mobility'];
+                    const long  = ['Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down'];
+                    if (short.includes(phase)) return 30;
+                    if (long.includes(phase))  return 45;
+                    return 30;
+                }
                 const positionOptions = ['Kneeling','Lateral','Lunge','Prone','Seated','Standing','Supine','Tabletop'];
                 const phaseOpts = PHASE_OPTIONS.map(p => `<option value="${p}"${p===v.phase?' selected':''}>${p}</option>`).join('');
                 const muscleOpts = MUSCLE_OPTIONS_GLOBAL.map(m => `<option value="${m}">`).join('');
@@ -2677,7 +2685,7 @@
                         </div>
                         <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px;">
                             <label style="${lbl}">Name<input id="exName" value="${v.exercise}" placeholder="e.g. Pigeon Pose" style="${inp}" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e0e0e5'"/></label>
-                            <label style="${lbl}">Phase<select id="exPhase" style="${inp}">${phaseOpts}</select></label>
+                            <label style="${lbl}">Phase<select id="exPhase" style="${inp}" onchange="(function(){var d=defaultDurationForPhase(this.value);var durEl=document.getElementById('exDuration');if(durEl&&!durEl.dataset.userEdited)durEl.value=d;}).call(this)">${phaseOpts}</select></label>
                             <label style="${lbl}">Primary Muscle
                                 <input id="exTarget" list="exTargetList" value="${v.primaryMuscle||''}" autocomplete="off" placeholder="e.g. Glutes" style="${inp}" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e0e0e5'"/>
                                 <datalist id="exTargetList">${muscleOpts}</datalist>
@@ -2738,7 +2746,7 @@
                     sides: parseInt(document.getElementById('exSides').value),
                     bodyPart: document.getElementById('exBodyPart').value,
                     pnf: document.getElementById('exPnf') ? document.getElementById('exPnf').checked : false,
-                    duration: existing ? existing.duration : 45,
+                    duration: existing ? existing.duration : defaultDurationForPhase(document.getElementById('exPhase').value),
                     rest: existing ? existing.rest : 15
                 };
                 if (!ex.exercise || !ex.primaryMuscle || !ex.position) {
@@ -4192,6 +4200,34 @@
                         console.log('✓ Migrated exercises to new format and saved to localStorage');
                     }
                     
+                    // Fix exercises incorrectly saved with duration:45 in prep phases (Warm-Up, Foam Roller, Mobility)
+                    // Also fix 90/90 Hip Transitions muscle classification
+                    const PREP_PHASES_30 = new Set(['Warm-Up', 'Foam Roller', 'Mobility']);
+                    let needsDurationFix = false;
+                    exercises = exercises.map(ex => {
+                        let updated = {...ex};
+                        // Fix prep-phase exercises incorrectly set to 45s
+                        if (PREP_PHASES_30.has(ex.phase) && ex.duration === 45) {
+                            updated.duration = 30;
+                            needsDurationFix = true;
+                            console.log(`✓ Fixed duration: ${ex.exercise} (${ex.phase}) 45s → 30s`);
+                        }
+                        // Fix 90/90 Hip Transitions muscle classification
+                        if (ex.exercise === '90/90 Hip Transitions') {
+                            if (ex.primaryMuscle !== 'Hip Flexors' || ex.secondaryMuscle !== 'Glutes') {
+                                updated.primaryMuscle = 'Hip Flexors';
+                                updated.secondaryMuscle = 'Glutes';
+                                needsDurationFix = true;
+                                console.log('✓ Fixed 90/90 Hip Transitions: primaryMuscle → Hip Flexors, secondaryMuscle → Glutes');
+                            }
+                        }
+                        return updated;
+                    });
+                    if (needsDurationFix) {
+                        saveExercises();
+                        console.log('✓ Saved duration/muscle fixes to localStorage');
+                    }
+
                     // Migrate Front Splits from Static Stretching to Splits phase
                     let needsSplitsMigration = false;
                     exercises = exercises.map(ex => {
@@ -9405,7 +9441,6 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             let availableSwaps = exercises.filter(ex => 
                 ex.phase === searchPhase && 
                 ex.sides === sides &&
-                ex.duration === searchDuration &&
                 !usedNames.has(ex.exercise) &&
                 ex.exercise !== 'Savasana'
             );
@@ -11665,7 +11700,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.27</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.28</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
