@@ -3568,8 +3568,8 @@
             mobilityLongDuration: 30,
             staticstretchingShortDuration: 45,
             staticstretchingLongDuration: 75,
-            activestretchShortDuration: 45,
-            activestretchLongDuration: 75,
+            activestretchShortDuration: 75,
+            activestretchLongDuration: 105,
             deepstretchShortDuration: 90,
             deepstretchLongDuration: 120,
             splitsShortDuration: 45,
@@ -3600,6 +3600,13 @@
 
         // Current settings
         let appSettings = loadSettings();
+        // Migrate stale active stretch durations (pre-v6.30 defaults were 45/75)
+        if (appSettings.activestretchShortDuration === 45 || appSettings.activestretchLongDuration === 75) {
+            if (appSettings.activestretchShortDuration === 45) appSettings.activestretchShortDuration = 75;
+            if (appSettings.activestretchLongDuration === 75) appSettings.activestretchLongDuration = 105;
+            saveSettings(appSettings);
+            console.log('✓ Migrated active stretch durations: 45→75 (short), 75→105 (long)');
+        }
         // Initialise card subtitles from settings
         (function() {
             const typeLabels = { full: 'Full body', upper: 'Upper body', lower: 'Lower body' };
@@ -8615,7 +8622,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
         let firedMidCues = new Set();
 
         function fireMidExerciseBeeps(currentExercise, elapsedSeconds, timeRemaining) {
-            if (!currentExercise) return;
+            if (!currentExercise || isResting) return;
             const phase = currentExercise.phase;
 
             // Active Stretch — PNF phase-change cues based on elapsed time
@@ -11805,7 +11812,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.30</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.31</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
