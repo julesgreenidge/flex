@@ -1641,7 +1641,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="build-date" content="2 Jul 2026">
+<meta name="build-date" content="10 Jul 2026">
 <meta name="app-version" content="6.51">
 </head>
 <body>
@@ -3118,6 +3118,66 @@
                 default:
                     playBeep();
             }
+        }
+
+        function playRisingTwoTone() {
+            if (!ensureAudioContext()) return;
+            const c = audioContext;
+            [[440, 0], [880, 0.15]].forEach(([freq, offset]) => {
+                const o = c.createOscillator(), g = c.createGain();
+                o.connect(g); g.connect(c.destination);
+                o.frequency.value = freq; o.type = 'sine';
+                const t = c.currentTime + offset;
+                g.gain.setValueAtTime(0, t);
+                g.gain.linearRampToValueAtTime(0.35, t + 0.02);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+                o.start(t); o.stop(t + 0.2);
+            });
+        }
+
+        function playDescendingTwoTone() {
+            if (!ensureAudioContext()) return;
+            const c = audioContext;
+            [[880, 0], [440, 0.15]].forEach(([freq, offset]) => {
+                const o = c.createOscillator(), g = c.createGain();
+                o.connect(g); g.connect(c.destination);
+                o.frequency.value = freq; o.type = 'sine';
+                const t = c.currentTime + offset;
+                g.gain.setValueAtTime(0, t);
+                g.gain.linearRampToValueAtTime(0.35, t + 0.02);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+                o.start(t); o.stop(t + 0.2);
+            });
+        }
+
+        function playDoubleBlip() {
+            if (!ensureAudioContext()) return;
+            const c = audioContext;
+            [0, 0.12].forEach(offset => {
+                const o = c.createOscillator(), g = c.createGain();
+                o.connect(g); g.connect(c.destination);
+                o.frequency.value = 1200; o.type = 'sine';
+                const t = c.currentTime + offset;
+                g.gain.setValueAtTime(0, t);
+                g.gain.linearRampToValueAtTime(0.4, t + 0.01);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+                o.start(t); o.stop(t + 0.08);
+            });
+        }
+
+        function playTripleBlip() {
+            if (!ensureAudioContext()) return;
+            const c = audioContext;
+            [0, 0.12, 0.24].forEach(offset => {
+                const o = c.createOscillator(), g = c.createGain();
+                o.connect(g); g.connect(c.destination);
+                o.frequency.value = 1200; o.type = 'sine';
+                const t = c.currentTime + offset;
+                g.gain.setValueAtTime(0, t);
+                g.gain.linearRampToValueAtTime(0.4, t + 0.01);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+                o.start(t); o.stop(t + 0.08);
+            });
         }
 
         function playTransitionVariant(type) {
@@ -6887,7 +6947,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 // Reserve time: Savasana + Cool Down + Active Stretch + Deep Stretch minimum.
                 const minCoolDownExercises = isLongRoutine ? 2 : 1;
                 const estimatedCoolDownTime = isAllExercises ? 0 : (minCoolDownExercises * 60);
-                const activeStretchDuration = longSession ? 75 : 45;
+                const activeStretchDuration = longSession ? 105 : 75;
                 const deepStretchDuration = longSession ? 120 : 90;
 
                 // Estimate Active/Deep Stretch time using average sides from actual Static pool
@@ -6984,7 +7044,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         // Hard-inject reserved exercise only
                         const reservedEx = exercisesForGen
                             .filter(e => e.phase === "Static Stretching" && reservedForActive.has(e.exercise) && !usedExerciseNames.has(e.exercise))
-                            .map(e => ({...e, phase: "Active Stretch", duration: longSession ? 75 : 45, isReserved: true, reservedPhase: 'activestretch'}));
+                            .map(e => ({...e, phase: "Active Stretch", duration: longSession ? 105 : 75, isReserved: true, reservedPhase: 'activestretch'}));
                         // Candidates: PNF eligible, not reserved, not excluded, NOT target muscle (reserved handles target)
                         const candidates = exercisesForGen
                             .filter(e => e.phase === "Static Stretching"
@@ -6995,7 +7055,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                                 && e.pnf === true
                                 && (e.primaryMuscle || e.target) !== target
                                 && e.secondaryMuscle !== target)
-                            .map(e => ({...e, phase: "Active Stretch", duration: longSession ? 75 : 45}));
+                            .map(e => ({...e, phase: "Active Stretch", duration: longSession ? 105 : 75}));
                         allPhaseExercises = [...reservedEx, ...weightedShuffle(candidates, sessionTargetPool && Object.keys(sessionTargetPool).length > 0 ? sessionTargetPool : null)];
                     } else if (phase === "Deep Stretch") {
                         const target = sessionTargets[0];
@@ -8551,6 +8611,43 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             barFill.style.width = pct + '%';
         }
 
+        // Tracks which mid-exercise cue seconds have already fired this exercise
+        let firedMidCues = new Set();
+
+        function fireMidExerciseBeeps(currentExercise, elapsedSeconds, timeRemaining) {
+            if (!currentExercise) return;
+            const phase = currentExercise.phase;
+
+            // Active Stretch — PNF phase-change cues based on elapsed time
+            if (phase === 'Active Stretch') {
+                const isLong = currentExercise.duration === 105;
+                const contractCues = isLong ? [15, 45, 75] : [15, 45];
+                const relaxCues   = isLong ? [25, 55, 85] : [25, 55];
+                const elapsed = Math.floor(elapsedSeconds);
+                if (contractCues.includes(elapsed) && !firedMidCues.has('c' + elapsed)) {
+                    firedMidCues.add('c' + elapsed);
+                    playRisingTwoTone();
+                }
+                if (relaxCues.includes(elapsed) && !firedMidCues.has('r' + elapsed)) {
+                    firedMidCues.add('r' + elapsed);
+                    playDescendingTwoTone();
+                }
+                return;
+            }
+
+            // Static Stretching / Deep Stretch — remaining-time warnings
+            if (phase === 'Static Stretching' || phase === 'Deep Stretch') {
+                if (timeRemaining === 30 && !firedMidCues.has('w30')) {
+                    firedMidCues.add('w30');
+                    playTripleBlip();
+                }
+                if (timeRemaining === 15 && !firedMidCues.has('w15')) {
+                    firedMidCues.add('w15');
+                    playDoubleBlip();
+                }
+            }
+        }
+
         function startTimer() {
             if (timerInterval) clearInterval(timerInterval);
             if (timerAnimationFrame) cancelAnimationFrame(timerAnimationFrame);
@@ -8566,6 +8663,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             timerPauseTime = null;
             timerPausedDuration = 0;
             lastBeepedSecond = null;
+            firedMidCues = new Set();
             
             function updateTimer() {
                 if (isPaused) {
@@ -8635,7 +8733,11 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         lastBeepedSecond = timeRemaining;
                     }
                 }
-                
+
+                // Mid-exercise beeps (PNF cues for Active Stretch; warnings for Static/Deep)
+                const elapsedSeconds = (performance.now() - timerStartTime - timerPausedDuration) / 1000;
+                fireMidExerciseBeeps(currentExercise, elapsedSeconds, timeRemaining);
+
                 // Check if timer is complete
                 if (progress < 1) {
                     timerAnimationFrame = requestAnimationFrame(updateTimer);
@@ -8807,6 +8909,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             timerPausedDuration = 0;
             if (isPaused) timerPauseTime = now;
             lastBeepedSecond = null;
+            firedMidCues = new Set();
             // Update time display immediately so user sees the change even while paused
             const newRemaining = Math.ceil(newRemainingMs / 1000);
             const mins = Math.floor(newRemaining / 60);
@@ -8858,6 +8961,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         lastBeepedSecond = timeRemaining;
                     }
                 }
+                const elapsedSecondsR = (performance.now() - timerStartTime - timerPausedDuration) / 1000;
+                fireMidExerciseBeeps(currentExercise, elapsedSecondsR, timeRemaining);
                 if (progress < 1) {
                     timerAnimationFrame = requestAnimationFrame(updateTimer);
                 } else {
@@ -9698,7 +9803,7 @@ function showStats() {
                                 routine.push({...ex, phase: "Deep Stretch", duration: 90});
                             });
                         } else if (phase === "Active Stretch") {
-                            // Active Stretch keeps original duration (45s)
+                            // Active Stretch keeps original duration (set by Quick Start: 75s short / 105s long)
                             selected.forEach(ex => {
                                 routine.push({...ex, phase: "Active Stretch"});
                             });
@@ -10079,7 +10184,7 @@ function showStats() {
 
             // For custom mode, pre-calculate short and long durations
             if (selectedType === 'custom') {
-                const shortByPhase = { 'Warm-Up': appSettings.warmupShortDuration||30, 'Foam Roller': appSettings.foamrollerShortDuration||30, 'Mobility': appSettings.mobilityShortDuration||30, 'Static Stretching': appSettings.staticstretchingShortDuration||45, 'Active Stretch': appSettings.activestretchShortDuration||45, 'Deep Stretch': appSettings.deepstretchShortDuration||90, 'Splits': appSettings.splitsShortDuration||45, 'Cool Down': appSettings.cooldownShortDuration||45, 'Final Rest': appSettings.finalrestShortDuration||120 };
+                const shortByPhase = { 'Warm-Up': appSettings.warmupShortDuration||30, 'Foam Roller': appSettings.foamrollerShortDuration||30, 'Mobility': appSettings.mobilityShortDuration||30, 'Static Stretching': appSettings.staticstretchingShortDuration||45, 'Active Stretch': appSettings.activestretchShortDuration||75, 'Deep Stretch': appSettings.deepstretchShortDuration||90, 'Splits': appSettings.splitsShortDuration||45, 'Cool Down': appSettings.cooldownShortDuration||45, 'Final Rest': appSettings.finalrestShortDuration||120 };
                 const longByPhase  = { 'Warm-Up': appSettings.warmupLongDuration||30,  'Foam Roller': appSettings.foamrollerLongDuration||30,  'Mobility': appSettings.mobilityLongDuration||30,  'Static Stretching': appSettings.staticstretchingLongDuration||75,  'Active Stretch': appSettings.activestretchLongDuration||75,  'Deep Stretch': appSettings.deepstretchLongDuration||120, 'Splits': appSettings.splitsLongDuration||75,  'Cool Down': appSettings.cooldownLongDuration||45,  'Final Rest': appSettings.finalrestLongDuration||120 };
                 let shortSecs = 0, longSecs = 0;
                 currentRoutine.forEach(ex => {
@@ -11700,7 +11805,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.28</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.30</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
