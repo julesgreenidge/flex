@@ -6800,21 +6800,25 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 const target = sessionTargets[0];
                 if (target) {
                     const staticPool = exercisesForGen.filter(e => e.phase === 'Static Stretching');
-                    const allPrimaries = staticPool.filter(e => (e.primaryMuscle || e.target) === target);
+                    // Shuffle pool randomly so picks vary each Regenerate
+                    const shuffled = arr => arr.slice().sort(() => Math.random() - 0.5);
+                    const staticPoolShuffled = shuffled(staticPool);
+                    const allPrimaries = staticPoolShuffled.filter(e => (e.primaryMuscle || e.target) === target);
 
                     // 1. Reserve ONE primary for Static FIRST — this is non-negotiable, validator requires it
+                    // Shuffle primaries so a different one can be picked each time
                     const staticPrimary = allPrimaries[0] || null;
 
-                    // 2. Reserve for Active: PNF-eligible, prefer a DIFFERENT primary over the static one, then secondary
-                    const activeCandidate =
-                        staticPool.find(e => !!e.pnf && (e.primaryMuscle || e.target) === target && e.exercise !== (staticPrimary && staticPrimary.exercise)) ||
-                        staticPool.find(e => !!e.pnf && e.secondaryMuscle === target);
+                    // 2. Reserve for Active: PNF-eligible, randomised — prefer a DIFFERENT primary over the static one, then secondary
+                    const activePrimaries = staticPoolShuffled.filter(e => !!e.pnf && (e.primaryMuscle || e.target) === target && e.exercise !== (staticPrimary && staticPrimary.exercise));
+                    const activeSecondaries = staticPoolShuffled.filter(e => !!e.pnf && e.secondaryMuscle === target);
+                    const activeCandidate = activePrimaries[0] || activeSecondaries[0] || null;
                     if (activeCandidate) reservedForActive.add(activeCandidate.exercise);
 
-                    // 3. Reserve for Deep: prefer a DIFFERENT primary over the static one, not already reserved for Active, else secondary
-                    const deepCandidate =
-                        staticPool.find(e => (e.primaryMuscle || e.target) === target && e.exercise !== (staticPrimary && staticPrimary.exercise) && !reservedForActive.has(e.exercise)) ||
-                        staticPool.find(e => e.secondaryMuscle === target && !reservedForActive.has(e.exercise));
+                    // 3. Reserve for Deep: randomised — prefer a DIFFERENT primary over the static one, not already reserved for Active, else secondary
+                    const deepPrimaries = staticPoolShuffled.filter(e => (e.primaryMuscle || e.target) === target && e.exercise !== (staticPrimary && staticPrimary.exercise) && !reservedForActive.has(e.exercise));
+                    const deepSecondaries = staticPoolShuffled.filter(e => e.secondaryMuscle === target && !reservedForActive.has(e.exercise));
+                    const deepCandidate = deepPrimaries[0] || deepSecondaries[0] || null;
                     if (deepCandidate) reservedForDeep.add(deepCandidate.exercise);
 
                     // 4. Exclude extra target primaries beyond the one kept for Static
@@ -7130,7 +7134,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     let focusExercises = [];
 
                     if (phase !== 'Active Stretch' && phase !== 'Deep Stretch') {
-                        if (selectedFocus && !isAllExercises) {
+                        if (selectedFocus && !isAllExercises && STRETCH_PHASES.has(phase)) {
+                            // Stretch phases: hard-split focus exercises to front (guarantee target muscle coverage)
                             focusExercises = allPhaseExercises.filter(e => e.primaryMuscle === selectedFocus);
                             const otherExercises = allPhaseExercises.filter(e => e.primaryMuscle !== selectedFocus);
                             allPhaseExercises = [...weightedShuffle(focusExercises, phasePool), ...weightedShuffle(otherExercises, phasePool)];
@@ -7264,6 +7269,10 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         }
                     }
                     
+                    if (phase === 'Mobility') {
+                        console.log(`[QS DEBUG] Mobility: poolSize=${allPhaseExercises.length}, phaseCount=${phaseCount}, max=${phaseConf.max}, focusExLen=${focusExercises.length}, dupPassFired=${!isAllExercises && phaseCount < phaseConf.max && phaseExercises.length > 0 && phaseExercises.length >= allPhaseExercises.length}, exercises=${phaseExercises.map(e=>e.exercise).join(', ')}`);
+                    }
+
                     routine.push(...phaseExercises);
 
                     // After stretch phases, build muscle pool to bias cool down selection
@@ -11823,7 +11832,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.34</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.36</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
