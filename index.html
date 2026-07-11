@@ -5468,7 +5468,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         'Foam Roller': appSettings.foamrollerShortDuration || 30,
                         'Mobility': appSettings.mobilityShortDuration || 30,
                         'Static Stretching': appSettings.staticstretchingShortDuration || 45,
-                        'Active Stretch': appSettings.activestretchShortDuration || 45,
+                        'Active Stretch': appSettings.activestretchShortDuration || 75,
                         'Deep Stretch': appSettings.deepstretchShortDuration || 90,
                         'Splits': appSettings.splitsShortDuration || 45,
                         'Cool Down': appSettings.cooldownShortDuration || 45,
@@ -5479,7 +5479,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         'Foam Roller': appSettings.foamrollerLongDuration || 30,
                         'Mobility': appSettings.mobilityLongDuration || 30,
                         'Static Stretching': appSettings.staticstretchingLongDuration || 75,
-                        'Active Stretch': appSettings.activestretchLongDuration || 75,
+                        'Active Stretch': appSettings.activestretchLongDuration || 105,
                         'Deep Stretch': appSettings.deepstretchLongDuration || 120,
                         'Splits': appSettings.splitsLongDuration || 75,
                         'Cool Down': appSettings.cooldownLongDuration || 45,
@@ -6796,8 +6796,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
                     // 2. Reserve for Active: PNF-eligible, prefer a DIFFERENT primary over the static one, then secondary
                     const activeCandidate =
-                        staticPool.find(e => e.pnf === true && (e.primaryMuscle || e.target) === target && e.exercise !== (staticPrimary && staticPrimary.exercise)) ||
-                        staticPool.find(e => e.pnf === true && e.secondaryMuscle === target);
+                        staticPool.find(e => !!e.pnf && (e.primaryMuscle || e.target) === target && e.exercise !== (staticPrimary && staticPrimary.exercise)) ||
+                        staticPool.find(e => !!e.pnf && e.secondaryMuscle === target);
                     if (activeCandidate) reservedForActive.add(activeCandidate.exercise);
 
                     // 3. Reserve for Deep: prefer a DIFFERENT primary over the static one, not already reserved for Active, else secondary
@@ -7059,7 +7059,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                                 && !reservedForDeep.has(e.exercise)
                                 && !excludedFromAll.has(e.exercise)
                                 && !usedExerciseNames.has(e.exercise)
-                                && e.pnf === true
+                                && !!e.pnf
                                 && (e.primaryMuscle || e.target) !== target
                                 && e.secondaryMuscle !== target)
                             .map(e => ({...e, phase: "Active Stretch", duration: longSession ? 105 : 75}));
@@ -11812,7 +11812,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.32</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.33</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
