@@ -6297,7 +6297,17 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             // primaryMuscle = direct target (~100% load)
             // secondaryMuscle = meaningfully engaged (~50% load)
             // tertiaryMuscle = lightly involved (~20% load)
-            return [
+            const PNF_ELIGIBLE_DEFAULT = new Set([
+                'Butterfly Stretch','Half Seated Frog','Pancake','Frog Pose','One Legged Frog',
+                'Kneeling Bent Knee Calf Stretch','Pigeon Pose','Cow Face (Legs)','Seated Figure 4 Stretch',
+                'Supine Figure 4 Stretch','Runners Stretch','Seated Forward Fold','Standing Forward Fold',
+                'Pyramid Stretch','Splits On Wall','Twisted Reclined Big Toe Pose','Wide Legged Forward Fold',
+                'Low Lunge','High Lunge','Supine Lizard','Gate Pose','Saddle','Half Saddle',
+                'Standing Quad Stretch','Cow Face (Arms)','Cross Body Shoulder Stretch','Overhead Tricep Stretch',
+                'Deep Squat','Front Splits','Supine Split','Standing IT Band Stretch','Supine IT Band Stretch',
+                'Reverse Prayer (Paschim Namaskarasana)'
+            ]);
+            const raw = [
                 {phase: "Warm-Up", exercise: "Leg Swings (Side)", position: "Standing", sides: 2, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Adductors", secondaryMuscle: "Glutes"},
                 {phase: "Warm-Up", exercise: "Ankle Bounces", position: "Standing", sides: 1, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Calves"},
                 {phase: "Warm-Up", exercise: "Leg Swings (Front)", position: "Standing", sides: 2, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Hamstrings", secondaryMuscle: "Hip Flexors"},
@@ -6384,6 +6394,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 {phase: "Cool Down", exercise: "Child's Pose", position: "Tabletop", sides: 1, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Upper Back", secondaryMuscle: "Lats", tertiaryMuscle: "Shoulders"},
                 {phase: "Final Rest", exercise: "Savasana", position: "Supine", sides: 1, bodyPart: "full", duration: 120, rest: 0, primaryMuscle: "None"}
             ];
+            return raw.map(e => ({...e, pnf: e.hasOwnProperty('pnf') ? e.pnf : PNF_ELIGIBLE_DEFAULT.has(e.exercise)}));
         }
 
         // ===== CSV PARSING =====
@@ -11812,7 +11823,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.33</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.34</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
