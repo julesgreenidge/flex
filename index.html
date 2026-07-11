@@ -1641,8 +1641,8 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="build-date" content="10 Jul 2026">
-<meta name="app-version" content="6.51">
+<meta name="build-date" content="11 Jul 2026">
+<meta name="app-version" content="6.54">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -3129,7 +3129,7 @@
                 o.frequency.value = freq; o.type = 'sine';
                 const t = c.currentTime + offset;
                 g.gain.setValueAtTime(0, t);
-                g.gain.linearRampToValueAtTime(0.35, t + 0.02);
+                g.gain.linearRampToValueAtTime(0.7, t + 0.02);
                 g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
                 o.start(t); o.stop(t + 0.2);
             });
@@ -3144,7 +3144,7 @@
                 o.frequency.value = freq; o.type = 'sine';
                 const t = c.currentTime + offset;
                 g.gain.setValueAtTime(0, t);
-                g.gain.linearRampToValueAtTime(0.35, t + 0.02);
+                g.gain.linearRampToValueAtTime(0.7, t + 0.02);
                 g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
                 o.start(t); o.stop(t + 0.2);
             });
@@ -3159,7 +3159,7 @@
                 o.frequency.value = 1200; o.type = 'sine';
                 const t = c.currentTime + offset;
                 g.gain.setValueAtTime(0, t);
-                g.gain.linearRampToValueAtTime(0.4, t + 0.01);
+                g.gain.linearRampToValueAtTime(0.7, t + 0.01);
                 g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
                 o.start(t); o.stop(t + 0.08);
             });
@@ -3174,7 +3174,7 @@
                 o.frequency.value = 1200; o.type = 'sine';
                 const t = c.currentTime + offset;
                 g.gain.setValueAtTime(0, t);
-                g.gain.linearRampToValueAtTime(0.4, t + 0.01);
+                g.gain.linearRampToValueAtTime(0.7, t + 0.01);
                 g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
                 o.start(t); o.stop(t + 0.08);
             });
@@ -7268,10 +7268,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                             dupIndex++;
                         }
                     }
-                    
-                    if (phase === 'Mobility') {
-                        console.log(`[QS DEBUG] Mobility: poolSize=${allPhaseExercises.length}, phaseCount=${phaseCount}, max=${phaseConf.max}, focusExLen=${focusExercises.length}, dupPassFired=${!isAllExercises && phaseCount < phaseConf.max && phaseExercises.length > 0 && phaseExercises.length >= allPhaseExercises.length}, exercises=${phaseExercises.map(e=>e.exercise).join(', ')}`);
-                    }
+
 
                     routine.push(...phaseExercises);
 
@@ -7601,9 +7598,15 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     const fillShortage = minSecs - currentTotal;
                     const fillPhaseOrder = ['Static Stretching', 'Active Stretch', 'Mobility', 'Warm-Up', 'Foam Roller', 'Cool Down'];
 
+                    // Track how many exercises each phase already has, so padding never breaks a phase's max cap
+                    const phaseCountsInRoutine = {};
+                    bestRoutine.forEach(ex => { phaseCountsInRoutine[ex.phase] = (phaseCountsInRoutine[ex.phase] || 0) + 1; });
+                    const phaseHasRoom = (phase) => !config[phase] || phaseCountsInRoutine[phase] < config[phase].max;
+
                     // Build pool from all appropriate phases, sorted by best fit to gap
                     let availableStatic = [];
                     for (const phase of fillPhaseOrder) {
+                        if (!phaseHasRoom(phase)) continue;
                         const phaseExercises = exercisesForGen.filter(ex => {
                             if (ex.phase !== phase) return false;
                             if (ex.exercise === 'Savasana') return false;
@@ -7662,7 +7665,10 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         if (addAttempts >= maxAddAttempts) {
                             break;
                         }
-                        
+                        if (!phaseHasRoom(ex.phase)) {
+                            continue; // phase already at its max cap — skip to next candidate
+                        }
+
                         const exTime = calculateExerciseTime(ex);
                         // Allow one exercise worth of overshoot — the trim loop handles it
                         // This prevents getting stuck when only large exercises remain
@@ -7676,6 +7682,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                             }
                             currentTotal += exTime;
                             addAttempts++;
+                            phaseCountsInRoutine[ex.phase] = (phaseCountsInRoutine[ex.phase] || 0) + 1;
                         }
                     }
                     
@@ -7687,7 +7694,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         let addedThisPass = 0;
                         for (let ex of availableStatic) {
                             if (currentTotal >= minSecs || addAttempts >= maxAddAttempts) break;
-                            
+                            if (!phaseHasRoom(ex.phase)) continue;
+
                             const exTime = calculateExerciseTime(ex);
                             // Allow overshoot — trim handles it
                             if (currentTotal + exTime <= maxSecs + 270) {
@@ -7695,6 +7703,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                                 currentTotal += exTime;
                                 addAttempts++;
                                 addedThisPass++;
+                                phaseCountsInRoutine[ex.phase] = (phaseCountsInRoutine[ex.phase] || 0) + 1;
                             }
                         }
                         if (addedThisPass === 0) {
@@ -11832,7 +11841,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.36</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.54</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
