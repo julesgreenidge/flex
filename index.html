@@ -1642,7 +1642,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="11 Jul 2026">
-<meta name="app-version" content="6.57">
+<meta name="app-version" content="6.58">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -7024,24 +7024,15 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
                     if (!musclePool) return recencyShuffle(arr);
 
-                    // With muscle pool: split into groups, shuffle each, then concatenate
-                    // This guarantees matching exercises are structurally first — 
-                    // randomness operates within each group, not across them
-                    const primaryMatch   = arr.filter(e => (musclePool[e.primaryMuscle]   || 0) > 0);
-                    const secondaryMatch = arr.filter(e => (musclePool[e.secondaryMuscle] || 0) > 0
-                                                        && (musclePool[e.primaryMuscle]   || 0) === 0);
-                    const tertiaryMatch  = arr.filter(e => (musclePool[e.tertiaryMuscle]  || 0) > 0
-                                                        && (musclePool[e.secondaryMuscle] || 0) === 0
-                                                        && (musclePool[e.primaryMuscle]   || 0) === 0);
-                    const noMatch        = arr.filter(e => (musclePool[e.primaryMuscle]   || 0) === 0
-                                                        && (musclePool[e.secondaryMuscle] || 0) === 0
-                                                        && (musclePool[e.tertiaryMuscle]  || 0) === 0);
+                    // With muscle pool: only a direct primary-muscle match gets preference.
+                    // Everything else — secondary match, tertiary match, or no relation at all —
+                    // is treated the same and shuffled together purely by recency.
+                    const primaryMatch = arr.filter(e => (musclePool[e.primaryMuscle] || 0) > 0);
+                    const rest         = arr.filter(e => (musclePool[e.primaryMuscle] || 0) === 0);
 
                     return [
                         ...recencyShuffle(primaryMatch),
-                        ...recencyShuffle(secondaryMatch),
-                        ...recencyShuffle(tertiaryMatch),
-                        ...recencyShuffle(noMatch)
+                        ...recencyShuffle(rest)
                     ];
                 }
 
@@ -7099,22 +7090,34 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         allPhaseExercises = [...reservedEx, ...weightedShuffle(candidates, sessionTargetPool && Object.keys(sessionTargetPool).length > 0 ? sessionTargetPool : null)];
                     } else if (phase === "Static Stretching") {
                         const target = sessionTargets[0];
-                        // Inject target primary first so it's always selected (validator requires exactly 1)
-                        const targetPrimary = target ? exercisesForGen.filter(e =>
+                        // Inject target primary first so it's always selected (validator requires exactly 1).
+                        // If no primary match exists for the target in this phase, fall back to a secondary match
+                        // — primary is always the first port of call, secondary only when primary isn't available.
+                        const targetPrimaryPool = target ? exercisesForGen.filter(e =>
                             e.phase === "Static Stretching" &&
                             (e.primaryMuscle || e.target) === target &&
                             !reservedForActive.has(e.exercise) &&
                             !reservedForDeep.has(e.exercise) &&
                             !excludedFromAll.has(e.exercise) &&
                             !usedExerciseNames.has(e.exercise)
-                        ).slice(0, 1).map(e => ({...e, isReserved: true})) : [];
+                        ) : [];
+                        const targetSecondaryPool = (target && targetPrimaryPool.length === 0) ? exercisesForGen.filter(e =>
+                            e.phase === "Static Stretching" &&
+                            e.secondaryMuscle === target &&
+                            !reservedForActive.has(e.exercise) &&
+                            !reservedForDeep.has(e.exercise) &&
+                            !excludedFromAll.has(e.exercise) &&
+                            !usedExerciseNames.has(e.exercise)
+                        ) : [];
+                        const targetPick = targetPrimaryPool[0] || targetSecondaryPool[0] || null;
+                        const targetPrimary = targetPick ? [{...targetPick, isReserved: true}] : [];
                         const others = exercisesForGen.filter(e =>
                             e.phase === "Static Stretching" &&
                             !reservedForActive.has(e.exercise) &&
                             !reservedForDeep.has(e.exercise) &&
                             !excludedFromAll.has(e.exercise) &&
                             !usedExerciseNames.has(e.exercise) &&
-                            (target ? (e.primaryMuscle || e.target) !== target : true)
+                            (targetPick ? e.exercise !== targetPick.exercise : true)
                         );
                         allPhaseExercises = [...targetPrimary, ...others];
                     } else {
@@ -7405,18 +7408,20 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     const deepEx   = routine.filter(e => e.phase === 'Deep Stretch');
                     const staticEx = routine.filter(e => e.phase === 'Static Stretching');
 
-                    const staticPrimaryCount = staticEx.filter(e => (e.primaryMuscle||e.target) === target).length;
+                    // Static accepts a primary OR secondary hit — matches the primary-then-secondary
+                    // fallback used when injecting the target into Static Stretching above.
+                    const staticTargetCount = staticEx.filter(e => (e.primaryMuscle||e.target) === target || e.secondaryMuscle === target).length;
                     const activeTargetCount  = activeEx.filter(e => (e.primaryMuscle||e.target) === target || e.secondaryMuscle === target).length;
                     const deepTargetCount    = deepEx.filter(e => (e.primaryMuscle||e.target) === target || e.secondaryMuscle === target).length;
 
-                    const staticOk = staticPrimaryCount === 1;
+                    const staticOk = staticTargetCount === 1;
                     const activeOk = activeTargetCount === 1;
                     const deepOk   = deepTargetCount === 1;
 
                     if (!staticOk || !activeOk || !deepOk) {
                         routineValid = false;
                     } else {
-                        console.log(`[QS PASS] Target: ${target} | Static: ${staticPrimaryCount} | Active: ${activeTargetCount} | Deep: ${deepTargetCount}`);
+                        console.log(`[QS PASS] Target: ${target} | Static: ${staticTargetCount} | Active: ${activeTargetCount} | Deep: ${deepTargetCount}`);
                     }
                 }
 
@@ -11850,7 +11855,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.57</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.58</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
