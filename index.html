@@ -1642,7 +1642,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="11 Jul 2026">
-<meta name="app-version" content="6.55">
+<meta name="app-version" content="6.57">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -6783,6 +6783,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             let bestRoutine = null;
             let bestTimeDiff = Infinity;
             let repeatsWereNeeded = false; // Track if we had to use repeats
+            let config; // hoisted out of the attempt loop so it's still readable after the loop ends (padding step needs it)
             
             // ── TARGET SELECTION AND RESERVATION ──
             // Done ONCE before retry loop. Target, reservations, and exclusions are fixed for the generation.
@@ -6941,7 +6942,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     scaleFactor = targetMinutes / 60;
                 }
                 
-                let config = phaseConfig[configKey];
+                config = phaseConfig[configKey];
                 
                 // Scale the config if needed
                 if (scaleFactor > 1) {
@@ -7130,10 +7131,10 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
                     // Active/Deep: pool is already [reservedEx, ...shuffledCandidates] — never reshuffle
                     // All other phases: apply focus/body-type filtering then shuffle
-                    // Prep phases (Warm-Up/Foam Roller/Mobility) get no muscle-pool weighting — recency only
-                    const phasePool = phase === 'Cool Down' ? stretchMusclePool
-                        : PREP_PHASES.has(phase) ? null
-                        : (sessionTargetPool && Object.keys(sessionTargetPool).length > 0 ? sessionTargetPool : null);
+                    // Prep phases (Warm-Up/Foam Roller/Mobility) also get soft target-muscle weighting —
+                    // matches are preferred (via weightedShuffle grouping) but not hard-forced, so the
+                    // target muscle's throughline extends into prep phases wherever a match exists.
+                    const phasePool = phase === 'Cool Down' ? stretchMusclePool : (sessionTargetPool && Object.keys(sessionTargetPool).length > 0 ? sessionTargetPool : null);
                     let focusExercises = [];
 
                     if (phase !== 'Active Stretch' && phase !== 'Deep Stretch') {
@@ -7560,12 +7561,13 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     const overshoot = currentTotal - maxSecs;
                     
                     // Priority 1: Static Stretching — pick best fit (smallest that fixes overshoot without going below minSecs)
-                    const staticCandidates = bestRoutine.filter(ex => 
-                        ex.phase === 'Static Stretching' && ex.exercise !== 'Savasana'
+                    // Reserved (target-muscle) exercises are never trimmed — they're validated before this point
+                    const staticCandidates = bestRoutine.filter(ex =>
+                        ex.phase === 'Static Stretching' && ex.exercise !== 'Savasana' && !ex.isReserved
                     );
-                    
+
                     // Priority 2: Deep Stretches (keep minimum 2)
-                    const deepCandidates = bestRoutine.filter(ex => ex.phase === 'Deep Stretch');
+                    const deepCandidates = bestRoutine.filter(ex => ex.phase === 'Deep Stretch' && !ex.isReserved);
                     
                     let toRemove = null;
                     
@@ -7761,12 +7763,13 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
                     // Post-trim: if adding overshot (shouldn't happen now), trim back down
                     // Trim order: Static Stretching → Active Stretch → Cool Down → Deep Stretch (keep minimums)
+                    // Reserved (target-muscle) exercises are never trimmed — they're validated before this point
                     let postTotal = bestRoutine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0);
                     const trimOrder = [
-                        e => e.phase === 'Static Stretching' && e.exercise !== 'Savasana',
-                        e => e.phase === 'Active Stretch',
+                        e => e.phase === 'Static Stretching' && e.exercise !== 'Savasana' && !e.isReserved,
+                        e => e.phase === 'Active Stretch' && !e.isReserved,
                         e => e.phase === 'Cool Down' && e.exercise !== 'Savasana',
-                        e => e.phase === 'Deep Stretch',
+                        e => e.phase === 'Deep Stretch' && !e.isReserved,
                     ];
                     for (const filter of trimOrder) {
                         while (postTotal > maxSecs) {
@@ -11847,7 +11850,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.55</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.57</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
