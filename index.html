@@ -1641,6 +1641,38 @@
             user-select: none;
         }
 
+        /* Upper/lower body balance slider (0-100%, snaps to 10% steps) */
+        .balance-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #764ba2, #e5e5e7 50%, #667eea);
+            outline: none;
+            margin: 0;
+        }
+        .balance-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid #667eea;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+        .balance-slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid #667eea;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+
         .settings-content-panel {
             display: block;
         }
@@ -1659,7 +1691,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="12 Jul 2026">
-<meta name="app-version" content="6.68">
+<meta name="app-version" content="6.69">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -1803,10 +1835,11 @@
                 <!-- Type -->
                 <div class="section">
                     <div class="section-title">Type</div>
-                    <div class="segmented">
-                        <button class="type-btn" data-type="full">Full Body</button>
-                        <button class="type-btn" data-type="upper">Upper Body</button>
-                        <button class="type-btn" data-type="lower">Lower Body</button>
+                    <div id="balanceSliderLabel" style="text-align:center;font-size:14px;font-weight:600;color:#1d1d1f;margin-bottom:10px;">Full Body</div>
+                    <input type="range" id="balanceSlider" class="balance-slider" min="0" max="100" step="10" value="50">
+                    <div style="display:flex;justify-content:space-between;font-size:11px;color:#86868b;margin-top:6px;">
+                        <span>Lower Body</span>
+                        <span>Upper Body</span>
                     </div>
                 </div>
                 <!-- Hold -->
@@ -2325,10 +2358,8 @@
                     if (qsBtn) {
                         const sub = document.getElementById('qsSubtitle');
                         if (sub) {
-                            const t = appSettings.quickStartType || 'full';
                             const h = appSettings.quickStartHold || 'short';
-                            const tLabel = t === 'full' ? 'Full body' : t === 'upper' ? 'Upper body' : 'Lower body';
-                            sub.textContent = tLabel + ' · ' + (h === 'long' ? 'long hold' : 'short hold');
+                            sub.textContent = balanceLabel(appSettings.quickStartBalance ?? 50) + ' · ' + (h === 'long' ? 'long hold' : 'short hold');
                         }
                     }
                 }, 500); // Match CSS transition duration
@@ -2376,7 +2407,6 @@
                 setRadioValue('transitionSound', appSettings.transitionSound);
                 setRadioValue('finalBongSound', appSettings.finalBongSound);
                 setRadioValue('splitsFrequency', String(appSettings.splitsFrequency ?? 0.1));
-                setRadioValue('quickStartType', appSettings.quickStartType || 'full');
                 setRadioValue('quickStartHold', appSettings.quickStartHold || 'short');
             });
 
@@ -2423,21 +2453,27 @@
 
             document.getElementById('settingsQuickStartBtn').addEventListener('click', function() {
                 activateSettingsTab('settingsQuickStartBtn', 'settingsQuickStartContent');
-                // Sync pills from current settings
-                selectPill('qs-type-pill', appSettings.quickStartType || 'full');
+                // Sync balance slider and hold pills from current settings
+                const savedBalance = appSettings.quickStartBalance ?? 50;
+                const settingsSlider = document.getElementById('settingsBalanceSlider');
+                const settingsSliderLabel = document.getElementById('settingsBalanceSliderLabel');
+                if (settingsSlider) settingsSlider.value = savedBalance;
+                if (settingsSliderLabel) settingsSliderLabel.textContent = balanceLabel(savedBalance);
                 selectPill('qs-hold-pill', appSettings.quickStartHold || 'short');
-                setRadioSelected('quickStartType', appSettings.quickStartType || 'full');
                 setRadioSelected('quickStartHold', appSettings.quickStartHold || 'short');
             });
 
-            // QS pill click handlers
+            // QS balance slider + hold pill handlers
+            const settingsBalanceSliderEl = document.getElementById('settingsBalanceSlider');
+            if (settingsBalanceSliderEl) {
+                settingsBalanceSliderEl.addEventListener('input', function() {
+                    const value = parseInt(this.value, 10);
+                    const settingsSliderLabel = document.getElementById('settingsBalanceSliderLabel');
+                    if (settingsSliderLabel) settingsSliderLabel.textContent = balanceLabel(value);
+                });
+            }
             document.getElementById('settingsQuickStartContent').addEventListener('click', function(e) {
-                const typePill = e.target.closest('.qs-type-pill');
                 const holdPill = e.target.closest('.qs-hold-pill');
-                if (typePill) {
-                    selectPill('qs-type-pill', typePill.dataset.value);
-                    setRadioSelected('quickStartType', typePill.dataset.value);
-                }
                 if (holdPill) {
                     selectPill('qs-hold-pill', holdPill.dataset.value);
                     setRadioSelected('quickStartHold', holdPill.dataset.value);
@@ -2937,19 +2973,19 @@
                     transitionSound: getRadioValue('transitionSound') || 'longbeep',
                     finalBongSound: getRadioValue('finalBongSound') || 'bowl',
                     splitsFrequency: parseFloat(getRadioValue('splitsFrequency') ?? '0.1'),
-                    quickStartType: getRadioValue('quickStartType') || 'full',
+                    quickStartBalance: parseInt((document.getElementById('settingsBalanceSlider') || {}).value ?? '50', 10),
                     quickStartHold: getRadioValue('quickStartHold') || 'short'
                 };
-                
+                // Keep the legacy label in sync for any old code that still reads it
+                appSettings.quickStartType = appSettings.quickStartBalance === 100 ? 'upper' : appSettings.quickStartBalance === 0 ? 'lower' : 'full';
+
                 saveSettings(appSettings);
 
                 // Update Quick Start card subtitle
                 const _sub = document.getElementById('qsSubtitle');
                 if (_sub) {
-                    const _t = appSettings.quickStartType || 'full';
                     const _h = appSettings.quickStartHold || 'short';
-                    const _tLabel = _t === 'full' ? 'Full body' : _t === 'upper' ? 'Upper body' : 'Lower body';
-                    _sub.textContent = _tLabel + ' · ' + (_h === 'long' ? 'long hold' : 'short hold');
+                    _sub.textContent = balanceLabel(appSettings.quickStartBalance) + ' · ' + (_h === 'long' ? 'long hold' : 'short hold');
                 }
                 
                 document.getElementById('settingsView').style.display = 'none';
@@ -3643,7 +3679,8 @@
             transitionSound: 'longbeep',
             finalBongSound: 'bowl',
             splitsFrequency: 0.1,
-            quickStartType: 'full',
+            quickStartType: 'full',   // legacy label, kept in sync with quickStartBalance for old code that reads it
+            quickStartBalance: 50,    // 0-100: 0 = fully Lower Body, 100 = fully Upper Body, 50 = Full Body
             quickStartHold: 'short'
         };
 
@@ -3666,7 +3703,7 @@
         // once per user, instead of re-checking your whole exercise library on
         // every single page load. Adding a new migration later: give it the next
         // number, wrap it in "if (dataSchemaVersion < N)", and bump this constant.
-        const CURRENT_SCHEMA_VERSION = 9;
+        const CURRENT_SCHEMA_VERSION = 10;
         let dataSchemaVersion = parseInt(localStorage.getItem('dataSchemaVersion') || '0', 10);
 
         // Migration 1: stale active stretch durations (pre-v6.30 defaults were 45/75)
@@ -3676,12 +3713,20 @@
             saveSettings(appSettings);
             console.log('✓ Migrated active stretch durations: 45→75 (short), 75→105 (long)');
         }
+
+        // Migration 10: quickStartType ('full'/'upper'/'lower') -> quickStartBalance (0-100 number),
+        // introduced when the Quick Start type buttons became a balance slider.
+        if (dataSchemaVersion < 10 && appSettings.quickStartBalance === undefined && appSettings.quickStartType) {
+            appSettings.quickStartBalance = appSettings.quickStartType === 'upper' ? 100 : appSettings.quickStartType === 'lower' ? 0 : 50;
+            saveSettings(appSettings);
+            console.log('✓ Migrated quickStartType -> quickStartBalance:', appSettings.quickStartBalance);
+        }
+
         // Initialise card subtitles from settings
         (function() {
-            const typeLabels = { full: 'Full body', upper: 'Upper body', lower: 'Lower body' };
-            const t = appSettings.quickStartType || 'full';
+            const t = appSettings.quickStartBalance ?? 50;
             const h = appSettings.quickStartHold || 'short';
-            const label = (typeLabels[t] || 'Full body') + ' · ' + (h === 'long' ? 'long hold' : 'short hold');
+            const label = balanceLabel(t) + ' · ' + (h === 'long' ? 'long hold' : 'short hold');
             document.addEventListener('DOMContentLoaded', function() {
                 const qsSub = document.getElementById('qsSubtitle');
                 if (qsSub) qsSub.textContent = label;
@@ -3748,7 +3793,9 @@
         let exercises = window._exercises;
         const appState = {
             mode: null,      // current mode: 'quick' | 'custom' | 'starred'
-            bodyPart: null,  // body part selection: 'full' | 'upper' | 'lower'
+            bodyPart: null,  // legacy body part label, derived from bodyBalance: 'full' | 'upper' | 'lower'
+                             // (also holds 'custom' | 'jumi' | 'starred' as a routine-source flag — unrelated to balance)
+            bodyBalance: 50, // 0-100: 0 = fully Lower Body, 100 = fully Upper Body, 50 = Full Body (default)
             time: null,
             hold: null,
             focus: '',
@@ -3766,6 +3813,34 @@
         Object.defineProperty(window, 'selectedFocus',      { get: () => appState.focus,       set: v => { appState.focus = v; } });
         Object.defineProperty(window, 'longSession',        { get: () => appState.longSession, set: v => { appState.longSession = v; } });
         Object.defineProperty(window, 'splitsForced', { get: () => appState.splitsForced, set: v => { appState.splitsForced = v; } });
+        Object.defineProperty(window, 'bodyBalance', { get: () => appState.bodyBalance, set: v => { appState.bodyBalance = v; } });
+
+        // Sets bodyBalance and keeps the legacy bodyPart label ('full'/'upper'/'lower') in sync,
+        // since ~30 places elsewhere in the app (history, starred routines, Jumi messages) still
+        // read that label for display and don't need to know the slider exists.
+        function setBodyBalance(balance) {
+            appState.bodyBalance = balance;
+            appState.bodyPart = balance === 100 ? 'upper' : balance === 0 ? 'lower' : 'full';
+        }
+
+        // Human-readable label for a balance value, e.g. balanceLabel(50) -> 'Full Body',
+        // balanceLabel(70) -> '70% Upper', balanceLabel(30) -> '70% Lower'.
+        function balanceLabel(balance) {
+            if (balance === 50) return 'Full Body';
+            if (balance === 100) return 'Upper Body';
+            if (balance === 0) return 'Lower Body';
+            return balance > 50 ? `${balance}% Upper` : `${100 - balance}% Lower`;
+        }
+
+        // Moves the balance slider (and its label) to match the current bodyBalance value.
+        // Used whenever the app needs to re-sync the slider's visual position — e.g.
+        // restoring Quick Start, or returning to the main view after a routine finishes.
+        function syncBalanceSliderUI() {
+            const slider = document.getElementById('balanceSlider');
+            const label = document.getElementById('balanceSliderLabel');
+            if (slider) slider.value = appState.bodyBalance;
+            if (label) label.textContent = balanceLabel(appState.bodyBalance);
+        }
         const GET_READY_TIME = 15; // 15 seconds for "Get Ready" phase
         let currentRoutine = [];
         let sessionTargets = [];
@@ -4631,8 +4706,8 @@
                 if (cd) cd.style.display = 'none';
                 if (ddd) ddd.style.opacity = '1';
                 if (genBtn) { genBtn.style.display = 'flex'; genBtn.style.background = 'linear-gradient(135deg,#667eea,#764ba2)'; genBtn.style.boxShadow = '0 4px 12px rgba(102,126,234,0.35)'; if (!appState._quickRoutineReady) { genBtn.innerHTML = '&#9654; Generate'; genBtn.classList.remove('shimmer'); } else { genBtn.innerHTML = '&#8635; Regenerate'; genBtn.style.background = 'linear-gradient(135deg,#667eea,#764ba2)'; genBtn.classList.remove('shimmer'); } }
-                // Restore Quick Start's own type/hold selection
-                document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('selected', b.dataset.type === (selectedType || 'full')));
+                // Restore Quick Start's own balance/hold selection
+                syncBalanceSliderUI();
                 document.querySelectorAll('.hold-btn').forEach(b => b.classList.toggle('selected', b.dataset.hold === (selectedHold || 'short')));
 
             } else if (mode === 'custom') {
@@ -6213,33 +6288,24 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             // END CUSTOM BUILDER
             // ========================================
 
-            // Type buttons
-            document.querySelectorAll('.type-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    // If starred button clicked, open starred list instead
-                    if (this.dataset.type === 'starred') {
-                        openStarredList();
-                        return;
-                    }
-                    
-                    // If custom button clicked, open custom builder
-                    if (this.dataset.type === 'custom') {
-                        enterMode('custom'); initCustomBuilder();
-                        return;
-                    }
-                    
-                    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
-                    this.classList.add('selected');
-                    const typeLabels = { full: 'Full body', upper: 'Upper body', lower: 'Lower body' };
-                    selectedType = this.dataset.type;
-                    const sub2 = document.getElementById('qsSubtitle');
-                    if (sub2) sub2.textContent = (typeLabels[selectedType] || 'Full body') + ' · ' + (selectedHold === 'long' ? 'long hold' : 'short hold');
-                    updateFocusDropdown(); // Update focus options based on selected type
-                    // Show/hide splits section — not relevant for upper body
-                    const splitsSection = document.getElementById('splitsSection');
-                    if (splitsSection) splitsSection.style.display = selectedType === 'upper' ? 'none' : 'block';
+            // Body balance slider (replaces the old Full/Upper/Lower Body buttons)
+            function onBalanceSliderChange(value) {
+                setBodyBalance(value);
+                const label = document.getElementById('balanceSliderLabel');
+                if (label) label.textContent = balanceLabel(value);
+                const sub2 = document.getElementById('qsSubtitle');
+                if (sub2) sub2.textContent = balanceLabel(value) + ' · ' + (selectedHold === 'long' ? 'long hold' : 'short hold');
+                updateFocusDropdown(); // Update focus options based on new balance
+                // Show/hide splits section — not relevant for a pure Upper Body routine
+                const splitsSection = document.getElementById('splitsSection');
+                if (splitsSection) splitsSection.style.display = value === 100 ? 'none' : 'block';
+            }
+            const balanceSliderEl = document.getElementById('balanceSlider');
+            if (balanceSliderEl) {
+                balanceSliderEl.addEventListener('input', function() {
+                    onBalanceSliderChange(parseInt(this.value, 10));
                 });
-            });
+            }
             
             // Function to update focus dropdown based on selected type
             window.updateFocusDropdown = function updateFocusDropdown() {
@@ -6252,25 +6318,27 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     focusSelect.innerHTML = '<option value="">None</option>' + 
                         uniqueTargets.map(t => `<option value="${t}">${t}</option>`).join('');
                 } else {
-                    // Filter targets based on selected type and bodyPart (case-insensitive)
+                    // Filter targets based on balance and bodyPart (case-insensitive).
+                    // Only the pure extremes hard-exclude the opposite side — any value in
+                    // between shows every muscle, same as Full Body always has.
                     let filteredExercises;
-                    if (selectedType === 'upper') {
+                    if (bodyBalance === 100) {
                         filteredExercises = exercises.filter(e => {
                             const bp = (e.bodyPart || '').toLowerCase();
                             return bp === 'upper' || bp === 'full';
                         });
-                    } else if (selectedType === 'lower') {
+                    } else if (bodyBalance === 0) {
                         filteredExercises = exercises.filter(e => {
                             const bp = (e.bodyPart || '').toLowerCase();
                             return bp === 'lower' || bp === 'full';
                         });
                     } else {
-                        // Full body - show all
+                        // Not a pure extreme - show all
                         filteredExercises = exercises;
                     }
-                    
+
                     const uniqueTargets = [...new Set(filteredExercises.map(ex => ex.primaryMuscle))].sort();
-                    focusSelect.innerHTML = '<option value="">None</option>' + 
+                    focusSelect.innerHTML = '<option value="">None</option>' +
                         uniqueTargets.map(t => `<option value="${t}">${t}</option>`).join('');
                 }
                 
@@ -6945,13 +7013,13 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
         async function generateRoutine(prioritisedExercises) {
             // Hide start button to prevent starting outdated routine if user re-generates
             
-            // Read type and hold from currently selected UI buttons
-            const _typeBtn = document.querySelector('.type-btn.selected');
+            // Read balance and hold from the currently selected UI controls
+            const _balanceSlider = document.getElementById('balanceSlider');
             const _holdBtn = document.querySelector('[data-hold].selected');
-            if (_typeBtn) selectedType = _typeBtn.dataset.type;
+            if (_balanceSlider) setBodyBalance(parseInt(_balanceSlider.value, 10));
             if (_holdBtn) { selectedHold = _holdBtn.getAttribute('data-hold'); longSession = selectedHold === 'long'; }
             // Final fallbacks
-            if (!selectedType) selectedType = 'full';
+            if (!selectedType) setBodyBalance(50);
             if (!selectedHold) { selectedHold = 'short'; longSession = false; }
 
             // Validate type, duration, and hold are selected
@@ -7119,14 +7187,15 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     exList.some(e => e.primaryMuscle === m && (e.bodyPart || '').toLowerCase() === 'lower')
                 );
 
-                // 4. Filter by selectedType
+                // 4. Filter by bodyBalance — pure extremes hard-restrict to that side;
+                // anything in between weights the coin flip toward the chosen side.
                 let pool;
-                if (selectedType === 'upper') {
+                if (bodyBalance === 100) {
                     pool = upperEligible.length > 0 ? upperEligible : eligible;
-                } else if (selectedType === 'lower') {
+                } else if (bodyBalance === 0) {
                     pool = lowerEligible.length > 0 ? lowerEligible : eligible;
                 } else {
-                    const side = Math.random() < 0.5 ? upperEligible : lowerEligible;
+                    const side = Math.random() * 100 < bodyBalance ? upperEligible : lowerEligible;
                     pool = side.length > 0 ? side : eligible;
                 }
 
@@ -7438,9 +7507,9 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                             focusExercises = allPhaseExercises.filter(e => e.primaryMuscle === selectedFocus);
                             const otherExercises = allPhaseExercises.filter(e => e.primaryMuscle !== selectedFocus);
                             allPhaseExercises = [...weightedShuffle(focusExercises, phasePool), ...weightedShuffle(otherExercises, phasePool)];
-                        } else if (selectedType === 'upper') {
+                        } else if (bodyBalance === 100) {
                             allPhaseExercises = weightedShuffle(allPhaseExercises.filter(e => { const bp = (e.bodyPart||'').toLowerCase(); return bp === 'upper' || bp === 'full'; }), phasePool);
-                        } else if (selectedType === 'lower') {
+                        } else if (bodyBalance === 0) {
                             allPhaseExercises = weightedShuffle(allPhaseExercises.filter(e => { const bp = (e.bodyPart||'').toLowerCase(); return bp === 'lower' || bp === 'full'; }), phasePool);
                         } else {
                             allPhaseExercises = weightedShuffle(allPhaseExercises, phasePool);
@@ -7489,13 +7558,13 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 });
                 
                 // Filter by body type, then randomize (case-insensitive)
-                if (selectedType === 'upper') {
+                if (bodyBalance === 100) {
                     coolDownExercises = coolDownExercises.filter(e => {
                         const bp = (e.bodyPart || '').toLowerCase();
                         return bp === 'upper' || bp === 'full';
                     });
                     coolDownExercises = weightedShuffle(coolDownExercises, stretchMusclePool);
-                } else if (selectedType === 'lower') {
+                } else if (bodyBalance === 0) {
                     coolDownExercises = coolDownExercises.filter(e => {
                         const bp = (e.bodyPart || '').toLowerCase();
                         return bp === 'lower' || bp === 'full';
@@ -7656,19 +7725,27 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 });
             }
 
-            // 50/50 upper/lower balance for Full Body — swap non-target lower exercises for upper where possible
-            if ((selectedType === 'full' || !selectedType) && !isAllExercises && sessionTargets.length > 0) {
+            // Body balance swap — nudges the routine toward your chosen upper/lower split.
+            // Skipped at the pure extremes (0 and 100) since those are already hard-filtered
+            // to one side during generation, so there's nothing on the other side to swap.
+            if (bodyBalance > 0 && bodyBalance < 100 && !isAllExercises && sessionTargets.length > 0) {
                 const nonFinal = currentRoutine.filter(e => e.phase !== 'Final Rest');
                 const upperCount = nonFinal.filter(e => (e.bodyPart||'').toLowerCase() === 'upper').length;
                 const lowerCount = nonFinal.filter(e => (e.bodyPart||'').toLowerCase() === 'lower').length;
                 const total = upperCount + lowerCount;
-                const targetUpper = Math.round(total * 0.5);
-                const excess = lowerCount - targetUpper;
+                const targetUpper = Math.round(total * (bodyBalance / 100));
+                const targetLower = total - targetUpper;
+                // Positive: too much lower relative to target, swap some toward upper.
+                // Negative: too much upper relative to target, swap some toward lower.
+                const excess = lowerCount - targetLower;
+                const swapFrom = excess > 0 ? 'lower' : 'upper';
+                const swapTo   = excess > 0 ? 'upper' : 'lower';
+                const swapCount = Math.abs(excess);
 
-                if (excess > 0) {
-                    // Find non-target lower exercises eligible for swapping (not Active Stretch — PNF rules)
+                if (swapCount > 0) {
+                    // Find non-target swapFrom-side exercises eligible for swapping (not Active/Deep Stretch — PNF rules)
                     const swappable = nonFinal.filter(e =>
-                        (e.bodyPart||'').toLowerCase() === 'lower' &&
+                        (e.bodyPart||'').toLowerCase() === swapFrom &&
                         !sessionTargets.includes(e.primaryMuscle || e.target) &&
                         !e.isReserved &&
                         e.phase !== 'Active Stretch' &&
@@ -7676,13 +7753,13 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     );
 
                     let swapped = 0;
-                    for (let i = 0; i < Math.min(excess, swappable.length); i++) {
+                    for (let i = 0; i < Math.min(swapCount, swappable.length); i++) {
                         const toReplace = swappable[i];
                         const usedNames = new Set(currentRoutine.map(e => e.exercise));
                         // Pick randomly among all valid replacements — not just the first match in list order —
                         // so the same exercise doesn't get swapped in every time
                         const candidates = exercisesForGen.filter(e =>
-                            (e.bodyPart||'').toLowerCase() === 'upper' &&
+                            (e.bodyPart||'').toLowerCase() === swapTo &&
                             !usedNames.has(e.exercise) &&
                             e.phase === toReplace.phase
                         );
@@ -7786,8 +7863,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                             if (ex.exercise === 'Savasana') return false;
                             if (usedNames.has(ex.exercise)) return false;
                             // Apply bodyPart filter — same as in main phase loop
-                            if (selectedType === 'upper') { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'upper' || bp === 'full'; }
-                            if (selectedType === 'lower') { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'lower' || bp === 'full'; }
+                            if (bodyBalance === 100) { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'upper' || bp === 'full'; }
+                            if (bodyBalance === 0) { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'lower' || bp === 'full'; }
                             return true;
                         });
                         availableStatic.push(...phaseExercises);
@@ -7812,8 +7889,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         availableStatic = exercisesForGen.filter(ex => {
                             if (ex.phase !== 'Static Stretching') return false;
                             if (ex.exercise === 'Savasana') return false;
-                            if (selectedType === 'upper') { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'upper' || bp === 'full'; }
-                            if (selectedType === 'lower') { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'lower' || bp === 'full'; }
+                            if (bodyBalance === 100) { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'upper' || bp === 'full'; }
+                            if (bodyBalance === 0) { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'lower' || bp === 'full'; }
                             return true;
                         });
                         availableStatic.sort((a, b) => {
@@ -8068,18 +8145,18 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             const _savedDur = localStorage.getItem('globalDuration');
             if (_savedDur) selectedTime = _savedDur === '999' ? 999 : parseInt(_savedDur);
             else if (!selectedTime) selectedTime = 35;
-            selectedType = appSettings.quickStartType || selectedType || 'full';
+            setBodyBalance(appSettings.quickStartBalance ?? bodyBalance ?? 50);
             selectedHold = appSettings.quickStartHold || selectedHold || 'short';
             longSession = selectedHold === 'long';
             selectedFocus = '';
 
-            // Sync type and hold UI and read back selected values
-            document.querySelectorAll('.type-btn').forEach(b => { b.classList.remove('selected'); b.classList.toggle('selected', b.dataset.type === selectedType); });
+            // Sync balance slider and hold UI and read back selected values
+            syncBalanceSliderUI();
             document.querySelectorAll('[data-hold]').forEach(b => { b.classList.remove('selected'); b.classList.toggle('selected', b.dataset.hold === selectedHold); });
-            // Read back from UI in case buttons were clicked since last sync
-            const activeTypeBtn = document.querySelector('.type-btn.selected');
+            // Read back from UI in case controls were changed since last sync
+            const activeBalanceSlider = document.getElementById('balanceSlider');
             const activeHoldBtn = document.querySelector('[data-hold].selected');
-            if (activeTypeBtn) selectedType = activeTypeBtn.dataset.type;
+            if (activeBalanceSlider) setBodyBalance(parseInt(activeBalanceSlider.value, 10));
             if (activeHoldBtn) { selectedHold = activeHoldBtn.getAttribute('data-hold'); longSession = selectedHold === 'long'; }
 
             // Restore Quick Start routine if one exists, otherwise show empty state
@@ -8368,12 +8445,12 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     );
                     
                     // Filter by bodyPart based on routine type (same logic as swap function)
-                    if (selectedType === 'upper') {
+                    if (bodyBalance === 100) {
                         availableAlternatives = availableAlternatives.filter(e => {
                             const bp = (e.bodyPart || '').toLowerCase();
                             return bp === 'upper' || bp === 'full';
                         });
-                    } else if (selectedType === 'lower') {
+                    } else if (bodyBalance === 0) {
                         availableAlternatives = availableAlternatives.filter(e => {
                             const bp = (e.bodyPart || '').toLowerCase();
                             return bp === 'lower' || bp === 'full';
@@ -9045,6 +9122,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     currentIndex: currentExerciseIndex,
                     currentSide: currentSide,
                     type: selectedType,
+                    bodyBalance: appState.bodyBalance,
                     duration: selectedTime,
                     timestamp: Date.now()
                 };
@@ -9195,15 +9273,11 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     updateFloatingButtons();
                 }
                 
-                // Restore type button selection
+                // Restore balance slider position
                 if (selectedType && selectedType !== 'custom' && selectedType !== 'starred') {
-                    document.querySelectorAll('.type-btn').forEach(btn => {
-                        if (btn.dataset.type === selectedType) {
-                            btn.classList.add('selected');
-                        }
-                    });
+                    syncBalanceSliderUI();
                 }
-                
+
                 currentExerciseIndex = -1;
                 isPaused = false;
                     if (routinePauseStart !== null) { routinePausedMs += performance.now() - routinePauseStart; routinePauseStart = null; }
@@ -9551,13 +9625,9 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     updateFloatingButtons();
                 }
                 
-                // Restore type button selection
+                // Restore balance slider position
                 if (selectedType && selectedType !== 'custom' && selectedType !== 'starred') {
-                    document.querySelectorAll('.type-btn').forEach(btn => {
-                        if (btn.dataset.type === selectedType) {
-                            btn.classList.add('selected');
-                        }
-                    });
+                    syncBalanceSliderUI();
                 }
                 
                 currentExerciseIndex = -1;
@@ -9611,13 +9681,9 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 updateFloatingButtons();
             }
             
-            // Restore type button selection
+            // Restore balance slider position
             if (selectedType && selectedType !== 'custom' && selectedType !== 'starred') {
-                document.querySelectorAll('.type-btn').forEach(btn => {
-                    if (btn.dataset.type === selectedType) {
-                        btn.classList.add('selected');
-                    }
-                });
+                syncBalanceSliderUI();
             }
             
             currentExerciseIndex = -1;
@@ -9752,12 +9818,12 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             );
             
             // Filter by bodyPart based on selectedType (case-insensitive)
-            if (selectedType === 'upper') {
+            if (bodyBalance === 100) {
                 availableSwaps = availableSwaps.filter(ex => {
                     const bp = (ex.bodyPart || '').toLowerCase();
                     return bp === 'upper' || bp === 'full';
                 });
-            } else if (selectedType === 'lower') {
+            } else if (bodyBalance === 0) {
                 availableSwaps = availableSwaps.filter(ex => {
                     const bp = (ex.bodyPart || '').toLowerCase();
                     return bp === 'lower' || bp === 'full';
@@ -9869,6 +9935,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 const completedRoutine = {
                     date: new Date().toISOString(),
                     type: selectedType,
+                    bodyBalance: appState.bodyBalance,
                     focus: selectedFocus || 'None',
                     duration: selectedTime,
                     hold: selectedHold,
@@ -9926,13 +9993,9 @@ function showStats() {
             document.getElementById('statsView').style.display = 'none';
             document.getElementById('mainView').style.display = 'grid';
             
-            // Restore type button selection if a type is selected
+            // Restore balance slider position if a body-balance type is selected
             if (selectedType && selectedType !== 'custom' && selectedType !== 'starred') {
-                document.querySelectorAll('.type-btn').forEach(btn => {
-                    if (btn.dataset.type === selectedType) {
-                        btn.classList.add('selected');
-                    }
-                });
+                syncBalanceSliderUI();
             }
             
             // Show star if routine exists
@@ -10501,6 +10564,7 @@ function showStats() {
             const starred = {
                 name: name,
                 type: selectedType,
+                bodyBalance: appState.bodyBalance,
                 time: selectedTime,
                 hold: selectedHold,
                 focus: selectedFocus,
@@ -10574,16 +10638,18 @@ function showStats() {
             // Sort by phase order to ensure correct display
             currentRoutine.sort(comparePhaseOrder);
             
-            selectedType = 'starred';
             selectedTime = routine.time;
             selectedHold = routine.hold;
             selectedFocus = routine.focus || '';
-            
-            // Update UI selections
-            document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
-            const typeBtn = document.querySelector(`[data-type="${routine.type}"]`);
-            if (typeBtn) typeBtn.classList.add('selected');
-            
+
+            // Update UI selections — reflect the balance the starred routine was generated
+            // with. Routines saved before this feature only stored a type label ('full' /
+            // 'upper' / 'lower'), so derive a balance from that; newer ones store the exact value.
+            const restoredBalance = routine.bodyBalance ?? (routine.type === 'upper' ? 100 : routine.type === 'lower' ? 0 : 50);
+            setBodyBalance(restoredBalance);
+            selectedType = 'starred'; // set after setBodyBalance — 'starred' is a mode flag, not a balance
+            syncBalanceSliderUI();
+
             document.querySelectorAll('.hold-btn').forEach(b => b.classList.remove('selected'));
             const holdBtn = document.querySelector(`[data-hold="${routine.hold}"]`);
             if (holdBtn) holdBtn.classList.add('selected');
@@ -11627,10 +11693,7 @@ function showStats() {
 
                 <!-- Quick Start Content -->
                 <div id="settingsQuickStartContent" class="settings-content-panel" style="display:none;">
-                    <!-- Hidden radios — keep for getRadioValue() JS compatibility -->
-                    <input type="radio" name="quickStartType" value="full" style="display:none;">
-                    <input type="radio" name="quickStartType" value="upper" style="display:none;">
-                    <input type="radio" name="quickStartType" value="lower" style="display:none;">
+                    <!-- Hidden radio — keep for getRadioValue() JS compatibility -->
                     <input type="radio" name="quickStartHold" value="short" style="display:none;">
                     <input type="radio" name="quickStartHold" value="long" style="display:none;">
 
@@ -11638,10 +11701,11 @@ function showStats() {
                     <p style="font-size:14px; color:#86868b; margin-bottom:28px; line-height:1.5;">Set the default routine that launches when you tap Quick Start.</p>
 
                     <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Type</div>
-                    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:32px;">
-                        <div class="qs-type-pill pill-option" data-value="full">Full Body</div>
-                        <div class="qs-type-pill pill-option" data-value="upper">Upper Body</div>
-                        <div class="qs-type-pill pill-option" data-value="lower">Lower Body</div>
+                    <div id="settingsBalanceSliderLabel" style="text-align:center;font-size:14px;font-weight:600;color:#1d1d1f;margin-bottom:10px;">Full Body</div>
+                    <input type="range" id="settingsBalanceSlider" class="balance-slider" min="0" max="100" step="10" value="50">
+                    <div style="display:flex;justify-content:space-between;font-size:11px;color:#86868b;margin-top:6px;margin-bottom:32px;">
+                        <span>Lower Body</span>
+                        <span>Upper Body</span>
                     </div>
 
                     <div style="height:1px; background:#f0f0f5; margin-bottom:28px;"></div>
@@ -11977,7 +12041,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.68</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.69</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
