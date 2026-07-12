@@ -1691,7 +1691,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="12 Jul 2026">
-<meta name="app-version" content="6.79">
+<meta name="app-version" content="6.80">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -6889,8 +6889,13 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             const addedNames = new Set();
             const muscleCountInPhase = {}; // variety cap — tracks per-muscle count in this phase
 
-            // GUARANTEE: If focus is selected and this phase has focus exercises, add at least one
-            if (selectedFocus && !isAllExercises && focusExercises.length > 0) {
+            // GUARANTEE: if this phase's pool has a target-muscle match, add at least one.
+            // The target may be an explicit user focus (selectedFocus, handled by the
+            // hard-split above for Static/Active/Deep) or an auto-picked session target
+            // populated for every other phase by the throughline block above — either
+            // way, whenever focusExercises is non-empty this phase gets first refusal
+            // on it before the rest fills in from ordinary recency shuffle.
+            if (!isAllExercises && focusExercises.length > 0) {
                 // Find focus exercises available in this phase
                 const phaseFocusExercises = focusExercises.filter(e => !usedExerciseNames.has(e.exercise));
 
@@ -7610,8 +7615,22 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         } else {
                             allPhaseExercises = weightedShuffle(allPhaseExercises, phasePool);
                         }
+
+                        // Throughline (outside Static/Active/Deep, which already reserve the
+                        // target via reserveTargetExercises): give every other phase one shot
+                        // at including a target-matching exercise too, "as far as possible" —
+                        // only if this phase's own pool actually has one. The rest of the phase
+                        // still fills from the shuffle above (recency, or recency+balance in
+                        // prep). Matches primary OR secondary muscle so e.g. "Foam Roll
+                        // Hamstrings" (secondaryMuscle: Calves) can stand in for a Calves target.
+                        if (!WORKOUT_PHASES.has(phase) && !isAllExercises) {
+                            const throughlineTarget = sessionTargets && sessionTargets.length > 0 ? sessionTargets[0] : null;
+                            if (throughlineTarget) {
+                                focusExercises = allPhaseExercises.filter(e => exerciseMatchesTarget(e, throughlineTarget));
+                            }
+                        }
                     }
-                    
+
                     // Safety check: if no exercises after filtering, skip this phase
                     if (allPhaseExercises.length === 0) {
                         if (phase !== 'Splits') console.warn(`Phase ${phase}: No exercises available after bodyPart filtering for type ${selectedType}`);
@@ -12125,7 +12144,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.79</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.80</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
