@@ -1659,7 +1659,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="12 Jul 2026">
-<meta name="app-version" content="6.66">
+<meta name="app-version" content="6.67">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -6667,6 +6667,100 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             return pool;
         }
 
+        // Builds the raw candidate list of exercises for a given phase, before any
+        // shuffling, variety-capping or count-limiting is applied. Each phase type has
+        // its own rule for what counts as a candidate:
+        //  - Active Stretch / Deep Stretch: hard-inject the exercise reserved for the
+        //    session target, plus PNF/other candidates that are NOT the target muscle
+        //    (the reserved exercise is what guarantees the target appears here).
+        //  - Static Stretching: inject the target primary exercise (or secondary, if no
+        //    primary match exists), plus every other eligible exercise.
+        //  - Everything else: just every exercise tagged for this phase.
+        // Pure function — reads its inputs, doesn't mutate anything. Extracted unchanged
+        // from generateRoutine() in Phase 6 of the maintainability plan.
+        function buildPhaseCandidatePool(phase, ctx) {
+            const {
+                exercisesForGen, sessionTargets, reservedForActive, reservedForDeep,
+                excludedFromAll, usedExerciseNames, longSession, sessionTargetPool, weightedShuffle
+            } = ctx;
+            const targetPool = sessionTargetPool && Object.keys(sessionTargetPool).length > 0 ? sessionTargetPool : null;
+
+            if (phase === "Active Stretch") {
+                const target = sessionTargets[0];
+                // Hard-inject reserved exercise only
+                const reservedEx = exercisesForGen
+                    .filter(e => e.phase === "Static Stretching" && reservedForActive.has(e.exercise) && !usedExerciseNames.has(e.exercise))
+                    .map(e => ({...e, phase: "Active Stretch", duration: longSession ? 105 : 75, isReserved: true, reservedPhase: 'activestretch'}));
+                // Candidates: PNF eligible, not reserved, not excluded, NOT target muscle (reserved handles target)
+                const candidates = exercisesForGen
+                    .filter(e => e.phase === "Static Stretching"
+                        && !reservedForActive.has(e.exercise)
+                        && !reservedForDeep.has(e.exercise)
+                        && !excludedFromAll.has(e.exercise)
+                        && !usedExerciseNames.has(e.exercise)
+                        && !!e.pnf
+                        && (e.primaryMuscle || e.target) !== target
+                        && e.secondaryMuscle !== target)
+                    .map(e => ({...e, phase: "Active Stretch", duration: longSession ? 105 : 75}));
+                return [...reservedEx, ...weightedShuffle(candidates, targetPool)];
+            }
+
+            if (phase === "Deep Stretch") {
+                const target = sessionTargets[0];
+                // Hard-inject reserved exercise only
+                const reservedEx = exercisesForGen
+                    .filter(e => e.phase === "Static Stretching" && reservedForDeep.has(e.exercise) && !usedExerciseNames.has(e.exercise))
+                    .map(e => ({...e, phase: "Deep Stretch", duration: longSession ? 120 : 90, isReserved: true, reservedPhase: 'deepstretch'}));
+                // Candidates: not reserved, not excluded, NOT target muscle (reserved handles target)
+                const candidates = exercisesForGen
+                    .filter(e => e.phase === "Static Stretching"
+                        && !reservedForDeep.has(e.exercise)
+                        && !reservedForActive.has(e.exercise)
+                        && !excludedFromAll.has(e.exercise)
+                        && !usedExerciseNames.has(e.exercise)
+                        && (e.primaryMuscle || e.target) !== target
+                        && e.secondaryMuscle !== target)
+                    .map(e => ({...e, phase: "Deep Stretch", duration: longSession ? 120 : 90}));
+                return [...reservedEx, ...weightedShuffle(candidates, targetPool)];
+            }
+
+            if (phase === "Static Stretching") {
+                const target = sessionTargets[0];
+                // Inject target primary first so it's always selected (validator requires exactly 1).
+                // If no primary match exists for the target in this phase, fall back to a secondary match
+                // — primary is always the first port of call, secondary only when primary isn't available.
+                const targetPrimaryPool = target ? exercisesForGen.filter(e =>
+                    e.phase === "Static Stretching" &&
+                    (e.primaryMuscle || e.target) === target &&
+                    !reservedForActive.has(e.exercise) &&
+                    !reservedForDeep.has(e.exercise) &&
+                    !excludedFromAll.has(e.exercise) &&
+                    !usedExerciseNames.has(e.exercise)
+                ) : [];
+                const targetSecondaryPool = (target && targetPrimaryPool.length === 0) ? exercisesForGen.filter(e =>
+                    e.phase === "Static Stretching" &&
+                    e.secondaryMuscle === target &&
+                    !reservedForActive.has(e.exercise) &&
+                    !reservedForDeep.has(e.exercise) &&
+                    !excludedFromAll.has(e.exercise) &&
+                    !usedExerciseNames.has(e.exercise)
+                ) : [];
+                const targetPick = targetPrimaryPool[0] || targetSecondaryPool[0] || null;
+                const targetPrimary = targetPick ? [{...targetPick, isReserved: true}] : [];
+                const others = exercisesForGen.filter(e =>
+                    e.phase === "Static Stretching" &&
+                    !reservedForActive.has(e.exercise) &&
+                    !reservedForDeep.has(e.exercise) &&
+                    !excludedFromAll.has(e.exercise) &&
+                    !usedExerciseNames.has(e.exercise) &&
+                    (targetPick ? e.exercise !== targetPick.exercise : true)
+                );
+                return [...targetPrimary, ...others];
+            }
+
+            return exercisesForGen.filter(e => e.phase === phase);
+        }
+
         // ===== VALIDATION LAYER =====
         // Pure, read-only checks on a finished routine — none of these change the
         // routine or log anything themselves; they just report whether it passes.
@@ -7187,79 +7281,12 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
                 // Select exercises for each phase
                 for (let phase of phases) {
-                    let allPhaseExercises;
-
-                    // Build phase pool — reserved exercises are tagged and kept separate
-                    if (phase === "Active Stretch") {
-                        const target = sessionTargets[0];
-                        // Hard-inject reserved exercise only
-                        const reservedEx = exercisesForGen
-                            .filter(e => e.phase === "Static Stretching" && reservedForActive.has(e.exercise) && !usedExerciseNames.has(e.exercise))
-                            .map(e => ({...e, phase: "Active Stretch", duration: longSession ? 105 : 75, isReserved: true, reservedPhase: 'activestretch'}));
-                        // Candidates: PNF eligible, not reserved, not excluded, NOT target muscle (reserved handles target)
-                        const candidates = exercisesForGen
-                            .filter(e => e.phase === "Static Stretching"
-                                && !reservedForActive.has(e.exercise)
-                                && !reservedForDeep.has(e.exercise)
-                                && !excludedFromAll.has(e.exercise)
-                                && !usedExerciseNames.has(e.exercise)
-                                && !!e.pnf
-                                && (e.primaryMuscle || e.target) !== target
-                                && e.secondaryMuscle !== target)
-                            .map(e => ({...e, phase: "Active Stretch", duration: longSession ? 105 : 75}));
-                        allPhaseExercises = [...reservedEx, ...weightedShuffle(candidates, sessionTargetPool && Object.keys(sessionTargetPool).length > 0 ? sessionTargetPool : null)];
-                    } else if (phase === "Deep Stretch") {
-                        const target = sessionTargets[0];
-                        // Hard-inject reserved exercise only
-                        const reservedEx = exercisesForGen
-                            .filter(e => e.phase === "Static Stretching" && reservedForDeep.has(e.exercise) && !usedExerciseNames.has(e.exercise))
-                            .map(e => ({...e, phase: "Deep Stretch", duration: longSession ? 120 : 90, isReserved: true, reservedPhase: 'deepstretch'}));
-                        // Candidates: not reserved, not excluded, NOT target muscle (reserved handles target)
-                        const candidates = exercisesForGen
-                            .filter(e => e.phase === "Static Stretching"
-                                && !reservedForDeep.has(e.exercise)
-                                && !reservedForActive.has(e.exercise)
-                                && !excludedFromAll.has(e.exercise)
-                                && !usedExerciseNames.has(e.exercise)
-                                && (e.primaryMuscle || e.target) !== target
-                                && e.secondaryMuscle !== target)
-                            .map(e => ({...e, phase: "Deep Stretch", duration: longSession ? 120 : 90}));
-                        allPhaseExercises = [...reservedEx, ...weightedShuffle(candidates, sessionTargetPool && Object.keys(sessionTargetPool).length > 0 ? sessionTargetPool : null)];
-                    } else if (phase === "Static Stretching") {
-                        const target = sessionTargets[0];
-                        // Inject target primary first so it's always selected (validator requires exactly 1).
-                        // If no primary match exists for the target in this phase, fall back to a secondary match
-                        // — primary is always the first port of call, secondary only when primary isn't available.
-                        const targetPrimaryPool = target ? exercisesForGen.filter(e =>
-                            e.phase === "Static Stretching" &&
-                            (e.primaryMuscle || e.target) === target &&
-                            !reservedForActive.has(e.exercise) &&
-                            !reservedForDeep.has(e.exercise) &&
-                            !excludedFromAll.has(e.exercise) &&
-                            !usedExerciseNames.has(e.exercise)
-                        ) : [];
-                        const targetSecondaryPool = (target && targetPrimaryPool.length === 0) ? exercisesForGen.filter(e =>
-                            e.phase === "Static Stretching" &&
-                            e.secondaryMuscle === target &&
-                            !reservedForActive.has(e.exercise) &&
-                            !reservedForDeep.has(e.exercise) &&
-                            !excludedFromAll.has(e.exercise) &&
-                            !usedExerciseNames.has(e.exercise)
-                        ) : [];
-                        const targetPick = targetPrimaryPool[0] || targetSecondaryPool[0] || null;
-                        const targetPrimary = targetPick ? [{...targetPick, isReserved: true}] : [];
-                        const others = exercisesForGen.filter(e =>
-                            e.phase === "Static Stretching" &&
-                            !reservedForActive.has(e.exercise) &&
-                            !reservedForDeep.has(e.exercise) &&
-                            !excludedFromAll.has(e.exercise) &&
-                            !usedExerciseNames.has(e.exercise) &&
-                            (targetPick ? e.exercise !== targetPick.exercise : true)
-                        );
-                        allPhaseExercises = [...targetPrimary, ...others];
-                    } else {
-                        allPhaseExercises = exercisesForGen.filter(e => e.phase === phase);
-                    }
+                    // Build phase pool — reserved exercises are tagged and kept separate.
+                    // See buildPhaseCandidatePool() for the per-phase eligibility rules.
+                    let allPhaseExercises = buildPhaseCandidatePool(phase, {
+                        exercisesForGen, sessionTargets, reservedForActive, reservedForDeep,
+                        excludedFromAll, usedExerciseNames, longSession, sessionTargetPool, weightedShuffle
+                    });
 
                     // Deduplicate
                     const seenInPool = new Set();
@@ -11928,7 +11955,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.66</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.67</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
