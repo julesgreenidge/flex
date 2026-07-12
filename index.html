@@ -1691,7 +1691,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="12 Jul 2026">
-<meta name="app-version" content="6.69">
+<meta name="app-version" content="6.70">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -6735,6 +6735,16 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             return pool;
         }
 
+        // True if this exercise belongs at a pure Upper Body / Lower Body extreme (100 or 0).
+        // At any other balance value, everything passes — mixing sides is fine there and
+        // handled afterwards by the balance swap.
+        function matchesBalanceExtreme(ex) {
+            const bp = (ex.bodyPart || '').toLowerCase();
+            if (bodyBalance === 100) return bp === 'upper' || bp === 'full';
+            if (bodyBalance === 0) return bp === 'lower' || bp === 'full';
+            return true;
+        }
+
         // Builds the raw candidate list of exercises for a given phase, before any
         // shuffling, variety-capping or count-limiting is applied. Each phase type has
         // its own rule for what counts as a candidate:
@@ -6768,7 +6778,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         && !usedExerciseNames.has(e.exercise)
                         && !!e.pnf
                         && (e.primaryMuscle || e.target) !== target
-                        && e.secondaryMuscle !== target)
+                        && e.secondaryMuscle !== target
+                        && matchesBalanceExtreme(e))
                     .map(e => ({...e, phase: "Active Stretch", duration: longSession ? 105 : 75}));
                 return [...reservedEx, ...weightedShuffle(candidates, targetPool)];
             }
@@ -6787,7 +6798,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         && !excludedFromAll.has(e.exercise)
                         && !usedExerciseNames.has(e.exercise)
                         && (e.primaryMuscle || e.target) !== target
-                        && e.secondaryMuscle !== target)
+                        && e.secondaryMuscle !== target
+                        && matchesBalanceExtreme(e))
                     .map(e => ({...e, phase: "Deep Stretch", duration: longSession ? 120 : 90}));
                 return [...reservedEx, ...weightedShuffle(candidates, targetPool)];
             }
@@ -12041,7 +12053,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.69</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.70</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
