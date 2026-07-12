@@ -1659,7 +1659,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="12 Jul 2026">
-<meta name="app-version" content="6.67">
+<meta name="app-version" content="6.68">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -6761,6 +6761,135 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             return exercisesForGen.filter(e => e.phase === phase);
         }
 
+        // Given the candidate pool for a phase (already built by buildPhaseCandidatePool
+        // and shuffled/filtered by the caller), decides which of those candidates actually
+        // make it into the routine — respecting the phase's min/max count, the remaining
+        // time budget, and the per-muscle variety cap — then falls back to repeating
+        // exercises if the phase still isn't full after every unique option is used.
+        // Mutates usedExerciseNames (a Set, shared across all phases in this attempt) as
+        // exercises are picked; returns the picked exercises and the updated running total
+        // time, since numbers can't be mutated by reference the way the Set can.
+        // Extracted unchanged from generateRoutine() in Phase 6 of the maintainability plan
+        // (dropped one dead variable and one unreachable duplicate check along the way —
+        // neither did anything, see the version notes).
+        function selectPhaseExercises(phase, allPhaseExercises, focusExercises, ctx) {
+            const {
+                config, totalTime, usedExerciseNames, selectedFocus, isAllExercises,
+                sessionTargets, estimatedActiveStretchTime, estimatedDeepStretchTime,
+                estimatedCoolDownTime, minReservedTime, maxSeconds, appSettings
+            } = ctx;
+            let runningTotalTime = totalTime;
+
+            if (allPhaseExercises.length === 0) {
+                return { phaseExercises: [], totalTime: runningTotalTime };
+            }
+
+            const phaseConf = config[phase];
+            // effectiveMin: for Active Stretch and Deep Stretch, always enforce at least 1
+            // so they never get squeezed out by earlier phases consuming all the budget.
+            const effectiveMin = (phase === "Active Stretch" || phase === "Deep Stretch")
+                ? Math.max(1, phaseConf.min)
+                : phaseConf.min;
+
+            const phaseExercises = [];
+            let phaseCount = 0;
+            const addedNames = new Set();
+            const muscleCountInPhase = {}; // variety cap — tracks per-muscle count in this phase
+
+            // GUARANTEE: If focus is selected and this phase has focus exercises, add at least one
+            if (selectedFocus && !isAllExercises && focusExercises.length > 0) {
+                // Find focus exercises available in this phase
+                const phaseFocusExercises = focusExercises.filter(e => !usedExerciseNames.has(e.exercise));
+
+                if (phaseFocusExercises.length > 0) {
+                    const guaranteedEx = {...phaseFocusExercises[0]};
+
+                    phaseExercises.push(guaranteedEx);
+                    addedNames.add(guaranteedEx.exercise);
+                    runningTotalTime += calculateExerciseTime(guaranteedEx);
+                    usedExerciseNames.add(guaranteedEx.exercise);
+                    const gm = guaranteedEx.primaryMuscle || '';
+                    muscleCountInPhase[gm] = (muscleCountInPhase[gm] || 0) + 1;
+                    phaseCount++;
+                }
+            }
+
+            // shuffled = already sorted/ordered by the caller, spread once for Pass 1
+            const shuffled = [...allPhaseExercises];
+
+            // When processing a phase whose time was already included in reservedTime,
+            // subtract it to avoid double-counting (Active/Deep/CoolDown were pre-reserved)
+            const effectiveReserved = Math.max(0, minReservedTime - (
+                phase === 'Active Stretch' ? estimatedActiveStretchTime :
+                phase === 'Deep Stretch'   ? estimatedDeepStretchTime :
+                phase === 'Cool Down'      ? estimatedCoolDownTime : 0
+            ));
+
+            // Track per-muscle counts for variety cap (stretch phases only)
+            const STRETCH_VARIETY_MAX = 2; // max exercises per primary muscle per stretch phase
+
+            for (const ex of shuffled) {
+                if (phaseCount >= phaseConf.max) break;
+                if (addedNames.has(ex.exercise)) continue;
+
+                // Variety cap: limit per primary muscle to STRETCH_VARIETY_MAX per phase
+                // Target muscle is stricter: max 1 primary per phase (enforced during selection)
+                if (!isAllExercises) {
+                    const m = ex.primaryMuscle || '';
+                    const targetMuscle = sessionTargets && sessionTargets.length > 0 ? sessionTargets[0] : null;
+                    const maxForMuscle = (targetMuscle && m === targetMuscle) ? 1 : STRETCH_VARIETY_MAX;
+                    if ((muscleCountInPhase[m] || 0) >= maxForMuscle) continue;
+                }
+
+                const modifiedEx = {...ex};
+
+                const exTime = calculateExerciseTime(modifiedEx);
+                const projectedTotal = runningTotalTime + exTime + effectiveReserved;
+                // Splits: bypass the reservedTime budget check (it double-counts already-spent budget)
+                // but only include it with 50% probability to keep it optional/random
+                if (phase === 'Splits') {
+                    const forceSplits = window.splitsForced || false;
+                    const freq = appSettings.splitsFrequency ?? 0.1;
+                    if (!forceSplits && Math.random() >= freq) continue;
+                } else if (!isAllExercises && projectedTotal > maxSeconds && phaseCount >= effectiveMin) {
+                    continue;
+                }
+
+                phaseExercises.push(modifiedEx);
+                addedNames.add(ex.exercise);
+                runningTotalTime += exTime;
+                usedExerciseNames.add(ex.exercise);
+                const m = ex.primaryMuscle || '';
+                muscleCountInPhase[m] = (muscleCountInPhase[m] || 0) + 1;
+                phaseCount++;
+            }
+
+            // Only add duplicates if ALL unique pool exercises have been used
+            if (!isAllExercises && phaseCount < phaseConf.max && phaseExercises.length > 0 && phaseExercises.length >= allPhaseExercises.length) {
+                // Snapshot of unique exercises - round-robin ONLY from these
+                const uniqueSnapshot = [...phaseExercises];
+                let dupIndex = 0;
+                let attempts = 0;
+                while (phaseCount < phaseConf.max && attempts < 50) {
+                    attempts++;
+                    if (uniqueSnapshot.length === 0) break;
+                    const sourceEx = uniqueSnapshot[dupIndex % uniqueSnapshot.length];
+                    const exTime = calculateExerciseTime(sourceEx);
+                    const projectedTotal = runningTotalTime + exTime + effectiveReserved;
+                    if (!isAllExercises && projectedTotal > maxSeconds && phaseCount >= effectiveMin) {
+                        dupIndex++;
+                        continue;
+                    }
+                    phaseExercises.push({...sourceEx});
+                    runningTotalTime += exTime;
+                    phaseCount++;
+                    dupIndex++;
+                }
+            }
+
+            return { phaseExercises, totalTime: runningTotalTime };
+        }
+
         // ===== VALIDATION LAYER =====
         // Pure, read-only checks on a finished routine — none of these change the
         // routine or log anything themselves; they just report whether it passes.
@@ -7261,7 +7390,6 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 const minActiveStretchTime = isAllExercises ? 0 : (minActiveStretches * minActiveSampleTime);
                 const minDeepStretchTime = isAllExercises ? 0 : (minDeepStretches * minDeepSampleTime);
 
-                const reservedTime = savasanaTime + estimatedCoolDownTime + estimatedActiveStretchTime + estimatedDeepStretchTime;
                 const minReservedTime = savasanaTime + estimatedCoolDownTime + minActiveStretchTime + minDeepStretchTime;
 
                 // recencyWeights, sessionTargetPool and weightedShuffle() are all computed once,
@@ -7324,122 +7452,16 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         if (phase !== 'Splits') console.warn(`Phase ${phase}: No exercises available after bodyPart filtering for type ${selectedType}`);
                         continue;
                     }
-                    
-                    const phaseConf = config[phase];
-                    // effectiveMin: for Active Stretch and Deep Stretch, always enforce at least 1 
-                    // so they never get squeezed out by earlier phases consuming all the budget.
-                    const effectiveMin = (phase === "Active Stretch" || phase === "Deep Stretch")
-                        ? Math.max(1, phaseConf.min)
-                        : phaseConf.min;
-                    
-                    const phaseExercises = [];
-                    let phaseCount = 0;
-                    const addedNames = new Set();
-                    const muscleCountInPhase = {}; // variety cap — tracks per-muscle count in this phase
-                    
-                    // Safety: if pool is empty after filtering, skip this phase entirely
-                    if (allPhaseExercises.length === 0) {
-                        routine.push(...phaseExercises);
-                        continue;
-                    }
-                    
-                    // GUARANTEE: If focus is selected and this phase has focus exercises, add at least one
-                    if (selectedFocus && !isAllExercises && focusExercises.length > 0) {
-                        // Find focus exercises available in this phase
-                        const phaseFocusExercises = focusExercises.filter(e => !usedExerciseNames.has(e.exercise));
-                        
-                        if (phaseFocusExercises.length > 0) {
-                            const guaranteedEx = {...phaseFocusExercises[0]};
-                            
-                            phaseExercises.push(guaranteedEx);
-                            addedNames.add(guaranteedEx.exercise);
-                            totalTime += calculateExerciseTime(guaranteedEx);
-                            usedExerciseNames.add(guaranteedEx.exercise);
-                            const gm = guaranteedEx.primaryMuscle || '';
-                            muscleCountInPhase[gm] = (muscleCountInPhase[gm] || 0) + 1;
-                            phaseCount++;
-                            
-                        }
-                    }
-                    
-                    // shuffled = already sorted/ordered above, spread once for Pass 1
-                    const shuffled = [...allPhaseExercises];
 
-                    // When processing a phase whose time was already included in reservedTime,
-                    // subtract it to avoid double-counting (Active/Deep/CoolDown were pre-reserved)
-                    const phaseReserved =
-                        phase === 'Active Stretch'    ? estimatedActiveStretchTime :
-                        phase === 'Deep Stretch'      ? estimatedDeepStretchTime :
-                        phase === 'Cool Down'         ? estimatedCoolDownTime :
-                        phase === 'Static Stretching' ? (reservedTime - minReservedTime) : 0;
-                    const effectiveReserved = Math.max(0, minReservedTime - (
-                        phase === 'Active Stretch' ? estimatedActiveStretchTime :
-                        phase === 'Deep Stretch'   ? estimatedDeepStretchTime :
-                        phase === 'Cool Down'      ? estimatedCoolDownTime : 0
-                    ));
-                    
-                    // Track per-muscle counts for variety cap (stretch phases only)
-                    const STRETCH_VARIETY_MAX = 2; // max exercises per primary muscle per stretch phase
-
-                    for (const ex of shuffled) {
-                        if (phaseCount >= phaseConf.max) break;
-                        if (addedNames.has(ex.exercise)) continue;
-
-                        // Variety cap: limit per primary muscle to STRETCH_VARIETY_MAX per phase
-                        // Target muscle is stricter: max 1 primary per phase (enforced during selection)
-                        if (!isAllExercises) {
-                            const m = ex.primaryMuscle || '';
-                            const targetMuscle = sessionTargets && sessionTargets.length > 0 ? sessionTargets[0] : null;
-                            const maxForMuscle = (targetMuscle && m === targetMuscle) ? 1 : STRETCH_VARIETY_MAX;
-                            if ((muscleCountInPhase[m] || 0) >= maxForMuscle) continue;
-                        }
-                        
-                        const modifiedEx = {...ex};
-                        
-                        const exTime = calculateExerciseTime(modifiedEx);
-                        const projectedTotal = totalTime + exTime + effectiveReserved;
-                        // Splits: bypass the reservedTime budget check (it double-counts already-spent budget)
-                        // but only include it with 50% probability to keep it optional/random
-                        if (phase === 'Splits') {
-                            const forceSplits = window.splitsForced || false;
-                            const freq = appSettings.splitsFrequency ?? 0.1;
-                            if (!forceSplits && Math.random() >= freq) continue;
-                        } else if (!isAllExercises && projectedTotal > maxSeconds && phaseCount >= effectiveMin) {
-                            continue;
-                        }
-                        
-                        phaseExercises.push(modifiedEx);
-                        addedNames.add(ex.exercise);
-                        totalTime += exTime;
-                        usedExerciseNames.add(ex.exercise);
-                        const m = ex.primaryMuscle || '';
-                        muscleCountInPhase[m] = (muscleCountInPhase[m] || 0) + 1;
-                        phaseCount++;
-                    }
-                    
-                    // Only add duplicates if ALL unique pool exercises have been used
-                    if (!isAllExercises && phaseCount < phaseConf.max && phaseExercises.length > 0 && phaseExercises.length >= allPhaseExercises.length) {
-                        // Snapshot of unique exercises - round-robin ONLY from these
-                        const uniqueSnapshot = [...phaseExercises];
-                        let dupIndex = 0;
-                        let attempts = 0;
-                        while (phaseCount < phaseConf.max && attempts < 50) {
-                            attempts++;
-                            if (uniqueSnapshot.length === 0) break;
-                            const sourceEx = uniqueSnapshot[dupIndex % uniqueSnapshot.length];
-                            const exTime = calculateExerciseTime(sourceEx);
-                            const projectedTotal = totalTime + exTime + effectiveReserved;
-                            if (!isAllExercises && projectedTotal > maxSeconds && phaseCount >= effectiveMin) {
-                                dupIndex++;
-                                continue;
-                            }
-                            phaseExercises.push({...sourceEx});
-                            totalTime += exTime;
-                            phaseCount++;
-                            dupIndex++;
-                        }
-                    }
-
+                    // Decide how many of these candidates actually make it in, tracking the
+                    // time budget and variety cap. See selectPhaseExercises() for the rules.
+                    const selection = selectPhaseExercises(phase, allPhaseExercises, focusExercises, {
+                        config, totalTime, usedExerciseNames, selectedFocus, isAllExercises,
+                        sessionTargets, estimatedActiveStretchTime, estimatedDeepStretchTime,
+                        estimatedCoolDownTime, minReservedTime, maxSeconds, appSettings
+                    });
+                    const phaseExercises = selection.phaseExercises;
+                    totalTime = selection.totalTime;
 
                     routine.push(...phaseExercises);
 
@@ -11955,7 +11977,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.67</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.68</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
