@@ -1691,7 +1691,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="12 Jul 2026">
-<meta name="app-version" content="6.74">
+<meta name="app-version" content="6.76">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -5287,10 +5287,14 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 });
             });
 
-            // ========================================
-            // CUSTOM BUILDER - WRITTEN FROM SCRATCH
-            // ========================================
-            
+            setupCustomBuilderListeners();
+            setupEventListenersTail();
+        }
+
+        // Split out of setupEventListeners() (Phase 7 of the maintainability plan) —
+        // handles the Custom Builder's drag-and-drop routine editor. Content below is
+        // unchanged from the original inline block, just given its own function.
+        function setupCustomBuilderListeners() {
             window.customRoutine = [];
             window.customHistory = [];
             window.customHistoryIdx = -1;
@@ -6291,9 +6295,11 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 }
             });
             
-            // ========================================
-            // END CUSTOM BUILDER
-            // ========================================
+        }
+
+        // Rest of setupEventListeners() — split out for the same reason as
+        // setupCustomBuilderListeners() above. Content below is unchanged.
+        function setupEventListenersTail() {
 
             // Body balance slider (replaces the old Full/Upper/Lower Body buttons)
             function onBalanceSliderChange(value) {
@@ -7536,10 +7542,13 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
                     // Active/Deep: pool is already [reservedEx, ...shuffledCandidates] — never reshuffle
                     // All other phases: apply focus/body-type filtering then shuffle
-                    // Prep phases (Warm-Up/Foam Roller/Mobility) also get soft target-muscle weighting —
-                    // matches are preferred (via weightedShuffle grouping) but not hard-forced, so the
-                    // target muscle's throughline extends into prep phases wherever a match exists.
-                    const phasePool = phase === 'Cool Down' ? stretchMusclePool : (sessionTargetPool && Object.keys(sessionTargetPool).length > 0 ? sessionTargetPool : null);
+                    // Prep phases (Warm-Up/Foam Roller/Mobility) get NO muscle weighting — recency
+                    // shuffle only. Giving them the target-muscle pool let a handful of matching
+                    // exercises fill their small 2-3 slot quota every time, which quietly excluded
+                    // the other side of the body from prep at any balance other than 50/50.
+                    const phasePool = phase === 'Cool Down' ? stretchMusclePool
+                        : PREP_PHASES.has(phase) ? null
+                        : (sessionTargetPool && Object.keys(sessionTargetPool).length > 0 ? sessionTargetPool : null);
                     let focusExercises = [];
 
                     if (phase !== 'Active Stretch' && phase !== 'Deep Stretch') {
@@ -12054,7 +12063,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.74</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.76</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
