@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>flex.</title>
-    <!-- v6.28: fix prep-phase exercises incorrectly saved at 45s duration (migration on load); fix 90/90 Hip Transitions primaryMuscle→Hip Flexors, secondaryMuscle→Glutes; editor now defaults duration based on selected phase; swap modal no longer filters by duration — v4.32: muscle name lists fully dynamic — PRIORITY_TARGET_ENUM, LOWER_TARGETS, UPPER_TARGETS, and Jumi prompt all derived from exercise library at runtime — Jumi now returns correct muscle names in priorities/UPPER_TARGETS muscle names — Jumi priorities were being silently filtered; version display updated to 4.30 — top 3 upper and top 3 lower muscles by exercise count added — muscle fields updated on load to match current library — recency scoring and Jumi context updated — routineHistory updated to match current exercise library on load no longer flush to phase edge — empty primaryMuscle defaults to "None" for Final Rest; sanity check on import; auto-fix corrupted localStorage — max 2 per primary muscle per phase — fixes Jumi generation error — Jumi error resolved — all phases biased toward session targets; variety cap max 2 per muscle per stretch phase — remove pre-reservation, select 2-3 muscle targets upfront, stretch phases scored against targets — bold removed — matching exercises structurally first, randomness within groups of whether priorities are present — primary only everywhere else; muscleDisplay restored to weight/colour for all other views — cards no longer flush to phase border — fixes history timeline blank render -->
+    <!-- Full change history lives in the app's own version notes, not in this file -->
     <style>
         :root {
             --phase-warmup: #7c3aed;
@@ -1606,15 +1606,19 @@
             font-weight: 500;
         }
 
+        /* Values below match what was actually showing on screen (the old inline
+           style that used to be repeated on every input) — this rule replaces
+           18 identical copies of that inline style, not the other way round. */
         .settings-input-table {
-            width: 70px;
-            height: 30px;
-            padding: 4px 8px;
-            border: 2px solid #d2d2d7;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 600;
+            width: 56px;
+            padding: 7px 8px;
+            border: 1.5px solid #e5e5e7;
+            border-radius: 10px;
+            font-size: 14px;
             text-align: center;
+            font-family: inherit;
+            color: #1d1d1f;
+            outline: none;
             transition: all 0.2s;
         }
 
@@ -1622,6 +1626,19 @@
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .pill-option {
+            padding: 10px 18px;
+            border-radius: 100px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1.5px solid #e5e5e7;
+            background: white;
+            color: #3a3a3a;
+            transition: all 0.15s;
+            user-select: none;
         }
 
         .settings-content-panel {
@@ -1641,8 +1658,8 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="build-date" content="11 Jul 2026">
-<meta name="app-version" content="6.58">
+<meta name="build-date" content="12 Jul 2026">
+<meta name="app-version" content="6.64">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -2238,6 +2255,53 @@
 
     <script>
 
+        // ===== SHARED CONSTANTS =====
+        // Single source of truth for values that were previously duplicated across the file
+        // (see the maintainability plan, Phase 1). This phase only ADDS these — nothing else
+        // in the file is changed yet. Existing duplicates get pointed at these in Phase 2.
+
+        // Canonical order phases run in, start to finish.
+        const PHASE_ORDER = ['Warm-Up', 'Foam Roller', 'Mobility', 'Static Stretching', 'Active Stretch', 'Deep Stretch', 'Splits', 'Cool Down', 'Final Rest'];
+
+        // Canonical phase -> colour mapping used throughout the UI.
+        const PHASE_COLOURS = {
+            'Warm-Up': '#7c3aed', 'Foam Roller': '#c2410c', 'Mobility': '#059669',
+            'Static Stretching': '#4338ca', 'Active Stretch': '#9b2c52', 'Deep Stretch': '#ca8a04',
+            'Splits': '#d946ef', 'Cool Down': '#db2777', 'Final Rest': '#1e1b4b'
+        };
+
+        // Exercise-level body part tag — this is never a phase-level property; a single phase
+        // (e.g. Mobility) can and does contain a mix of upper/lower/full exercises.
+        const BODY_PARTS = ['upper', 'lower', 'full'];
+
+        // The two PNF hold lengths a session can use.
+        const HOLD_TYPES = { SHORT: 'short', LONG: 'long' };
+
+        // Phases where a session target/focus muscle is actively weighted or guaranteed
+        // (Static/Active/Deep Stretch). Prep phases (Warm-Up/Foam Roller/Mobility) and Cool Down
+        // use a softer or different weighting scheme — see generateRoutine().
+        const STRETCH_PHASE_SET = new Set(['Static Stretching', 'Active Stretch', 'Deep Stretch']);
+        function isStretchPhase(phase) {
+            return STRETCH_PHASE_SET.has(phase);
+        }
+
+        // Sort comparator for ordering exercises by their phase's position in PHASE_ORDER.
+        // Replaces the `phaseOrder.indexOf(a.phase) - phaseOrder.indexOf(b.phase)` pattern
+        // that's currently repeated at roughly ten separate call sites.
+        function comparePhaseOrder(a, b) {
+            return PHASE_ORDER.indexOf(a.phase) - PHASE_ORDER.indexOf(b.phase);
+        }
+
+        // Human-readable label for a hold type, e.g. holdLabel('long') -> 'long hold',
+        // holdLabel('long', { capitalised: true }) -> 'Long Hold'.
+        // Replaces the `hold === 'long' ? 'long hold' : 'short hold'` ternary repeated
+        // at roughly eight separate call sites.
+        function holdLabel(hold, { capitalised = false } = {}) {
+            const label = hold === HOLD_TYPES.LONG ? 'long hold' : 'short hold';
+            return capitalised ? label.replace(/\b\w/g, c => c.toUpperCase()) : label;
+        }
+        // ===== END SHARED CONSTANTS =====
+
         // ===== SPLASH SCREEN =====
         window.addEventListener('DOMContentLoaded', () => {
             const splashScreen = document.getElementById('splashScreen');
@@ -2499,13 +2563,9 @@
 
                 const search = ((document.getElementById('exLibSearch') || {}).value || '').toLowerCase().trim();
 
-                const phaseColours = {
-                    'Warm-Up': '#7c3aed', 'Foam Roller': '#c2410c', 'Mobility': '#059669',
-                    'Static Stretching': '#4338ca', 'Active Stretch': '#9b2c52', 'Deep Stretch': '#ca8a04',
-                    'Splits': '#d946ef', 'Cool Down': '#db2777', 'Final Rest': '#1e1b4b'
-                };
+                const phaseColours = PHASE_COLOURS; // was a duplicate literal — now points at the shared constant
 
-                const phaseOrder = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
+                const phaseOrder = PHASE_ORDER; // was a duplicate literal — now points at the shared constant
 
                 // Update count line
                 const countEl = document.getElementById('exLibCount');
@@ -2647,7 +2707,7 @@
                 renderExerciseLibraryTable();
             };
 
-            const PHASE_OPTIONS = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
+            const PHASE_OPTIONS = PHASE_ORDER; // was a duplicate literal — now points at the shared constant
             const BODYPART_OPTIONS = ['upper','lower','full'];
             const MUSCLE_OPTIONS = MUSCLE_OPTIONS_GLOBAL;
             function muscleCombo(id, val, placeholder) {
@@ -3600,8 +3660,17 @@
 
         // Current settings
         let appSettings = loadSettings();
-        // Migrate stale active stretch durations (pre-v6.30 defaults were 45/75)
-        if (appSettings.activestretchShortDuration === 45 || appSettings.activestretchLongDuration === 75) {
+
+        // ===== DATA SCHEMA VERSION =====
+        // Each one-time fix-up below is gated by this number so it only ever runs
+        // once per user, instead of re-checking your whole exercise library on
+        // every single page load. Adding a new migration later: give it the next
+        // number, wrap it in "if (dataSchemaVersion < N)", and bump this constant.
+        const CURRENT_SCHEMA_VERSION = 9;
+        let dataSchemaVersion = parseInt(localStorage.getItem('dataSchemaVersion') || '0', 10);
+
+        // Migration 1: stale active stretch durations (pre-v6.30 defaults were 45/75)
+        if (dataSchemaVersion < 1 && (appSettings.activestretchShortDuration === 45 || appSettings.activestretchLongDuration === 75)) {
             if (appSettings.activestretchShortDuration === 45) appSettings.activestretchShortDuration = 75;
             if (appSettings.activestretchLongDuration === 75) appSettings.activestretchLongDuration = 105;
             saveSettings(appSettings);
@@ -4171,222 +4240,247 @@
                         // Do NOT call saveExercises() here — don't persist a half-fixed state automatically.
                         // The needsReview flag will show a banner; user fixes manually in Custom Exercises editor.
                     }
-                    let needsMuscleMigration = false;
-                    exercises = exercises.map(ex => {
-                        if (ex.hasOwnProperty('target') && !ex.hasOwnProperty('primaryMuscle')) {
-                            needsMuscleMigration = true;
-                            const newEx = {...ex, primaryMuscle: ex.target};
-                            delete newEx.target;
-                            return newEx;
+                    // Migration 2: target -> primaryMuscle
+                    if (dataSchemaVersion < 2) {
+                        let needsMuscleMigration = false;
+                        exercises = exercises.map(ex => {
+                            if (ex.hasOwnProperty('target') && !ex.hasOwnProperty('primaryMuscle')) {
+                                needsMuscleMigration = true;
+                                const newEx = {...ex, primaryMuscle: ex.target};
+                                delete newEx.target;
+                                return newEx;
+                            }
+                            return ex;
+                        });
+                        if (needsMuscleMigration) {
+                            saveExercises();
+                            console.log('✓ Migrated exercises: target -> primaryMuscle');
                         }
-                        return ex;
-                    });
-                    if (needsMuscleMigration) {
-                        saveExercises();
-                        console.log('✓ Migrated exercises: target -> primaryMuscle');
                     }
 
-                    // Backfill secondaryMuscle / tertiaryMuscle from defaults (v4.2 -> v4.3)
-                    const defaultsMap = {};
-                    getDefaultExercises().forEach(d => { defaultsMap[d.exercise] = d; });
-                    let needsMuscleFill = false;
-                    exercises = exercises.map(ex => {
-                        if (!ex.hasOwnProperty('secondaryMuscle') && !ex.hasOwnProperty('tertiaryMuscle')) {
-                            const def = defaultsMap[ex.exercise];
-                            if (def && (def.secondaryMuscle || def.tertiaryMuscle)) {
-                                needsMuscleFill = true;
-                                return {
-                                    ...ex,
-                                    ...(def.secondaryMuscle ? {secondaryMuscle: def.secondaryMuscle} : {}),
-                                    ...(def.tertiaryMuscle  ? {tertiaryMuscle:  def.tertiaryMuscle}  : {}),
-                                };
+                    // Migration 3: backfill secondaryMuscle / tertiaryMuscle from defaults (v4.2 -> v4.3)
+                    if (dataSchemaVersion < 3) {
+                        const defaultsMap = {};
+                        getDefaultExercises().forEach(d => { defaultsMap[d.exercise] = d; });
+                        let needsMuscleFill = false;
+                        exercises = exercises.map(ex => {
+                            if (!ex.hasOwnProperty('secondaryMuscle') && !ex.hasOwnProperty('tertiaryMuscle')) {
+                                const def = defaultsMap[ex.exercise];
+                                if (def && (def.secondaryMuscle || def.tertiaryMuscle)) {
+                                    needsMuscleFill = true;
+                                    return {
+                                        ...ex,
+                                        ...(def.secondaryMuscle ? {secondaryMuscle: def.secondaryMuscle} : {}),
+                                        ...(def.tertiaryMuscle  ? {tertiaryMuscle:  def.tertiaryMuscle}  : {}),
+                                    };
+                                }
                             }
+                            return ex;
+                        });
+                        if (needsMuscleFill) {
+                            saveExercises();
+                            console.log('✓ Backfilled secondary/tertiary muscles from defaults');
                         }
-                        return ex;
-                    });
-                    if (needsMuscleFill) {
-                        saveExercises();
-                        console.log('✓ Backfilled secondary/tertiary muscles from defaults');
                     }
 
-                    // Backfill pnf field from defaults
-                    const PNF_ELIGIBLE = new Set([
-                        'Butterfly Stretch','Half Seated Frog','Pancake','Frog Pose','One Legged Frog',
-                        'Kneeling Bent Knee Calf Stretch','Pigeon Pose','Cow Face (Legs)','Seated Figure 4 Stretch',
-                        'Supine Figure 4 Stretch','Runners Stretch','Seated Forward Fold','Standing Forward Fold',
-                        'Pyramid Stretch','Splits On Wall','Twisted Reclined Big Toe Pose','Wide Legged Forward Fold',
-                        'Low Lunge','High Lunge','Supine Lizard','Gate Pose','Saddle','Half Saddle',
-                        'Standing Quad Stretch','Cow Face (Arms)','Cross Body Shoulder Stretch','Overhead Tricep Stretch',
-                        'Deep Squat','Front Splits','Supine Split','Standing IT Band Stretch','Supine IT Band Stretch'
-                    ]);
-                    let needsPnfFill = false;
-                    exercises = exercises.map(ex => {
-                        if (!ex.hasOwnProperty('pnf')) {
-                            needsPnfFill = true;
-                            return {...ex, pnf: PNF_ELIGIBLE.has(ex.exercise)};
-                        }
-                        return ex;
-                    });
-                    if (needsPnfFill) {
-                        saveExercises();
-                        console.log('✓ Backfilled pnf field');
-                    }
-                    let needsMigration = false;
-                    exercises = exercises.map(ex => {
-                        // If exercise has 'splits' property but no 'bodyPart', migrate it
-                        if (ex.hasOwnProperty('splits') && !ex.bodyPart) {
-                            needsMigration = true;
-                            const newEx = {...ex};
-                            delete newEx.splits; // Remove old property
-                            
-                            // Determine bodyPart based on target muscle group
-                            const upperTargets = ['shoulders', 'chest', 'upper back', 'lats', 'neck', 'wrists', 'abs', 'lower back', 'triceps', 'biceps', 'forearms'];
-                            const lowerTargets = ['hamstrings', 'quadriceps', 'glutes', 'hip flexors', 'adductors', 'abductors', 'calves'];
-                            
-                            const targetLower = (ex.primaryMuscle || ex.target || '').toLowerCase();
-                            if (upperTargets.includes(targetLower)) {
-                                newEx.bodyPart = 'upper';
-                            } else if (lowerTargets.includes(targetLower)) {
-                                newEx.bodyPart = 'lower';
-                            } else if (targetLower === 'full body') {
-                                newEx.bodyPart = 'full';
-                            } else {
-                                // Default: if we can't determine, use 'full' so it appears in all routines
-                                newEx.bodyPart = 'full';
+                    // Migration 4: backfill pnf field from defaults
+                    if (dataSchemaVersion < 4) {
+                        const PNF_ELIGIBLE = new Set([
+                            'Butterfly Stretch','Half Seated Frog','Pancake','Frog Pose','One Legged Frog',
+                            'Kneeling Bent Knee Calf Stretch','Pigeon Pose','Cow Face (Legs)','Seated Figure 4 Stretch',
+                            'Supine Figure 4 Stretch','Runners Stretch','Seated Forward Fold','Standing Forward Fold',
+                            'Pyramid Stretch','Splits On Wall','Twisted Reclined Big Toe Pose','Wide Legged Forward Fold',
+                            'Low Lunge','High Lunge','Supine Lizard','Gate Pose','Saddle','Half Saddle',
+                            'Standing Quad Stretch','Cow Face (Arms)','Cross Body Shoulder Stretch','Overhead Tricep Stretch',
+                            'Deep Squat','Front Splits','Supine Split','Standing IT Band Stretch','Supine IT Band Stretch'
+                        ]);
+                        let needsPnfFill = false;
+                        exercises = exercises.map(ex => {
+                            if (!ex.hasOwnProperty('pnf')) {
+                                needsPnfFill = true;
+                                return {...ex, pnf: PNF_ELIGIBLE.has(ex.exercise)};
                             }
-                            
-                            console.log(`Migrated: ${ex.exercise} -> bodyPart: ${newEx.bodyPart}`);
-                            return newEx;
+                            return ex;
+                        });
+                        if (needsPnfFill) {
+                            saveExercises();
+                            console.log('✓ Backfilled pnf field');
                         }
-                        return ex;
-                    });
-                    
-                    // Save migrated exercises back to localStorage
-                    if (needsMigration) {
-                        saveExercises();
-                        console.log('✓ Migrated exercises to new format and saved to localStorage');
                     }
-                    
-                    // Fix exercises incorrectly saved with duration:45 in prep phases (Warm-Up, Foam Roller, Mobility)
-                    // Also fix 90/90 Hip Transitions muscle classification
-                    const PREP_PHASES_30 = new Set(['Warm-Up', 'Foam Roller', 'Mobility']);
-                    let needsDurationFix = false;
-                    exercises = exercises.map(ex => {
-                        let updated = {...ex};
-                        // Fix prep-phase exercises incorrectly set to 45s
-                        if (PREP_PHASES_30.has(ex.phase) && ex.duration === 45) {
-                            updated.duration = 30;
-                            needsDurationFix = true;
-                            console.log(`✓ Fixed duration: ${ex.exercise} (${ex.phase}) 45s → 30s`);
+
+                    // Migration 5: bodyPart from legacy 'splits' property
+                    if (dataSchemaVersion < 5) {
+                        let needsMigration = false;
+                        exercises = exercises.map(ex => {
+                            // If exercise has 'splits' property but no 'bodyPart', migrate it
+                            if (ex.hasOwnProperty('splits') && !ex.bodyPart) {
+                                needsMigration = true;
+                                const newEx = {...ex};
+                                delete newEx.splits; // Remove old property
+
+                                // Determine bodyPart based on target muscle group
+                                const upperTargets = ['shoulders', 'chest', 'upper back', 'lats', 'neck', 'wrists', 'abs', 'lower back', 'triceps', 'biceps', 'forearms'];
+                                const lowerTargets = ['hamstrings', 'quadriceps', 'glutes', 'hip flexors', 'adductors', 'abductors', 'calves'];
+
+                                const targetLower = (ex.primaryMuscle || ex.target || '').toLowerCase();
+                                if (upperTargets.includes(targetLower)) {
+                                    newEx.bodyPart = 'upper';
+                                } else if (lowerTargets.includes(targetLower)) {
+                                    newEx.bodyPart = 'lower';
+                                } else if (targetLower === 'full body') {
+                                    newEx.bodyPart = 'full';
+                                } else {
+                                    // Default: if we can't determine, use 'full' so it appears in all routines
+                                    newEx.bodyPart = 'full';
+                                }
+
+                                console.log(`Migrated: ${ex.exercise} -> bodyPart: ${newEx.bodyPart}`);
+                                return newEx;
+                            }
+                            return ex;
+                        });
+
+                        // Save migrated exercises back to localStorage
+                        if (needsMigration) {
+                            saveExercises();
+                            console.log('✓ Migrated exercises to new format and saved to localStorage');
                         }
-                        // Fix 90/90 Hip Transitions muscle classification
-                        if (ex.exercise === '90/90 Hip Transitions') {
-                            if (ex.primaryMuscle !== 'Hip Flexors' || ex.secondaryMuscle !== 'Glutes') {
-                                updated.primaryMuscle = 'Hip Flexors';
-                                updated.secondaryMuscle = 'Glutes';
+                    }
+
+                    // Migration 6: fix exercises incorrectly saved with duration:45 in prep phases
+                    // (Warm-Up, Foam Roller, Mobility), plus 90/90 Hip Transitions muscle classification
+                    if (dataSchemaVersion < 6) {
+                        const PREP_PHASES_30 = new Set(['Warm-Up', 'Foam Roller', 'Mobility']);
+                        let needsDurationFix = false;
+                        exercises = exercises.map(ex => {
+                            let updated = {...ex};
+                            // Fix prep-phase exercises incorrectly set to 45s
+                            if (PREP_PHASES_30.has(ex.phase) && ex.duration === 45) {
+                                updated.duration = 30;
                                 needsDurationFix = true;
-                                console.log('✓ Fixed 90/90 Hip Transitions: primaryMuscle → Hip Flexors, secondaryMuscle → Glutes');
+                                console.log(`✓ Fixed duration: ${ex.exercise} (${ex.phase}) 45s → 30s`);
                             }
+                            // Fix 90/90 Hip Transitions muscle classification
+                            if (ex.exercise === '90/90 Hip Transitions') {
+                                if (ex.primaryMuscle !== 'Hip Flexors' || ex.secondaryMuscle !== 'Glutes') {
+                                    updated.primaryMuscle = 'Hip Flexors';
+                                    updated.secondaryMuscle = 'Glutes';
+                                    needsDurationFix = true;
+                                    console.log('✓ Fixed 90/90 Hip Transitions: primaryMuscle → Hip Flexors, secondaryMuscle → Glutes');
+                                }
+                            }
+                            return updated;
+                        });
+                        if (needsDurationFix) {
+                            saveExercises();
+                            console.log('✓ Saved duration/muscle fixes to localStorage');
                         }
-                        return updated;
-                    });
-                    if (needsDurationFix) {
-                        saveExercises();
-                        console.log('✓ Saved duration/muscle fixes to localStorage');
                     }
 
-                    // Migrate Front Splits from Static Stretching to Splits phase
-                    let needsSplitsMigration = false;
-                    exercises = exercises.map(ex => {
-                        if (ex.exercise === 'Front Splits' && ex.phase !== 'Splits') {
-                            needsSplitsMigration = true;
-                            console.log('Migrating Front Splits phase: Static Stretching -> Splits');
-                            return {...ex, phase: 'Splits'};
+                    // Migration 7: Front Splits from Static Stretching to Splits phase
+                    if (dataSchemaVersion < 7) {
+                        let needsSplitsMigration = false;
+                        exercises = exercises.map(ex => {
+                            if (ex.exercise === 'Front Splits' && ex.phase !== 'Splits') {
+                                needsSplitsMigration = true;
+                                console.log('Migrating Front Splits phase: Static Stretching -> Splits');
+                                return {...ex, phase: 'Splits'};
+                            }
+                            return ex;
+                        });
+                        if (needsSplitsMigration) {
+                            saveExercises();
+                            console.log('✓ Migrated Front Splits to Splits phase');
                         }
-                        return ex;
-                    });
-                    if (needsSplitsMigration) {
-                        saveExercises();
-                        console.log('✓ Migrated Front Splits to Splits phase');
                     }
-                    
-                    // Migrate starredRoutines — update muscle fields to match current exercise library
-                    try {
-                        const starred = JSON.parse(localStorage.getItem('starredRoutines') || '[]');
-                        if (starred.length > 0) {
-                            const exerciseLookup = {};
-                            exercises.forEach(ex => { exerciseLookup[ex.exercise] = ex; });
 
-                            let starredChanged = false;
-                            const updatedStarred = starred.map(routine => {
-                                if (!routine.routine) return routine;
-                                const updatedRoutine = routine.routine.map(ex => {
-                                    const current = exerciseLookup[ex.exercise];
-                                    if (!current) return ex;
-                                    const needsUpdate =
-                                        ex.primaryMuscle   !== current.primaryMuscle   ||
-                                        ex.secondaryMuscle !== current.secondaryMuscle  ||
-                                        ex.tertiaryMuscle  !== current.tertiaryMuscle;
-                                    if (!needsUpdate) return ex;
-                                    starredChanged = true;
-                                    return {
-                                        ...ex,
-                                        primaryMuscle:   current.primaryMuscle,
-                                        secondaryMuscle: current.secondaryMuscle,
-                                        tertiaryMuscle:  current.tertiaryMuscle,
-                                    };
+                    // Migration 8: starredRoutines — update muscle fields to match current exercise library
+                    if (dataSchemaVersion < 8) {
+                        try {
+                            const starred = JSON.parse(localStorage.getItem('starredRoutines') || '[]');
+                            if (starred.length > 0) {
+                                const exerciseLookup = {};
+                                exercises.forEach(ex => { exerciseLookup[ex.exercise] = ex; });
+
+                                let starredChanged = false;
+                                const updatedStarred = starred.map(routine => {
+                                    if (!routine.routine) return routine;
+                                    const updatedRoutine = routine.routine.map(ex => {
+                                        const current = exerciseLookup[ex.exercise];
+                                        if (!current) return ex;
+                                        const needsUpdate =
+                                            ex.primaryMuscle   !== current.primaryMuscle   ||
+                                            ex.secondaryMuscle !== current.secondaryMuscle  ||
+                                            ex.tertiaryMuscle  !== current.tertiaryMuscle;
+                                        if (!needsUpdate) return ex;
+                                        starredChanged = true;
+                                        return {
+                                            ...ex,
+                                            primaryMuscle:   current.primaryMuscle,
+                                            secondaryMuscle: current.secondaryMuscle,
+                                            tertiaryMuscle:  current.tertiaryMuscle,
+                                        };
+                                    });
+                                    return {...routine, routine: updatedRoutine};
                                 });
-                                return {...routine, routine: updatedRoutine};
-                            });
 
-                            if (starredChanged) {
-                                localStorage.setItem('starredRoutines', JSON.stringify(updatedStarred));
-                                console.log('✓ Migrated starredRoutines muscle fields to match current library');
+                                if (starredChanged) {
+                                    localStorage.setItem('starredRoutines', JSON.stringify(updatedStarred));
+                                    console.log('✓ Migrated starredRoutines muscle fields to match current library');
+                                }
                             }
+                        } catch(e) {
+                            console.warn('Starred routines muscle migration failed:', e);
                         }
-                    } catch(e) {
-                        console.warn('Starred routines muscle migration failed:', e);
                     }
 
-                    // Migrate routineHistory — update muscle fields to match current exercise library
+                    // Migration 9: routineHistory — update muscle fields to match current exercise library
                     // Prevents stale muscle names (e.g. "Hips") skewing recency weights and Jumi context
-                    try {
-                        const history = JSON.parse(localStorage.getItem('routineHistory') || '[]');
-                        if (history.length > 0) {
-                            // Build lookup from current exercise library by name
-                            const exerciseLookup = {};
-                            exercises.forEach(ex => { exerciseLookup[ex.exercise] = ex; });
+                    if (dataSchemaVersion < 9) {
+                        try {
+                            const history = JSON.parse(localStorage.getItem('routineHistory') || '[]');
+                            if (history.length > 0) {
+                                // Build lookup from current exercise library by name
+                                const exerciseLookup = {};
+                                exercises.forEach(ex => { exerciseLookup[ex.exercise] = ex; });
 
-                            let historyChanged = false;
-                            const updatedHistory = history.map(session => {
-                                if (!session.routine) return session;
-                                const updatedRoutine = session.routine.map(ex => {
-                                    const current = exerciseLookup[ex.exercise];
-                                    if (!current) return ex;
-                                    // Check if any muscle field differs from current library
-                                    const needsUpdate =
-                                        ex.primaryMuscle   !== current.primaryMuscle   ||
-                                        ex.secondaryMuscle !== current.secondaryMuscle  ||
-                                        ex.tertiaryMuscle  !== current.tertiaryMuscle;
-                                    if (!needsUpdate) return ex;
-                                    historyChanged = true;
-                                    return {
-                                        ...ex,
-                                        primaryMuscle:   current.primaryMuscle,
-                                        secondaryMuscle: current.secondaryMuscle,
-                                        tertiaryMuscle:  current.tertiaryMuscle,
-                                    };
+                                let historyChanged = false;
+                                const updatedHistory = history.map(session => {
+                                    if (!session.routine) return session;
+                                    const updatedRoutine = session.routine.map(ex => {
+                                        const current = exerciseLookup[ex.exercise];
+                                        if (!current) return ex;
+                                        // Check if any muscle field differs from current library
+                                        const needsUpdate =
+                                            ex.primaryMuscle   !== current.primaryMuscle   ||
+                                            ex.secondaryMuscle !== current.secondaryMuscle  ||
+                                            ex.tertiaryMuscle  !== current.tertiaryMuscle;
+                                        if (!needsUpdate) return ex;
+                                        historyChanged = true;
+                                        return {
+                                            ...ex,
+                                            primaryMuscle:   current.primaryMuscle,
+                                            secondaryMuscle: current.secondaryMuscle,
+                                            tertiaryMuscle:  current.tertiaryMuscle,
+                                        };
+                                    });
+                                    return {...session, routine: updatedRoutine};
                                 });
-                                return {...session, routine: updatedRoutine};
-                            });
 
-                            if (historyChanged) {
-                                localStorage.setItem('routineHistory', JSON.stringify(updatedHistory));
-                                console.log('✓ Migrated routineHistory muscle fields to match current library');
+                                if (historyChanged) {
+                                    localStorage.setItem('routineHistory', JSON.stringify(updatedHistory));
+                                    console.log('✓ Migrated routineHistory muscle fields to match current library');
+                                }
                             }
+                        } catch(e) {
+                            console.warn('History muscle migration failed:', e);
                         }
-                    } catch(e) {
-                        console.warn('History muscle migration failed:', e);
+                    }
+
+                    // All 9 migrations checked (or skipped) above — stamp the schema version
+                    // so none of them re-run on future loads until a new one is added.
+                    if (dataSchemaVersion < CURRENT_SCHEMA_VERSION) {
+                        localStorage.setItem('dataSchemaVersion', String(CURRENT_SCHEMA_VERSION));
                     }
 
                     // Update focus dropdown with saved exercises
@@ -5124,19 +5218,9 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             let draggedIdx = null;
             let customScrollInterval = null;
             
-            const phaseOrder = ['Warm-Up', 'Foam Roller', 'Mobility', 'Static Stretching', 'Active Stretch', 'Deep Stretch', 'Splits', 'Cool Down', 'Final Rest'];
+            const phaseOrder = PHASE_ORDER; // was a duplicate literal — now points at the shared constant
             
-            const phaseColorMap = {
-                'Warm-Up': '#7c3aed',
-                'Foam Roller': '#c2410c',
-                'Mobility': '#059669',
-                'Static Stretching': '#4338ca',
-                'Active Stretch': '#9b2c52',
-                'Deep Stretch': '#ca8a04',
-                'Splits': '#d946ef',
-                'Cool Down': '#db2777',
-                'Final Rest': '#1e1b4b'
-            };
+            const phaseColorMap = PHASE_COLOURS; // was a duplicate literal — now points at the shared constant
             
             // Helper to always show simple controls without toggling (used by cancel/generate)
             // Tab switching
@@ -6582,6 +6666,59 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             });
             return pool;
         }
+
+        // ===== VALIDATION LAYER =====
+        // Pure, read-only checks on a finished routine — none of these change the
+        // routine or log anything themselves; they just report whether it passes.
+        // The caller (generateRoutine) decides what to do with the result.
+
+        // True if this exercise counts as a hit for the given target muscle
+        // (matches on primary — or the legacy 'target' field — or secondary).
+        function exerciseMatchesTarget(ex, target) {
+            return (ex.primaryMuscle || ex.target) === target || ex.secondaryMuscle === target;
+        }
+
+        // Checks the target muscle appears exactly once in each of Static, Active
+        // and Deep Stretch. This is the same check flex has always used to accept
+        // or reject a generated routine — now named and callable on its own.
+        function validateTargetThroughline(routine, target) {
+            if (!target) return { valid: true, staticCount: 0, activeCount: 0, deepCount: 0 };
+            const staticCount = routine.filter(e => e.phase === 'Static Stretching' && exerciseMatchesTarget(e, target)).length;
+            const activeCount = routine.filter(e => e.phase === 'Active Stretch' && exerciseMatchesTarget(e, target)).length;
+            const deepCount   = routine.filter(e => e.phase === 'Deep Stretch' && exerciseMatchesTarget(e, target)).length;
+            return {
+                valid: staticCount === 1 && activeCount === 1 && deepCount === 1,
+                staticCount, activeCount, deepCount
+            };
+        }
+
+        // Checks every phase's exercise count is within that phase's min/max for
+        // the session length (from the "config" object built in generateRoutine).
+        // New in v6.63 — this is a safety net that would have caught the "extra
+        // Mobility exercise" bug automatically instead of relying on spotting it.
+        function validatePhaseCounts(routine, config) {
+            const violations = [];
+            Object.keys(config || {}).forEach(phase => {
+                const count = routine.filter(e => e.phase === phase).length;
+                const { min, max } = config[phase];
+                if (count < min || count > max) {
+                    violations.push({ phase, count, min, max });
+                }
+            });
+            return { valid: violations.length === 0, violations };
+        }
+
+        // Checks the routine's total time falls within the accepted window.
+        // New in v6.63 — formalises what was previously only used as a scoring
+        // signal (for picking the best of several attempts), not a pass/fail check.
+        function validateTiming(routine, minSeconds, maxSeconds) {
+            const totalTime = routine.reduce((sum, ex) => sum + calculateExerciseTime(ex), 0);
+            return {
+                valid: totalTime >= minSeconds && totalTime <= maxSeconds,
+                totalTime, minSeconds, maxSeconds
+            };
+        }
+
         async function generateRoutine(prioritisedExercises) {
             // Hide start button to prevent starting outdated routine if user re-generates
             
@@ -6775,6 +6912,49 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 return picked ? [picked] : [];
             }
 
+            // Given a target muscle, picks which exercises get reserved so that muscle
+            // appears exactly once each in Static, Active and Deep Stretch, and which
+            // extra target-matching exercises get excluded so it doesn't appear more
+            // than once. Extracted from the main generateRoutine() body in Phase 6 of
+            // the maintainability plan — logic unchanged, just given a name.
+            function reserveTargetExercises(target, exercisesForGen) {
+                const reservedForActive = new Set();
+                const reservedForDeep = new Set();
+                const excludedFromAll = new Set();
+                if (!target) return { reservedForActive, reservedForDeep, excludedFromAll, staticPrimary: null };
+
+                const staticPool = exercisesForGen.filter(e => e.phase === 'Static Stretching');
+                // Shuffle pool randomly so picks vary each Regenerate
+                const shuffled = arr => arr.slice().sort(() => Math.random() - 0.5);
+                const staticPoolShuffled = shuffled(staticPool);
+                const allPrimaries = staticPoolShuffled.filter(e => (e.primaryMuscle || e.target) === target);
+
+                // 1. Reserve ONE primary for Static FIRST — this is non-negotiable, validator requires it
+                // Shuffle primaries so a different one can be picked each time
+                const staticPrimary = allPrimaries[0] || null;
+
+                // 2. Reserve for Active: PNF-eligible, randomised — prefer a DIFFERENT primary over the static one, then secondary
+                const activePrimaries = staticPoolShuffled.filter(e => !!e.pnf && (e.primaryMuscle || e.target) === target && e.exercise !== (staticPrimary && staticPrimary.exercise));
+                const activeSecondaries = staticPoolShuffled.filter(e => !!e.pnf && e.secondaryMuscle === target);
+                const activeCandidate = activePrimaries[0] || activeSecondaries[0] || null;
+                if (activeCandidate) reservedForActive.add(activeCandidate.exercise);
+
+                // 3. Reserve for Deep: randomised — prefer a DIFFERENT primary over the static one, not already reserved for Active, else secondary
+                const deepPrimaries = staticPoolShuffled.filter(e => (e.primaryMuscle || e.target) === target && e.exercise !== (staticPrimary && staticPrimary.exercise) && !reservedForActive.has(e.exercise));
+                const deepSecondaries = staticPoolShuffled.filter(e => e.secondaryMuscle === target && !reservedForActive.has(e.exercise));
+                const deepCandidate = deepPrimaries[0] || deepSecondaries[0] || null;
+                if (deepCandidate) reservedForDeep.add(deepCandidate.exercise);
+
+                // 4. Exclude extra target primaries beyond the one kept for Static
+                allPrimaries.filter(e =>
+                    e.exercise !== (staticPrimary && staticPrimary.exercise) &&
+                    !reservedForActive.has(e.exercise) &&
+                    !reservedForDeep.has(e.exercise)
+                ).forEach(e => excludedFromAll.add(e.exercise));
+
+                return { reservedForActive, reservedForDeep, excludedFromAll, staticPrimary };
+            }
+
             // Extract Jumi priorities if this is a Jumi-generated routine
             const jumiPriorities = prioritisedExercises ? (window._lastJumiPriorities || []) : [];
             // sessionTargets computed inside retry loop after recency weights are available
@@ -6800,36 +6980,12 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 console.log(`[QS] selectedType=${selectedType} → target: ${sessionTargets[0]||'none'}`);
                 const target = sessionTargets[0];
                 if (target) {
-                    const staticPool = exercisesForGen.filter(e => e.phase === 'Static Stretching');
-                    // Shuffle pool randomly so picks vary each Regenerate
-                    const shuffled = arr => arr.slice().sort(() => Math.random() - 0.5);
-                    const staticPoolShuffled = shuffled(staticPool);
-                    const allPrimaries = staticPoolShuffled.filter(e => (e.primaryMuscle || e.target) === target);
+                    const reservation = reserveTargetExercises(target, exercisesForGen);
+                    reservedForActive = reservation.reservedForActive;
+                    reservedForDeep = reservation.reservedForDeep;
+                    excludedFromAll = reservation.excludedFromAll;
 
-                    // 1. Reserve ONE primary for Static FIRST — this is non-negotiable, validator requires it
-                    // Shuffle primaries so a different one can be picked each time
-                    const staticPrimary = allPrimaries[0] || null;
-
-                    // 2. Reserve for Active: PNF-eligible, randomised — prefer a DIFFERENT primary over the static one, then secondary
-                    const activePrimaries = staticPoolShuffled.filter(e => !!e.pnf && (e.primaryMuscle || e.target) === target && e.exercise !== (staticPrimary && staticPrimary.exercise));
-                    const activeSecondaries = staticPoolShuffled.filter(e => !!e.pnf && e.secondaryMuscle === target);
-                    const activeCandidate = activePrimaries[0] || activeSecondaries[0] || null;
-                    if (activeCandidate) reservedForActive.add(activeCandidate.exercise);
-
-                    // 3. Reserve for Deep: randomised — prefer a DIFFERENT primary over the static one, not already reserved for Active, else secondary
-                    const deepPrimaries = staticPoolShuffled.filter(e => (e.primaryMuscle || e.target) === target && e.exercise !== (staticPrimary && staticPrimary.exercise) && !reservedForActive.has(e.exercise));
-                    const deepSecondaries = staticPoolShuffled.filter(e => e.secondaryMuscle === target && !reservedForActive.has(e.exercise));
-                    const deepCandidate = deepPrimaries[0] || deepSecondaries[0] || null;
-                    if (deepCandidate) reservedForDeep.add(deepCandidate.exercise);
-
-                    // 4. Exclude extra target primaries beyond the one kept for Static
-                    allPrimaries.filter(e =>
-                        e.exercise !== (staticPrimary && staticPrimary.exercise) &&
-                        !reservedForActive.has(e.exercise) &&
-                        !reservedForDeep.has(e.exercise)
-                    ).forEach(e => excludedFromAll.add(e.exercise));
-
-                    console.log(`[QS] Target: ${target} | Static: ${staticPrimary ? staticPrimary.exercise : 'none'} | Active: ${[...reservedForActive].join(', ')||'none'} | Deep: ${[...reservedForDeep].join(', ')||'none'} | Excluded: ${[...excludedFromAll].join(', ')||'none'}`);
+                    console.log(`[QS] Target: ${target} | Static: ${reservation.staticPrimary ? reservation.staticPrimary.exercise : 'none'} | Active: ${[...reservedForActive].join(', ')||'none'} | Deep: ${[...reservedForDeep].join(', ')||'none'} | Excluded: ${[...excludedFromAll].join(', ')||'none'}`);
                 }
             }
 
@@ -7404,25 +7560,23 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 let routineValid = true;
                 if (!isAllExercises && sessionTargets && sessionTargets.length > 0) {
                     const target = sessionTargets[0];
-                    const activeEx = routine.filter(e => e.phase === 'Active Stretch');
-                    const deepEx   = routine.filter(e => e.phase === 'Deep Stretch');
-                    const staticEx = routine.filter(e => e.phase === 'Static Stretching');
-
-                    // Static accepts a primary OR secondary hit — matches the primary-then-secondary
-                    // fallback used when injecting the target into Static Stretching above.
-                    const staticTargetCount = staticEx.filter(e => (e.primaryMuscle||e.target) === target || e.secondaryMuscle === target).length;
-                    const activeTargetCount  = activeEx.filter(e => (e.primaryMuscle||e.target) === target || e.secondaryMuscle === target).length;
-                    const deepTargetCount    = deepEx.filter(e => (e.primaryMuscle||e.target) === target || e.secondaryMuscle === target).length;
-
-                    const staticOk = staticTargetCount === 1;
-                    const activeOk = activeTargetCount === 1;
-                    const deepOk   = deepTargetCount === 1;
-
-                    if (!staticOk || !activeOk || !deepOk) {
-                        routineValid = false;
-                    } else {
-                        console.log(`[QS PASS] Target: ${target} | Static: ${staticTargetCount} | Active: ${activeTargetCount} | Deep: ${deepTargetCount}`);
+                    const throughline = validateTargetThroughline(routine, target);
+                    routineValid = throughline.valid;
+                    if (throughline.valid) {
+                        console.log(`[QS PASS] Target: ${target} | Static: ${throughline.staticCount} | Active: ${throughline.activeCount} | Deep: ${throughline.deepCount}`);
                     }
+                }
+
+                // Observational checks only — logged if something looks off, but not
+                // (yet) able to reject a routine. See Phase 5 of the maintainability
+                // plan for why these are report-only for now.
+                const phaseCountCheck = validatePhaseCounts(routine, config);
+                if (!phaseCountCheck.valid) {
+                    console.warn('[Validation] Phase count outside expected range:', phaseCountCheck.violations);
+                }
+                const timingCheck = validateTiming(routine, minSeconds, maxSeconds);
+                if (!timingCheck.valid && !isAllExercises) {
+                    console.warn(`[Validation] Timing outside window: ${timingCheck.totalTime}s (expected ${timingCheck.minSeconds}-${timingCheck.maxSeconds}s)`);
                 }
 
                 // Check if this routine is better — prefer routines at or under target
@@ -7516,33 +7670,10 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             // Second cap removed — pool construction handles exclusions
 
             // Deep Stretch is now generated as its own phase - no conversion needed
-            
-            // REORDER routine to maintain proper phase sequence
-            const phaseOrderMap = {
-                'Warm-Up': 1,
-                'Foam Roller': 2,
-                'Mobility': 3,
-                'Static Stretching': 4,
-                'Deep Stretch': 5,
-                'Splits': 6,
-                'Cool Down': 7,
-                'Final Rest': 8
-            };
-            // SORT DISABLED: Phases are already built in correct order, sorting mixes up the duplicates
-            // The phase loop already processes in order: Warm-Up, Foam Roller, Mobility, Static, Deep
-            // bestRoutine.sort((a, b) => {
-            //     const aOrder = phaseOrderMap[a.phase] || 999;
-            //     const bOrder = phaseOrderMap[b.phase] || 999;
-            //     
-            //     if (aOrder !== bOrder) {
-            //         return aOrder - bOrder;
-            //     }
-            //     
-            //     const aPhaseOrder = a._phaseOrder !== undefined ? a._phaseOrder : 0;
-            //     const bPhaseOrder = b._phaseOrder !== undefined ? b._phaseOrder : 0;
-            //     return aPhaseOrder - bPhaseOrder;
-            // });
-            
+
+            // Phases are already built in correct order by the generation loop above
+            // (Warm-Up, Foam Roller, Mobility, Static, Deep, ...), so no re-sort is needed here.
+
             // Front Splits is in the Splits phase and will be included via the Splits phase config (min:0, max:1)
             
             // ADJUST TIME: Balance routine to be within ±45s
@@ -7954,13 +8085,14 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             if (sessionTargets && sessionTargets.length > 0) {
                 const target = sessionTargets[0];
                 const targetCap = target.replace(/\b\w/g, c => c.toUpperCase());
-                const phaseOrder = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Cool Down'];
+                // Was a separate 7-element list missing Splits/Final Rest. Using the canonical PHASE_ORDER
+                // here also fixes a latent bug where a matching Splits exercise would sort incorrectly (indexOf -1).
                 const relevant = currentRoutine.filter(ex => ex.phase !== 'Final Rest');
                 const primaries = relevant.filter(ex => (ex.primaryMuscle || ex.target) === target)
-                    .sort((a, b) => phaseOrder.indexOf(a.phase) - phaseOrder.indexOf(b.phase))
+                    .sort(comparePhaseOrder)
                     .map(ex => `\u2022 ${ex.exercise} \u00b7 ${ex.phase}`);
                 const secondaries = relevant.filter(ex => ex.secondaryMuscle === target)
-                    .sort((a, b) => phaseOrder.indexOf(a.phase) - phaseOrder.indexOf(b.phase))
+                    .sort(comparePhaseOrder)
                     .map(ex => `\u2022 ${ex.exercise} \u00b7 ${ex.phase}`);
                 let focusMsg = `**ROUTINE FOCUS: ${target.toUpperCase()}**`;
                 if (primaries.length > 0) focusMsg += '\n\n**Primary**\n' + primaries.join('\n');
@@ -8050,8 +8182,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
         function startCustomRoutine(hold) {
             if (customRoutine.length === 0) return;
             // Build currentRoutine from customRoutine (sorted by phase)
-            const phaseOrder = ['Warm-Up', 'Foam Roller', 'Mobility', 'Static Stretching', 'Active Stretch', 'Deep Stretch', 'Splits', 'Cool Down', 'Final Rest'];
-            customRoutine.sort((a, b) => phaseOrder.indexOf(a.phase) - phaseOrder.indexOf(b.phase));
+            customRoutine.sort(comparePhaseOrder);
             currentRoutine = customRoutine.map(ex => ({...ex}));
             selectedType = 'custom';
             selectedFocus = '';
@@ -8137,7 +8268,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 }
             });
 
-            const phaseDisplayOrder = ['Warm-Up', 'Foam Roller', 'Mobility', 'Static Stretching', 'Active Stretch', 'Deep Stretch', 'Splits', 'Cool Down', 'Final Rest'];
+            const phaseDisplayOrder = PHASE_ORDER; // was a duplicate literal — now points at the shared constant
             const totalCards = currentRoutine.length;
             let cardIndex = 0;
             
@@ -8396,12 +8527,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             }
 
             const currentEx = currentRoutine[currentExerciseIndex];
-            const phaseColors = {
-                'Warm-Up': '#7c3aed', 'Foam Roller': '#c2410c', 'Mobility': '#059669',
-                'Static Stretching': '#4338ca', 'Active Stretch': '#9b2c52',
-                'Deep Stretch': '#ca8a04', 'Splits': '#d946ef',
-                'Cool Down': '#db2777', 'Final Rest': '#1e1b4b'
-            };
+            const phaseColors = PHASE_COLOURS; // was a duplicate literal — now points at the shared constant
 
             const items = [];
             const completedItems = [];
@@ -8554,12 +8680,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
 
             // LHS panel phase tint
-            const phaseColors = {
-                'Warm-Up': '#7c3aed', 'Foam Roller': '#c2410c', 'Mobility': '#059669',
-                'Static Stretching': '#4338ca', 'Active Stretch': '#9b2c52',
-                'Deep Stretch': '#ca8a04', 'Splits': '#d946ef',
-                'Cool Down': '#db2777', 'Final Rest': '#1e1b4b'
-            };
+            const phaseColors = PHASE_COLOURS; // was a duplicate literal — now points at the shared constant
             const phaseColor = phaseColors[exercise.phase] || '#667eea';
 
             // Update timer panel background gradient for current phase
@@ -9090,7 +9211,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
         function buildChatContext() {
 
             const allHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
-            const phaseOrder = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
+            const phaseOrder = PHASE_ORDER; // was a duplicate literal — now points at the shared constant
             const wins = [
                 {label:'12 months', ms:365*24*60*60*1000},
                 {label:'6 months',  ms:182*24*60*60*1000},
@@ -9624,15 +9745,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             const sameMuscle = availableSwaps.filter(ex => ex.primaryMuscle === currentMuscle);
             const otherMuscles = availableSwaps.filter(ex => ex.primaryMuscle !== currentMuscle);
             
-            // Randomize the "other muscles" section
-            function shuffleArray(array) {
-                const shuffled = [...array];
-                for (let i = shuffled.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-                }
-                return shuffled;
-            }
+            // Randomize the "other muscles" section (uses the shared shuffleArray() defined above)
             const randomizedOthers = shuffleArray(otherMuscles);
             
             // Show modal with options
@@ -9961,9 +10074,8 @@ function showStats() {
             const defaultMap = {};
             defaults.forEach(d => { defaultMap[d.exercise] = d; });
 
-            const phaseOrder = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
             const sorted = exList.slice().sort((a, b) => {
-                const pCmp = (phaseOrder.indexOf(a.phase) - phaseOrder.indexOf(b.phase));
+                const pCmp = comparePhaseOrder(a, b);
                 if (pCmp !== 0) return pCmp;
                 const tCmp = (a.primaryMuscle || '').localeCompare(b.primaryMuscle || '');
                 if (tCmp !== 0) return tCmp;
@@ -10211,8 +10323,7 @@ function showStats() {
                     await customAlert('Please add exercises first');
                     return;
                 }
-                const phaseOrder = ['Warm-Up', 'Foam Roller', 'Mobility', 'Static Stretching', 'Active Stretch', 'Deep Stretch', 'Splits', 'Cool Down', 'Final Rest'];
-                const sorted = customRoutine.slice().sort((a, b) => phaseOrder.indexOf(a.phase) - phaseOrder.indexOf(b.phase));
+                const sorted = customRoutine.slice().sort(comparePhaseOrder);
                 currentRoutine = sorted.map(ex => ({...ex}));
                 selectedType = 'custom';
             }
@@ -10431,12 +10542,7 @@ function showStats() {
             currentRoutine = routine.routine;
             
             // Sort by phase order to ensure correct display
-            const phaseOrder = ['Warm-Up', 'Foam Roller', 'Mobility', 'Static Stretching', 'Active Stretch', 'Deep Stretch', 'Splits', 'Cool Down', 'Final Rest'];
-            currentRoutine.sort((a, b) => {
-                const aIndex = phaseOrder.indexOf(a.phase);
-                const bIndex = phaseOrder.indexOf(b.phase);
-                return aIndex - bIndex;
-            });
+            currentRoutine.sort(comparePhaseOrder);
             
             selectedType = 'starred';
             selectedTime = routine.time;
@@ -10470,8 +10576,7 @@ function showStats() {
             closeStarredList();
             // Load settings
             currentRoutine = routine.routine.slice();
-            const phaseOrder = ['Warm-Up', 'Foam Roller', 'Mobility', 'Static Stretching', 'Active Stretch', 'Deep Stretch', 'Splits', 'Cool Down', 'Final Rest'];
-            currentRoutine.sort((a, b) => phaseOrder.indexOf(a.phase) - phaseOrder.indexOf(b.phase));
+            currentRoutine.sort(comparePhaseOrder);
             selectedType = routine.type;
             selectedTime = routine.time;
             selectedHold = routine.hold;
@@ -10514,12 +10619,7 @@ function showStats() {
             currentRoutine = routine.routine;
             
             // Sort by phase order to ensure correct display
-            const phaseOrder = ['Warm-Up', 'Foam Roller', 'Mobility', 'Static Stretching', 'Active Stretch', 'Deep Stretch', 'Splits', 'Cool Down', 'Final Rest'];
-            currentRoutine.sort((a, b) => {
-                const aIndex = phaseOrder.indexOf(a.phase);
-                const bIndex = phaseOrder.indexOf(b.phase);
-                return aIndex - bIndex;
-            });
+            currentRoutine.sort(comparePhaseOrder);
             
             selectedType = routine.type;
             selectedTime = routine.time;
@@ -11061,14 +11161,10 @@ function showStats() {
                 });
             });
             
-            const phaseOrder = ["Warm-Up", "Foam Roller", "Mobility", "Static Stretching", "Active Stretch", "Deep Stretch", "Splits", "Cool Down", "Final Rest"];
+            const phaseOrder = PHASE_ORDER; // was a duplicate literal — now points at the shared constant
             const sortedPhases = phaseOrder.filter(phase => phaseCounts[phase]).map(phase => [phase, phaseCounts[phase]]);
             
-            const phaseColors = {
-                'Warm-Up': '#7c3aed', 'Foam Roller': '#c2410c', 'Mobility': '#059669',
-                'Static Stretching': '#4338ca', 'Active Stretch': '#9b2c52', 'Deep Stretch': '#ca8a04', 'Splits': '#d946ef',
-                'Cool Down': '#db2777', 'Final Rest': '#1e1b4b'
-            };
+            const phaseColors = PHASE_COLOURS; // was a duplicate literal — now points at the shared constant
 
             // Build last-done map: exercise name → most recent session date
             const lastDoneMap = {};
@@ -11148,7 +11244,7 @@ function showStats() {
         
         function renderTimelineSection(history, limit) {
             limit = limit || 20;
-            const phaseDisplayOrder = ['Warm-Up', 'Foam Roller', 'Mobility', 'Static Stretching', 'Active Stretch', 'Deep Stretch', 'Splits', 'Cool Down', 'Final Rest'];
+            const phaseDisplayOrder = PHASE_ORDER; // was a duplicate literal — now points at the shared constant
             const reversed = history.slice().reverse();
             const showing = reversed.slice(0, limit);
 
@@ -11203,12 +11299,8 @@ function showStats() {
                         </div>`;
                 }).join('');
 
-                const phaseColors = {
-                    'Warm-Up': '#7c3aed', 'Foam Roller': '#c2410c', 'Mobility': '#059669',
-                    'Static Stretching': '#4338ca', 'Active Stretch': '#9b2c52', 'Deep Stretch': '#ca8a04',
-                    'Splits': '#d946ef', 'Cool Down': '#db2777', 'Final Rest': '#1e1b4b'
-                };
-                const phaseOrder2 = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down','Final Rest'];
+                const phaseColors = PHASE_COLOURS; // was a duplicate literal — now points at the shared constant
+                const phaseOrder2 = PHASE_ORDER; // was a duplicate literal — now points at the shared constant
                 const phaseTimes = {};
                 session.routine.forEach(ex => {
                     phaseTimes[ex.phase] = (phaseTimes[ex.phase] || 0) + (ex.duration + ex.rest) * ex.sides;
@@ -11517,17 +11609,17 @@ function showStats() {
 
                     <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Type</div>
                     <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:32px;">
-                        <div class="qs-type-pill" data-value="full" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Full Body</div>
-                        <div class="qs-type-pill" data-value="upper" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Upper Body</div>
-                        <div class="qs-type-pill" data-value="lower" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Lower Body</div>
+                        <div class="qs-type-pill pill-option" data-value="full">Full Body</div>
+                        <div class="qs-type-pill pill-option" data-value="upper">Upper Body</div>
+                        <div class="qs-type-pill pill-option" data-value="lower">Lower Body</div>
                     </div>
 
                     <div style="height:1px; background:#f0f0f5; margin-bottom:28px;"></div>
 
                     <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Hold</div>
                     <div style="display:flex; flex-wrap:wrap; gap:10px;">
-                        <div class="qs-hold-pill" data-value="short" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Short Hold</div>
-                        <div class="qs-hold-pill" data-value="long" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Long Hold</div>
+                        <div class="qs-hold-pill pill-option" data-value="short">Short Hold</div>
+                        <div class="qs-hold-pill pill-option" data-value="long">Long Hold</div>
                     </div>
                 </div>
 
@@ -11544,15 +11636,15 @@ function showStats() {
                             <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#667eea; text-align:center;">Short Hold</div>
                             <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#667eea; text-align:center;">Long Hold</div>
                         </div>
-                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#7c3aed;flex-shrink:0;display:inline-block;"></span>Warm-Up</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="warmupShortDuration" class="settings-input-table" min="5" max="120" step="5" value="30" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="warmupLongDuration" class="settings-input-table" min="5" max="180" step="5" value="30" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
-                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#c2410c;flex-shrink:0;display:inline-block;"></span>Foam Roller</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="foamrollerShortDuration" class="settings-input-table" min="5" max="120" step="5" value="30" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="foamrollerLongDuration" class="settings-input-table" min="5" max="180" step="5" value="30" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
-                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#059669;flex-shrink:0;display:inline-block;"></span>Mobility</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="mobilityShortDuration" class="settings-input-table" min="5" max="120" step="5" value="30" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="mobilityLongDuration" class="settings-input-table" min="5" max="180" step="5" value="30" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
-                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#4338ca;flex-shrink:0;display:inline-block;"></span>Static Stretching</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="staticstretchingShortDuration" class="settings-input-table" min="15" max="120" step="5" value="45" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="staticstretchingLongDuration" class="settings-input-table" min="30" max="180" step="5" value="75" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
-                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#9b2c52;flex-shrink:0;display:inline-block;"></span>Active Stretch</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="activestretchShortDuration" class="settings-input-table" min="15" max="120" step="5" value="45" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="activestretchLongDuration" class="settings-input-table" min="30" max="180" step="5" value="75" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
-                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#ca8a04;flex-shrink:0;display:inline-block;"></span>Deep Stretch</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="deepstretchShortDuration" class="settings-input-table" min="15" max="120" step="5" value="90" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="deepstretchLongDuration" class="settings-input-table" min="30" max="180" step="5" value="120" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
-                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#d946ef;flex-shrink:0;display:inline-block;"></span>Splits</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="splitsShortDuration" class="settings-input-table" min="15" max="120" step="5" value="45" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="splitsLongDuration" class="settings-input-table" min="30" max="180" step="5" value="75" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
-                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#db2777;flex-shrink:0;display:inline-block;"></span>Cool Down</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="cooldownShortDuration" class="settings-input-table" min="5" max="120" step="5" value="45" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="cooldownLongDuration" class="settings-input-table" min="5" max="180" step="5" value="45" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
-                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#1e1b4b;flex-shrink:0;display:inline-block;"></span>Final Rest</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="finalrestShortDuration" class="settings-input-table" min="60" max="600" step="15" value="120" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="finalrestLongDuration" class="settings-input-table" min="60" max="600" step="15" value="120" style="width:56px;padding:7px 8px;border:1.5px solid #e5e5e7;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#7c3aed;flex-shrink:0;display:inline-block;"></span>Warm-Up</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="warmupShortDuration" class="settings-input-table" min="5" max="120" step="5" value="30"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="warmupLongDuration" class="settings-input-table" min="5" max="180" step="5" value="30"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#c2410c;flex-shrink:0;display:inline-block;"></span>Foam Roller</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="foamrollerShortDuration" class="settings-input-table" min="5" max="120" step="5" value="30"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="foamrollerLongDuration" class="settings-input-table" min="5" max="180" step="5" value="30"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#059669;flex-shrink:0;display:inline-block;"></span>Mobility</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="mobilityShortDuration" class="settings-input-table" min="5" max="120" step="5" value="30"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="mobilityLongDuration" class="settings-input-table" min="5" max="180" step="5" value="30"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#4338ca;flex-shrink:0;display:inline-block;"></span>Static Stretching</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="staticstretchingShortDuration" class="settings-input-table" min="15" max="120" step="5" value="45"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="staticstretchingLongDuration" class="settings-input-table" min="30" max="180" step="5" value="75"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#9b2c52;flex-shrink:0;display:inline-block;"></span>Active Stretch</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="activestretchShortDuration" class="settings-input-table" min="15" max="120" step="5" value="45"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="activestretchLongDuration" class="settings-input-table" min="30" max="180" step="5" value="75"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#ca8a04;flex-shrink:0;display:inline-block;"></span>Deep Stretch</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="deepstretchShortDuration" class="settings-input-table" min="15" max="120" step="5" value="90"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="deepstretchLongDuration" class="settings-input-table" min="30" max="180" step="5" value="120"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#d946ef;flex-shrink:0;display:inline-block;"></span>Splits</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="splitsShortDuration" class="settings-input-table" min="15" max="120" step="5" value="45"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="splitsLongDuration" class="settings-input-table" min="30" max="180" step="5" value="75"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#db2777;flex-shrink:0;display:inline-block;"></span>Cool Down</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="cooldownShortDuration" class="settings-input-table" min="5" max="120" step="5" value="45"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="cooldownLongDuration" class="settings-input-table" min="5" max="180" step="5" value="45"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#1e1b4b;flex-shrink:0;display:inline-block;"></span>Final Rest</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="finalrestShortDuration" class="settings-input-table" min="60" max="600" step="15" value="120"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="finalrestLongDuration" class="settings-input-table" min="60" max="600" step="15" value="120"><span style="font-size:12px;color:#86868b;">s</span></div></div>
                         <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; background:#f7f5ff;">
                             <div style="font-size:14px; color:#667eea; font-weight:700;">Rest between exercises</div>
                             <div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="shortHoldRest" class="settings-input-table" min="5" max="60" step="5" value="15" style="width:56px;padding:7px 8px;border:1.5px solid #c4bef0;border-radius:10px;font-size:14px;text-align:center;font-family:inherit;color:#1d1d1f;outline:none;"><span style="font-size:12px;color:#86868b;">s</span></div>
@@ -11603,49 +11695,49 @@ function showStats() {
 
                     <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Countdown Beep</div>
                     <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:32px;">
-                        <div class="sound-pill" data-group="beepSoundSelect" data-value="beep"      data-preview="beep"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Short Beep</div>
-                        <div class="sound-pill" data-group="beepSoundSelect" data-value="click"     data-preview="click"     style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Soft Click</div>
-                        <div class="sound-pill" data-group="beepSoundSelect" data-value="woodblock" data-preview="woodblock" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Wood Block</div>
-                        <div class="sound-pill" data-group="beepSoundSelect" data-value="bell"      data-preview="bell"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Bell</div>
-                        <div class="sound-pill" data-group="beepSoundSelect" data-value="ping"      data-preview="ping"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Ping</div>
-                        <div class="sound-pill" data-group="beepSoundSelect" data-value="tick"      data-preview="tick"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Tick</div>
-                        <div class="sound-pill" data-group="beepSoundSelect" data-value="blip"      data-preview="blip"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Blip</div>
-                        <div class="sound-pill" data-group="beepSoundSelect" data-value="pop"       data-preview="pop"       style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Pop</div>
-                        <div class="sound-pill" data-group="beepSoundSelect" data-value="snap"      data-preview="snap"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Snap</div>
-                        <div class="sound-pill" data-group="beepSoundSelect" data-value="tone"      data-preview="tone"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Tone</div>
+                        <div class="sound-pill pill-option" data-group="beepSoundSelect" data-value="beep"      data-preview="beep"     >Short Beep</div>
+                        <div class="sound-pill pill-option" data-group="beepSoundSelect" data-value="click"     data-preview="click"    >Soft Click</div>
+                        <div class="sound-pill pill-option" data-group="beepSoundSelect" data-value="woodblock" data-preview="woodblock">Wood Block</div>
+                        <div class="sound-pill pill-option" data-group="beepSoundSelect" data-value="bell"      data-preview="bell"     >Bell</div>
+                        <div class="sound-pill pill-option" data-group="beepSoundSelect" data-value="ping"      data-preview="ping"     >Ping</div>
+                        <div class="sound-pill pill-option" data-group="beepSoundSelect" data-value="tick"      data-preview="tick"     >Tick</div>
+                        <div class="sound-pill pill-option" data-group="beepSoundSelect" data-value="blip"      data-preview="blip"     >Blip</div>
+                        <div class="sound-pill pill-option" data-group="beepSoundSelect" data-value="pop"       data-preview="pop"      >Pop</div>
+                        <div class="sound-pill pill-option" data-group="beepSoundSelect" data-value="snap"      data-preview="snap"     >Snap</div>
+                        <div class="sound-pill pill-option" data-group="beepSoundSelect" data-value="tone"      data-preview="tone"     >Tone</div>
                     </div>
 
                     <div style="height:1px; background:#f0f0f5; margin-bottom:28px;"></div>
 
                     <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Transition Sound</div>
                     <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:32px;">
-                        <div class="sound-pill" data-group="transitionSound" data-value="longbeep" data-preview="longbeep" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Long Beep</div>
-                        <div class="sound-pill" data-group="transitionSound" data-value="bell"     data-preview="bell"     style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Bell</div>
-                        <div class="sound-pill" data-group="transitionSound" data-value="ting"     data-preview="ting"     style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Ting</div>
-                        <div class="sound-pill" data-group="transitionSound" data-value="chime"    data-preview="chime"    style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Chime</div>
-                        <div class="sound-pill" data-group="transitionSound" data-value="bowl"     data-preview="bowl"     style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Singing Bowl</div>
-                        <div class="sound-pill" data-group="transitionSound" data-value="drone"    data-preview="drone"    style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Drone</div>
-                        <div class="sound-pill" data-group="transitionSound" data-value="sweep"    data-preview="sweep"    style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Sweep</div>
-                        <div class="sound-pill" data-group="transitionSound" data-value="whoosh"   data-preview="whoosh"   style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Whoosh</div>
-                        <div class="sound-pill" data-group="transitionSound" data-value="rise"     data-preview="rise"     style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Rise</div>
-                        <div class="sound-pill" data-group="transitionSound" data-value="shimmer"  data-preview="shimmer"  style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Shimmer</div>
-                        <div class="sound-pill" data-group="transitionSound" data-value="chord"    data-preview="chord"    style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Chord</div>
+                        <div class="sound-pill pill-option" data-group="transitionSound" data-value="longbeep" data-preview="longbeep">Long Beep</div>
+                        <div class="sound-pill pill-option" data-group="transitionSound" data-value="bell"     data-preview="bell"    >Bell</div>
+                        <div class="sound-pill pill-option" data-group="transitionSound" data-value="ting"     data-preview="ting"    >Ting</div>
+                        <div class="sound-pill pill-option" data-group="transitionSound" data-value="chime"    data-preview="chime"   >Chime</div>
+                        <div class="sound-pill pill-option" data-group="transitionSound" data-value="bowl"     data-preview="bowl"    >Singing Bowl</div>
+                        <div class="sound-pill pill-option" data-group="transitionSound" data-value="drone"    data-preview="drone"   >Drone</div>
+                        <div class="sound-pill pill-option" data-group="transitionSound" data-value="sweep"    data-preview="sweep"   >Sweep</div>
+                        <div class="sound-pill pill-option" data-group="transitionSound" data-value="whoosh"   data-preview="whoosh"  >Whoosh</div>
+                        <div class="sound-pill pill-option" data-group="transitionSound" data-value="rise"     data-preview="rise"    >Rise</div>
+                        <div class="sound-pill pill-option" data-group="transitionSound" data-value="shimmer"  data-preview="shimmer" >Shimmer</div>
+                        <div class="sound-pill pill-option" data-group="transitionSound" data-value="chord"    data-preview="chord"   >Chord</div>
                     </div>
 
                     <div style="height:1px; background:#f0f0f5; margin-bottom:28px;"></div>
 
                     <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Final Sound</div>
                     <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:32px;">
-                        <div class="sound-pill" data-group="finalBongSound" data-value="bowl"      data-preview="bowl"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Singing Bowl</div>
-                        <div class="sound-pill" data-group="finalBongSound" data-value="bell"      data-preview="bell"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Bell</div>
-                        <div class="sound-pill" data-group="finalBongSound" data-value="chime"     data-preview="chime"     style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Chime</div>
-                        <div class="sound-pill" data-group="finalBongSound" data-value="ting"      data-preview="ting"      style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Ting</div>
-                        <div class="sound-pill" data-group="finalBongSound" value="fanfare"       data-value="fanfare"     data-preview="fanfare"     style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Fanfare</div>
-                        <div class="sound-pill" data-group="finalBongSound" data-value="deep-tone" data-preview="deep-tone" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Deep Tone</div>
-                        <div class="sound-pill" data-group="finalBongSound" data-value="cascade"   data-preview="cascade"   style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Cascade</div>
-                        <div class="sound-pill" data-group="finalBongSound" data-value="sunrise"   data-preview="sunrise"   style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Sunrise</div>
-                        <div class="sound-pill" data-group="finalBongSound" data-value="resonance" data-preview="resonance" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Resonance</div>
-                        <div class="sound-pill" data-group="finalBongSound" data-value="harmony"   data-preview="harmony"   style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Harmony</div>
+                        <div class="sound-pill pill-option" data-group="finalBongSound" data-value="bowl"      data-preview="bowl"     >Singing Bowl</div>
+                        <div class="sound-pill pill-option" data-group="finalBongSound" data-value="bell"      data-preview="bell"     >Bell</div>
+                        <div class="sound-pill pill-option" data-group="finalBongSound" data-value="chime"     data-preview="chime"    >Chime</div>
+                        <div class="sound-pill pill-option" data-group="finalBongSound" data-value="ting"      data-preview="ting"     >Ting</div>
+                        <div class="sound-pill pill-option" data-group="finalBongSound" value="fanfare"       data-value="fanfare"     data-preview="fanfare"    >Fanfare</div>
+                        <div class="sound-pill pill-option" data-group="finalBongSound" data-value="deep-tone" data-preview="deep-tone">Deep Tone</div>
+                        <div class="sound-pill pill-option" data-group="finalBongSound" data-value="cascade"   data-preview="cascade"  >Cascade</div>
+                        <div class="sound-pill pill-option" data-group="finalBongSound" data-value="sunrise"   data-preview="sunrise"  >Sunrise</div>
+                        <div class="sound-pill pill-option" data-group="finalBongSound" data-value="resonance" data-preview="resonance">Resonance</div>
+                        <div class="sound-pill pill-option" data-group="finalBongSound" data-value="harmony"   data-preview="harmony"  >Harmony</div>
                     </div>
 
                     <div style="height:1px; background:#f0f0f5; margin-bottom:28px;"></div>
@@ -11679,17 +11771,17 @@ function showStats() {
 
                     <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Frequency</div>
                     <div style="display:flex; flex-wrap:wrap; gap:10px;">
-                        <div class="splits-freq-pill" data-value="0.5"  style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">1 in 2</div>
-                        <div class="splits-freq-pill" data-value="0.33" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">1 in 3</div>
-                        <div class="splits-freq-pill" data-value="0.2"  style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">1 in 5</div>
-                        <div class="splits-freq-pill" data-value="0.1"  style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">1 in 10</div>
-                        <div class="splits-freq-pill" data-value="0.05" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">1 in 20</div>
-                        <div class="splits-freq-pill" data-value="0.04" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">1 in 25</div>
-                        <div class="splits-freq-pill" data-value="0.02" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">1 in 50</div>
-                        <div class="splits-freq-pill" data-value="0.01" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">1 in 100</div>
+                        <div class="splits-freq-pill pill-option" data-value="0.5" >1 in 2</div>
+                        <div class="splits-freq-pill pill-option" data-value="0.33">1 in 3</div>
+                        <div class="splits-freq-pill pill-option" data-value="0.2" >1 in 5</div>
+                        <div class="splits-freq-pill pill-option" data-value="0.1" >1 in 10</div>
+                        <div class="splits-freq-pill pill-option" data-value="0.05">1 in 20</div>
+                        <div class="splits-freq-pill pill-option" data-value="0.04">1 in 25</div>
+                        <div class="splits-freq-pill pill-option" data-value="0.02">1 in 50</div>
+                        <div class="splits-freq-pill pill-option" data-value="0.01">1 in 100</div>
                         <div style="width:100%;"></div>
-                        <div class="splits-freq-pill" data-value="1"    style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Always</div>
-                        <div class="splits-freq-pill" data-value="0"    style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Never</div>
+                        <div class="splits-freq-pill pill-option" data-value="1"   >Always</div>
+                        <div class="splits-freq-pill pill-option" data-value="0"   >Never</div>
                     </div>
                 </div>
 
@@ -11729,15 +11821,15 @@ function showStats() {
 
                     <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">What are you working on?</div>
                     <div id="goalPillsContainer" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:32px;">
-                        <div class="goal-pill" data-goal="goal_maintenance" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">General maintenance</div>
-                        <div class="goal-pill" data-goal="goal_relaxation" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Relaxation</div>
-                        <div class="goal-pill" data-goal="goal_flexibility" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Improve flexibility</div>
-                        <div class="goal-pill" data-goal="goal_posture" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Improve posture</div>
-                        <div class="goal-pill" data-goal="goal_mobility" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Improve mobility</div>
-                        <div class="goal-pill" data-goal="goal_frontsplits" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Achieve front splits</div>
-                        <div class="goal-pill" data-goal="goal_sidesplits" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Achieve side splits</div>
-                        <div class="goal-pill" data-goal="goal_recovery" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Sport / running recovery</div>
-                        <div class="goal-pill" data-goal="goal_alignment" style="padding:10px 18px; border-radius:100px; font-size:14px; font-weight:500; cursor:pointer; border:1.5px solid #e5e5e7; background:white; color:#3a3a3a; transition:all 0.15s; user-select:none;">Alignment and control</div>
+                        <div class="goal-pill pill-option" data-goal="goal_maintenance">General maintenance</div>
+                        <div class="goal-pill pill-option" data-goal="goal_relaxation">Relaxation</div>
+                        <div class="goal-pill pill-option" data-goal="goal_flexibility">Improve flexibility</div>
+                        <div class="goal-pill pill-option" data-goal="goal_posture">Improve posture</div>
+                        <div class="goal-pill pill-option" data-goal="goal_mobility">Improve mobility</div>
+                        <div class="goal-pill pill-option" data-goal="goal_frontsplits">Achieve front splits</div>
+                        <div class="goal-pill pill-option" data-goal="goal_sidesplits">Achieve side splits</div>
+                        <div class="goal-pill pill-option" data-goal="goal_recovery">Sport / running recovery</div>
+                        <div class="goal-pill pill-option" data-goal="goal_alignment">Alignment and control</div>
                     </div>
 
                     <div style="height:1px; background:#f0f0f5; margin-bottom:28px;"></div>
@@ -11855,7 +11947,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.58</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.64</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
