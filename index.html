@@ -1691,7 +1691,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="12 Jul 2026">
-<meta name="app-version" content="6.77">
+<meta name="app-version" content="6.78">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -7406,7 +7406,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
             if (!isAllExercises) {
                 sessionTargets = selectSessionTargets(exercisesForGen, {}, selectedFocus, jumiPriorities);
-                console.log(`[QS] selectedType=${selectedType} → target: ${sessionTargets[0]||'none'}`);
+                console.log(`[QS] bodyBalance=${bodyBalance} → target: ${sessionTargets[0]||'none'}`);
                 const target = sessionTargets[0];
                 if (target) {
                     const reservation = reserveTargetExercises(target, exercisesForGen);
@@ -7463,6 +7463,50 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     ...recencyShuffle(primaryMatch),
                     ...recencyShuffle(rest)
                 ];
+            }
+
+            // For prep phases at a non-extreme balance: no target-muscle weighting (that's
+            // deliberately reserved for the workout phases), but exercises are drawn so the
+            // resulting order leans toward the chosen side in the same proportion as the
+            // balance slider, without hard-excluding the other side. Each position in the
+            // result is decided by an independent weighted coin flip (upper with probability
+            // balance%), then filled from that side's own recency-shuffled list — this keeps
+            // the actual proportion close to the slider regardless of how many more upper vs
+            // lower exercises happen to exist in the library (a plain weighted-sort doesn't:
+            // tested it first and it converged to ~100/0 instead of 80/20 when one side had
+            // more candidates than the other).
+            function balanceWeightedShuffle(arr, balance) {
+                const byRecency = a => a
+                    .map(e => ({ e, sort: Math.random() * (recencyWeights[e.exercise] || 1.0) }))
+                    .sort((a, b) => b.sort - a.sort)
+                    .map(x => x.e);
+
+                // 'full'-tagged exercises count as valid for either side, same as the pure-extreme filters do
+                const upperPool = byRecency(arr.filter(e => { const bp = (e.bodyPart||'').toLowerCase(); return bp === 'upper' || bp === 'full'; }));
+                const lowerPool = byRecency(arr.filter(e => { const bp = (e.bodyPart||'').toLowerCase(); return bp === 'lower' || bp === 'full'; }));
+
+                const usedNames = new Set();
+                const result = [];
+                let ui = 0, li = 0;
+                const skipUsed = (pool, i) => { while (i < pool.length && usedNames.has(pool[i].exercise)) i++; return i; };
+
+                while (true) {
+                    ui = skipUsed(upperPool, ui);
+                    li = skipUsed(lowerPool, li);
+                    if (ui >= upperPool.length && li >= lowerPool.length) break;
+
+                    const wantUpper = Math.random() * 100 < balance;
+                    let candidate = null;
+                    if (wantUpper && ui < upperPool.length) candidate = upperPool[ui++];
+                    else if (!wantUpper && li < lowerPool.length) candidate = lowerPool[li++];
+                    else if (ui < upperPool.length) candidate = upperPool[ui++];
+                    else if (li < lowerPool.length) candidate = lowerPool[li++];
+
+                    if (!candidate) break;
+                    usedNames.add(candidate.exercise);
+                    result.push(candidate);
+                }
+                return result;
             }
 
             const maxAttempts = isAllExercises ? 1 : 400;
@@ -7561,6 +7605,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                             allPhaseExercises = weightedShuffle(allPhaseExercises.filter(e => { const bp = (e.bodyPart||'').toLowerCase(); return bp === 'upper' || bp === 'full'; }), phasePool);
                         } else if (bodyBalance === 0) {
                             allPhaseExercises = weightedShuffle(allPhaseExercises.filter(e => { const bp = (e.bodyPart||'').toLowerCase(); return bp === 'lower' || bp === 'full'; }), phasePool);
+                        } else if (PREP_PHASES.has(phase)) {
+                            allPhaseExercises = balanceWeightedShuffle(allPhaseExercises, bodyBalance);
                         } else {
                             allPhaseExercises = weightedShuffle(allPhaseExercises, phasePool);
                         }
@@ -12075,7 +12121,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.77</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.78</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
