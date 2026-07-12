@@ -1691,7 +1691,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="12 Jul 2026">
-<meta name="app-version" content="6.72">
+<meta name="app-version" content="6.73">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -2295,6 +2295,13 @@
 
         // Canonical order phases run in, start to finish.
         const PHASE_ORDER = ['Warm-Up', 'Foam Roller', 'Mobility', 'Static Stretching', 'Active Stretch', 'Deep Stretch', 'Splits', 'Cool Down', 'Final Rest'];
+
+        // Phase groups — prep gets the body ready, workout is the actual stretching
+        // work (this is also the only group extra/repeated exercises are allowed to
+        // pad out into), splits is its own optional extra, recovery winds down.
+        const PREP_PHASES     = new Set(['Warm-Up', 'Foam Roller', 'Mobility']);
+        const WORKOUT_PHASES  = new Set(['Static Stretching', 'Active Stretch', 'Deep Stretch']);
+        const RECOVERY_PHASES = new Set(['Cool Down', 'Final Rest']);
 
         // Canonical phase -> colour mapping used throughout the UI.
         const PHASE_COLOURS = {
@@ -6944,33 +6951,49 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 phaseCount++;
             }
 
-            // Only add duplicates if ALL unique pool exercises have been used
-            if (!isAllExercises && phaseCount < phaseConf.max && phaseExercises.length > 0 && phaseExercises.length >= allPhaseExercises.length) {
-                // Snapshot of unique exercises - round-robin ONLY from these.
-                // Exclude the target-muscle exercise itself — duplicating it would push its
-                // count above 1 and fail the "exactly 1 target hit per phase" validator.
+            // Only add duplicates if ALL unique pool exercises have been used, and only
+            // in the workout phases (Static Stretching, Active Stretch, Deep Stretch) —
+            // other phases simply stay short of their usual count rather than repeat.
+            if (!isAllExercises && WORKOUT_PHASES.has(phase) && phaseCount < phaseConf.max && phaseExercises.length > 0 && phaseExercises.length >= allPhaseExercises.length) {
+                // Repeat pool - everything already selected in this phase, minus the
+                // target-muscle exercise itself — duplicating it would push its count
+                // above 1 and fail the "exactly 1 target hit per phase" validator.
                 // When the pool is thin (e.g. a narrow body-part selection), this means the
                 // phase may simply stay short of its usual minimum rather than repeat the target.
                 const targetMuscleForDupes = sessionTargets && sessionTargets.length > 0 ? sessionTargets[0] : null;
-                const uniqueSnapshot = targetMuscleForDupes
+                const repeatPool = targetMuscleForDupes
                     ? phaseExercises.filter(e => !exerciseMatchesTarget(e, targetMuscleForDupes))
                     : [...phaseExercises];
-                let dupIndex = 0;
-                let attempts = 0;
-                while (phaseCount < phaseConf.max && attempts < 50) {
-                    attempts++;
-                    if (uniqueSnapshot.length === 0) break;
-                    const sourceEx = uniqueSnapshot[dupIndex % uniqueSnapshot.length];
-                    const exTime = calculateExerciseTime(sourceEx);
-                    const projectedTotal = runningTotalTime + exTime + effectiveReserved;
-                    if (!isAllExercises && projectedTotal > maxSeconds && phaseCount >= effectiveMin) {
-                        dupIndex++;
-                        continue;
+
+                if (repeatPool.length > 0) {
+                    // True round-robin: shuffle once, use every exercise before any of
+                    // them repeats, then reshuffle for the next lap. Guard against the
+                    // reshuffle happening to put the exercise that just played back at
+                    // the front — that would repeat it immediately, which we want to
+                    // avoid wherever there's more than one option to pick from instead.
+                    let bag = [];
+                    let lastAdded = phaseExercises[phaseExercises.length - 1].exercise;
+                    let attempts = 0;
+                    while (phaseCount < phaseConf.max && attempts < 50) {
+                        attempts++;
+                        if (bag.length === 0) {
+                            bag = shuffleArray(repeatPool);
+                            if (bag.length > 1 && bag[0].exercise === lastAdded) {
+                                const swapWith = 1 + Math.floor(Math.random() * (bag.length - 1));
+                                [bag[0], bag[swapWith]] = [bag[swapWith], bag[0]];
+                            }
+                        }
+                        const sourceEx = bag.shift();
+                        const exTime = calculateExerciseTime(sourceEx);
+                        const projectedTotal = runningTotalTime + exTime + effectiveReserved;
+                        if (!isAllExercises && projectedTotal > maxSeconds && phaseCount >= effectiveMin) {
+                            continue;
+                        }
+                        phaseExercises.push({...sourceEx});
+                        runningTotalTime += exTime;
+                        phaseCount++;
+                        lastAdded = sourceEx.exercise;
                     }
-                    phaseExercises.push({...sourceEx});
-                    runningTotalTime += exTime;
-                    phaseCount++;
-                    dupIndex++;
                 }
             }
 
@@ -7488,10 +7511,9 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
                 // Determine which pool to use for a given phase:
                 // Prep phases (Warm-Up, Foam Roller, Mobility) — no muscle forcing, recency only
-                // Stretch phases (Static, Active, Deep) — use sessionTargetPool
+                // Workout phases (Static, Active, Deep) — use sessionTargetPool
                 // Cool Down — use stretchMusclePool (built after stretch phases)
-                const PREP_PHASES    = new Set(['Warm-Up','Foam Roller','Mobility']);
-                const STRETCH_PHASES = new Set(['Static Stretching','Active Stretch','Deep Stretch']);
+                // PREP_PHASES / WORKOUT_PHASES are shared top-level constants (see PHASE_ORDER).
 
                 // Reservations computed once before retry loop
 
@@ -7521,7 +7543,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     let focusExercises = [];
 
                     if (phase !== 'Active Stretch' && phase !== 'Deep Stretch') {
-                        if (selectedFocus && !isAllExercises && STRETCH_PHASES.has(phase)) {
+                        if (selectedFocus && !isAllExercises && WORKOUT_PHASES.has(phase)) {
                             // Stretch phases: hard-split focus exercises to front (guarantee target muscle coverage)
                             focusExercises = allPhaseExercises.filter(e => e.primaryMuscle === selectedFocus);
                             const otherExercises = allPhaseExercises.filter(e => e.primaryMuscle !== selectedFocus);
@@ -7861,129 +7883,99 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 if (didTrim) {
                 }
 
-                // Pad if under target — runs whether we trimmed or not
+                // Pad if under target — runs whether we trimmed or not.
+                // Only the workout phases (Static Stretching, Active Stretch, Deep
+                // Stretch) get topped up here — prep, splits and recovery phases stay
+                // as the main generation loop left them, even if that's a bit short.
                 if (currentTotal < minSecs) {
-                    const shortage = minSecs - currentTotal;
-                    
-                    let addAttempts = 0;
                     const usedNames = new Set(bestRoutine.map(ex => ex.exercise));
                     const fillShortage = minSecs - currentTotal;
-                    const fillPhaseOrder = ['Static Stretching', 'Active Stretch', 'Mobility', 'Warm-Up', 'Foam Roller', 'Cool Down'];
+                    const target = sessionTargets && sessionTargets.length > 0 ? sessionTargets[0] : null;
 
                     // Track how many exercises each phase already has, so padding never breaks a phase's max cap
                     const phaseCountsInRoutine = {};
                     bestRoutine.forEach(ex => { phaseCountsInRoutine[ex.phase] = (phaseCountsInRoutine[ex.phase] || 0) + 1; });
                     const phaseHasRoom = (phase) => !config[phase] || phaseCountsInRoutine[phase] < config[phase].max;
 
-                    // Build pool from all appropriate phases, sorted by best fit to gap
-                    let availableStatic = [];
-                    for (const phase of fillPhaseOrder) {
-                        if (!phaseHasRoom(phase)) continue;
-                        const phaseExercises = exercisesForGen.filter(ex => {
-                            if (ex.phase !== phase) return false;
-                            if (ex.exercise === 'Savasana') return false;
-                            if (usedNames.has(ex.exercise)) return false;
-                            // Apply bodyPart filter — same as in main phase loop
-                            if (bodyBalance === 100) { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'upper' || bp === 'full'; }
-                            if (bodyBalance === 0) { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'lower' || bp === 'full'; }
-                            return true;
-                        });
-                        availableStatic.push(...phaseExercises);
-                    }
+                    const bodyPartOK = (ex) => {
+                        if (bodyBalance === 100) { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'upper' || bp === 'full'; }
+                        if (bodyBalance === 0) { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'lower' || bp === 'full'; }
+                        return true;
+                    };
 
-                    // Sort by best fit to the gap
-                    availableStatic.sort((a, b) => {
-                        const aTime = calculateExerciseTime(a);
-                        const bTime = calculateExerciseTime(b);
-                        const aOver = aTime > fillShortage;
-                        const bOver = bTime > fillShortage;
-                        if (aOver !== bOver) return aOver ? 1 : -1;
-                        return Math.abs(aTime - fillShortage) - Math.abs(bTime - fillShortage);
+                    // Build the unique-candidate pool from the workout phases only, in
+                    // random order — spreads padding across phases and exercises instead
+                    // of always favouring whichever phase came first in a fixed list.
+                    let availableUnique = [];
+                    WORKOUT_PHASES.forEach(phase => {
+                        if (!phaseHasRoom(phase)) return;
+                        availableUnique.push(...exercisesForGen.filter(ex =>
+                            ex.phase === phase && ex.exercise !== 'Savasana' && !usedNames.has(ex.exercise) && bodyPartOK(ex)
+                        ));
                     });
+                    availableUnique = shuffleArray(availableUnique);
 
-                    
-                    // If no unused exercises, allow repeats from all phases
-                    let allowRepeats = false;
-                    if (availableStatic.length === 0) {
-                        allowRepeats = true;
-                        repeatsWereNeeded = true;
-                        availableStatic = exercisesForGen.filter(ex => {
-                            if (ex.phase !== 'Static Stretching') return false;
-                            if (ex.exercise === 'Savasana') return false;
-                            if (bodyBalance === 100) { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'upper' || bp === 'full'; }
-                            if (bodyBalance === 0) { const bp = (ex.bodyPart || '').toLowerCase(); return bp === 'lower' || bp === 'full'; }
-                            return true;
-                        });
-                        availableStatic.sort((a, b) => {
-                            const aTime = calculateExerciseTime(a);
-                            const bTime = calculateExerciseTime(b);
-                            const remaining = minSecs - currentTotal;
-                            return Math.abs(aTime - remaining) - Math.abs(bTime - remaining);
-                        });
-                    }
-                    
-                    // Keep adding until we reach target
                     const maxAddAttempts = Math.max(100, Math.ceil(fillShortage / 60));
-                    
-                    
-                    // Collect unique exercises and repeats separately
                     const uniqueExercisesToAdd = [];
                     const repeatExercisesToAdd = [];
-                    
-                    for (let ex of availableStatic) {
-                        if (currentTotal >= minSecs) {
-                            break;
-                        }
-                        if (addAttempts >= maxAddAttempts) {
-                            break;
-                        }
-                        if (!phaseHasRoom(ex.phase)) {
-                            continue; // phase already at its max cap — skip to next candidate
-                        }
+                    let addAttempts = 0;
+                    let lastAdded = bestRoutine.length > 0 ? bestRoutine[bestRoutine.length - 1].exercise : null;
+
+                    // Pass 1: unique exercises, each used at most once
+                    for (const ex of availableUnique) {
+                        if (currentTotal >= minSecs || addAttempts >= maxAddAttempts) break;
+                        if (!phaseHasRoom(ex.phase)) continue;
 
                         const exTime = calculateExerciseTime(ex);
                         // Allow one exercise worth of overshoot — the trim loop handles it
                         // This prevents getting stuck when only large exercises remain
                         // Max single exercise = 2-sided long hold Deep Stretch = (120+15)*2 = 270s
                         if (currentTotal + exTime <= maxSecs + 270) {
-                            if (allowRepeats) {
-                                repeatExercisesToAdd.push({...ex, _balancingRepeat: true});
-                            } else {
-                                uniqueExercisesToAdd.push({...ex});
-                                usedNames.add(ex.exercise);
-                            }
+                            uniqueExercisesToAdd.push({...ex});
+                            usedNames.add(ex.exercise);
                             currentTotal += exTime;
                             addAttempts++;
                             phaseCountsInRoutine[ex.phase] = (phaseCountsInRoutine[ex.phase] || 0) + 1;
+                            lastAdded = ex.exercise;
                         }
                     }
-                    
-                    
-                    // If we still haven't reached target and we've used all exercises once,
-                    // go through the list again for more repeats
-                    let passCount = 2;
-                    while (currentTotal < minSecs && allowRepeats && addAttempts < maxAddAttempts) {
-                        let addedThisPass = 0;
-                        for (let ex of availableStatic) {
-                            if (currentTotal >= minSecs || addAttempts >= maxAddAttempts) break;
-                            if (!phaseHasRoom(ex.phase)) continue;
 
-                            const exTime = calculateExerciseTime(ex);
-                            // Allow overshoot — trim handles it
-                            if (currentTotal + exTime <= maxSecs + 270) {
-                                repeatExercisesToAdd.push({...ex, _balancingRepeat: true});
-                                currentTotal += exTime;
-                                addAttempts++;
-                                addedThisPass++;
-                                phaseCountsInRoutine[ex.phase] = (phaseCountsInRoutine[ex.phase] || 0) + 1;
+                    // Pass 2: still short — repeat. True round-robin through everything
+                    // in the workout phases (already in the routine, or just queued to
+                    // join it), minus the target-muscle exercise, so no exercise ever
+                    // needs picking twice before the rest of the pool has had a turn,
+                    // and never picking the one that was just added.
+                    if (currentTotal < minSecs && addAttempts < maxAddAttempts) {
+                        repeatsWereNeeded = true;
+                        let repeatPool = [];
+                        WORKOUT_PHASES.forEach(phase => {
+                            if (!phaseHasRoom(phase)) return;
+                            repeatPool.push(...bestRoutine.filter(ex => ex.phase === phase && ex.exercise !== 'Savasana' && !ex.isReserved));
+                            repeatPool.push(...uniqueExercisesToAdd.filter(ex => ex.phase === phase));
+                        });
+                        if (target) repeatPool = repeatPool.filter(ex => !exerciseMatchesTarget(ex, target));
+
+                        let bag = [];
+                        while (currentTotal < minSecs && addAttempts < maxAddAttempts && repeatPool.length > 0) {
+                            addAttempts++;
+                            if (bag.length === 0) {
+                                bag = shuffleArray(repeatPool);
+                                if (bag.length > 1 && bag[0].exercise === lastAdded) {
+                                    const swapWith = 1 + Math.floor(Math.random() * (bag.length - 1));
+                                    [bag[0], bag[swapWith]] = [bag[swapWith], bag[0]];
+                                }
                             }
+                            const sourceEx = bag.shift();
+                            if (!phaseHasRoom(sourceEx.phase)) continue;
+                            const exTime = calculateExerciseTime(sourceEx);
+                            if (currentTotal + exTime > maxSecs + 270) continue;
+                            repeatExercisesToAdd.push({...sourceEx, _balancingRepeat: true});
+                            currentTotal += exTime;
+                            phaseCountsInRoutine[sourceEx.phase] = (phaseCountsInRoutine[sourceEx.phase] || 0) + 1;
+                            lastAdded = sourceEx.exercise;
                         }
-                        if (addedThisPass === 0) {
-                            break; // Prevent infinite loop
-                        }
-                        passCount++;
                     }
-                    
+
                     // Insert at END of Static Stretching phase, but BEFORE Deep Stretch
                     // (Static Stretching must always precede Deep Stretch in the sequence)
                     let insertIndex = -1;
@@ -12062,7 +12054,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.72</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.73</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
