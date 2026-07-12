@@ -1659,7 +1659,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="12 Jul 2026">
-<meta name="app-version" content="6.64">
+<meta name="app-version" content="6.65">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -6963,8 +6963,97 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             let bestRoutine = null;
             let bestTimeDiff = Infinity;
             let repeatsWereNeeded = false; // Track if we had to use repeats
-            let config; // hoisted out of the attempt loop so it's still readable after the loop ends (padding step needs it)
-            
+
+            // Full per-phase min/max table (Warm-Up through Splits) for the chosen session
+            // length. Computed once here, before the retry loop — this ~70-line table used
+            // to be rebuilt from scratch on every one of up to 400 retry attempts even
+            // though the values never change between attempts (Phase 6 cleanup).
+            const phaseCountConfig = {
+                25: {
+                    "Warm-Up": { min: 2, max: 3 },
+                    "Foam Roller": { min: 2, max: 3 },
+                    "Mobility": { min: 2, max: 3 },
+                    "Static Stretching": { min: 4, max: 8 },
+                    "Active Stretch": { min: 1, max: 1 },
+                    "Deep Stretch": { min: 1, max: 1 }, // Reduced from 2 due to longer holds (90s)
+                    "Splits": { min: 0, max: 1 }
+                },
+                30: {
+                    "Warm-Up": { min: 2, max: 3 },
+                    "Foam Roller": { min: 2, max: 3 },
+                    "Mobility": { min: 2, max: 3 },
+                    "Static Stretching": { min: 4, max: 10 },
+                    "Active Stretch": { min: 2, max: 2 },
+                    "Deep Stretch": { min: 2, max: 2 }, // Reduced from 3 due to longer holds (90s)
+                    "Splits": { min: 0, max: 1 }
+                },
+                35: {
+                    "Warm-Up": { min: 2, max: 3 },
+                    "Foam Roller": { min: 2, max: 3 },
+                    "Mobility": { min: 2, max: 3 },
+                    "Static Stretching": { min: 5, max: 13 },
+                    "Active Stretch": { min: 2, max: 3 },
+                    "Deep Stretch": { min: 2, max: 3 }, // Reduced from 4 due to longer holds (90s)
+                    "Splits": { min: 0, max: 1 }
+                },
+                40: {
+                    "Warm-Up": { min: 2, max: 3 },
+                    "Foam Roller": { min: 2, max: 3 },
+                    "Mobility": { min: 2, max: 3 },
+                    "Static Stretching": { min: 5, max: 13 },
+                    "Active Stretch": { min: 2, max: 4 },
+                    "Deep Stretch": { min: 2, max: 4 }, // Reduced from 5 due to longer holds (90s)
+                    "Splits": { min: 0, max: 1 }
+                },
+                45: {
+                    "Warm-Up": { min: 2, max: 3 },
+                    "Foam Roller": { min: 2, max: 3 },
+                    "Mobility": { min: 2, max: 3 },
+                    "Static Stretching": { min: 7, max: 15 },
+                    "Active Stretch": { min: 2, max: 4 },
+                    "Deep Stretch": { min: 2, max: 4 }, // Reduced from 6 due to longer holds (90s)
+                    "Splits": { min: 0, max: 1 }
+                },
+                50: {
+                    "Warm-Up": { min: 2, max: 3 },
+                    "Foam Roller": { min: 2, max: 3 },
+                    "Mobility": { min: 2, max: 3 },
+                    "Static Stretching": { min: 9, max: 17 },
+                    "Active Stretch": { min: 3, max: 5 },
+                    "Deep Stretch": { min: 3, max: 5 }, // Reduced from 7 due to longer holds (90s)
+                    "Splits": { min: 0, max: 1 }
+                },
+                60: {
+                    "Warm-Up": { min: 2, max: 3 },
+                    "Foam Roller": { min: 2, max: 3 },
+                    "Mobility": { min: 2, max: 3 },
+                    "Static Stretching": { min: 11, max: 21 },
+                    "Active Stretch": { min: 3, max: 6 },
+                    "Deep Stretch": { min: 3, max: 6 }, // Reduced from 8 due to longer holds (90s)
+                    "Splits": { min: 0, max: 1 }
+                },
+                999: { // All exercises
+                    "Warm-Up": { min: 0, max: 999 },
+                    "Foam Roller": { min: 0, max: 999 },
+                    "Mobility": { min: 0, max: 999 },
+                    "Static Stretching": { min: 0, max: 999 },
+                    "Active Stretch": { min: 0, max: 999 },
+                    "Deep Stretch": { min: 0, max: 999 },
+                    "Splits": { min: 0, max: 999 }
+                }
+            };
+
+            let config = phaseCountConfig[configKey];
+            if (scaleFactor > 1) {
+                config = {};
+                Object.keys(phaseCountConfig[60]).forEach(phase => {
+                    config[phase] = {
+                        min: Math.ceil(phaseCountConfig[60][phase].min * scaleFactor),
+                        max: Math.ceil(phaseCountConfig[60][phase].max * scaleFactor)
+                    };
+                });
+            }
+
             // ── TARGET SELECTION AND RESERVATION ──
             // Done ONCE before retry loop. Target, reservations, and exclusions are fixed for the generation.
             sessionTargets = [];
@@ -6995,123 +7084,10 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 let totalTime = 0; // Exercise time only - Get Ready is not included
                 const usedExerciseNames = new Set(); // Track all used exercise names
                 
-                // Phase config - adjust for <30 min
-                const isShortRoutine = targetMinutes < 30 && !isAllExercises;
-                const phaseConfig = {
-                    25: {
-                        "Warm-Up": { min: 2, max: 3 },
-                        "Foam Roller": { min: 2, max: 3 },
-                        "Mobility": { min: 2, max: 3 },
-                        "Static Stretching": { min: 4, max: 8 },
-                        "Active Stretch": { min: 1, max: 1 },
-                        "Deep Stretch": { min: 1, max: 1 }, // Reduced from 2 due to longer holds (90s)
-                        "Splits": { min: 0, max: 1 }
-                    },
-                    30: {
-                        "Warm-Up": { min: 2, max: 3 },
-                        "Foam Roller": { min: 2, max: 3 },
-                        "Mobility": { min: 2, max: 3 },
-                        "Static Stretching": { min: 4, max: 10 },
-                        "Active Stretch": { min: 2, max: 2 },
-                        "Deep Stretch": { min: 2, max: 2 }, // Reduced from 3 due to longer holds (90s)
-                        "Splits": { min: 0, max: 1 }
-                    },
-                    35: {
-                        "Warm-Up": { min: 2, max: 3 },
-                        "Foam Roller": { min: 2, max: 3 },
-                        "Mobility": { min: 2, max: 3 },
-                        "Static Stretching": { min: 5, max: 13 },
-                        "Active Stretch": { min: 2, max: 3 },
-                        "Deep Stretch": { min: 2, max: 3 }, // Reduced from 4 due to longer holds (90s)
-                        "Splits": { min: 0, max: 1 }
-                    },
-                    40: {
-                        "Warm-Up": { min: 2, max: 3 },
-                        "Foam Roller": { min: 2, max: 3 },
-                        "Mobility": { min: 2, max: 3 },
-                        "Static Stretching": { min: 5, max: 13 },
-                        "Active Stretch": { min: 2, max: 4 },
-                        "Deep Stretch": { min: 2, max: 4 }, // Reduced from 5 due to longer holds (90s)
-                        "Splits": { min: 0, max: 1 }
-                    },
-                    45: {
-                        "Warm-Up": { min: 2, max: 3 },
-                        "Foam Roller": { min: 2, max: 3 },
-                        "Mobility": { min: 2, max: 3 },
-                        "Static Stretching": { min: 7, max: 15 },
-                        "Active Stretch": { min: 2, max: 4 },
-                        "Deep Stretch": { min: 2, max: 4 }, // Reduced from 6 due to longer holds (90s)
-                        "Splits": { min: 0, max: 1 }
-                    },
-                    50: {
-                        "Warm-Up": { min: 2, max: 3 },
-                        "Foam Roller": { min: 2, max: 3 },
-                        "Mobility": { min: 2, max: 3 },
-                        "Static Stretching": { min: 9, max: 17 },
-                        "Active Stretch": { min: 3, max: 5 },
-                        "Deep Stretch": { min: 3, max: 5 }, // Reduced from 7 due to longer holds (90s)
-                        "Splits": { min: 0, max: 1 }
-                    },
-                    60: {
-                        "Warm-Up": { min: 2, max: 3 },
-                        "Foam Roller": { min: 2, max: 3 },
-                        "Mobility": { min: 2, max: 3 },
-                        "Static Stretching": { min: 11, max: 21 },
-                        "Active Stretch": { min: 3, max: 6 },
-                        "Deep Stretch": { min: 3, max: 6 }, // Reduced from 8 due to longer holds (90s)
-                        "Splits": { min: 0, max: 1 }
-                    },
-                    999: { // All exercises
-                        "Warm-Up": { min: 0, max: 999 },
-                        "Foam Roller": { min: 0, max: 999 },
-                        "Mobility": { min: 0, max: 999 },
-                        "Static Stretching": { min: 0, max: 999 },
-                        "Active Stretch": { min: 0, max: 999 },
-                        "Deep Stretch": { min: 0, max: 999 },
-                        "Splits": { min: 0, max: 999 }
-                    }
-                };
-                
-                // Better config key selection with dynamic scaling for long durations
-                let configKey;
-                let scaleFactor = 1;
-                
-                if (isAllExercises) {
-                    configKey = 999;
-                } else if (targetMinutes <= 25) {
-                    configKey = 25;
-                } else if (targetMinutes <= 30) {
-                    configKey = 30;
-                } else if (targetMinutes <= 35) {
-                    configKey = 35;
-                } else if (targetMinutes <= 40) {
-                    configKey = 40;
-                } else if (targetMinutes <= 45) {
-                    configKey = 45;
-                } else if (targetMinutes <= 50) {
-                    configKey = 50;
-                } else if (targetMinutes <= 60) {
-                    configKey = 60;
-                } else {
-                    // For durations > 60, use 60-minute config and scale up
-                    configKey = 60;
-                    scaleFactor = targetMinutes / 60;
-                }
-                
-                config = phaseConfig[configKey];
-                
-                // Scale the config if needed
-                if (scaleFactor > 1) {
-                    config = {};
-                    Object.keys(phaseConfig[60]).forEach(phase => {
-                        config[phase] = {
-                            min: Math.ceil(phaseConfig[60][phase].min * scaleFactor),
-                            max: Math.ceil(phaseConfig[60][phase].max * scaleFactor)
-                        };
-                    });
-                }
+                // Phase min/max counts (config), the size-bracket lookup (configKey/scaleFactor)
+                // and the full config table (phaseCountConfig) are all computed once, above the
+                // retry loop — they never change between attempts, so they're not redone here.
 
-                
                 const phases = ["Warm-Up", "Foam Roller", "Mobility", "Static Stretching", "Active Stretch", "Deep Stretch", "Splits"];
                 
                 // Find Savasana
@@ -11947,7 +11923,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.64</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.65</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
