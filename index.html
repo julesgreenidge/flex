@@ -1659,7 +1659,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="12 Jul 2026">
-<meta name="app-version" content="6.65">
+<meta name="app-version" content="6.66">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -7078,6 +7078,53 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 }
             }
 
+            // Recency weighting: penalise recently seen exercises to encourage variety.
+            // Last session → 0.25 (strongly deprioritised), 2 sessions ago → 0.5, 3 sessions
+            // ago → 0.75. Reads localStorage and computed once here — previously this ran on
+            // every one of up to 400 retry attempts even though history can't change mid-generation.
+            const recentHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
+            const recencyWeights = {};
+            if (recentHistory.length >= 1) {
+                (recentHistory[recentHistory.length - 1].routine || []).forEach(ex => {
+                    recencyWeights[ex.exercise] = 0.25;
+                });
+            }
+            if (recentHistory.length >= 2) {
+                (recentHistory[recentHistory.length - 2].routine || []).forEach(ex => {
+                    if (!recencyWeights[ex.exercise]) recencyWeights[ex.exercise] = 0.5;
+                });
+            }
+            if (recentHistory.length >= 3) {
+                (recentHistory[recentHistory.length - 3].routine || []).forEach(ex => {
+                    if (!recencyWeights[ex.exercise]) recencyWeights[ex.exercise] = 0.75;
+                });
+            }
+
+            // Session targets fixed before retry loop
+            const sessionTargetPool = {};
+            sessionTargets.forEach(m => { sessionTargetPool[m] = 1; });
+
+            function weightedShuffle(arr, musclePool) {
+                // Base shuffle using recency weights (no muscle pool)
+                const recencyShuffle = a => a
+                    .map(e => ({ e, sort: Math.random() * (recencyWeights[e.exercise] || 1.0) }))
+                    .sort((a, b) => b.sort - a.sort)
+                    .map(x => x.e);
+
+                if (!musclePool) return recencyShuffle(arr);
+
+                // With muscle pool: only a direct primary-muscle match gets preference.
+                // Everything else — secondary match, tertiary match, or no relation at all —
+                // is treated the same and shuffled together purely by recency.
+                const primaryMatch = arr.filter(e => (musclePool[e.primaryMuscle] || 0) > 0);
+                const rest         = arr.filter(e => (musclePool[e.primaryMuscle] || 0) === 0);
+
+                return [
+                    ...recencyShuffle(primaryMatch),
+                    ...recencyShuffle(rest)
+                ];
+            }
+
             const maxAttempts = isAllExercises ? 1 : 400;
             for (let attempt = 0; attempt < maxAttempts; attempt++) {
                 let routine = [];
@@ -7123,50 +7170,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 const reservedTime = savasanaTime + estimatedCoolDownTime + estimatedActiveStretchTime + estimatedDeepStretchTime;
                 const minReservedTime = savasanaTime + estimatedCoolDownTime + minActiveStretchTime + minDeepStretchTime;
 
-                // Recency weighting: penalise recently seen exercises to encourage variety
-                // Last session → 0.25 (strongly deprioritised), 2 sessions ago → 0.5, 3 sessions ago → 0.75
-                const recentHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
-                const recencyWeights = {};
-                if (recentHistory.length >= 1) {
-                    (recentHistory[recentHistory.length - 1].routine || []).forEach(ex => {
-                        recencyWeights[ex.exercise] = 0.25;
-                    });
-                }
-                if (recentHistory.length >= 2) {
-                    (recentHistory[recentHistory.length - 2].routine || []).forEach(ex => {
-                        if (!recencyWeights[ex.exercise]) recencyWeights[ex.exercise] = 0.5;
-                    });
-                }
-                if (recentHistory.length >= 3) {
-                    (recentHistory[recentHistory.length - 3].routine || []).forEach(ex => {
-                        if (!recencyWeights[ex.exercise]) recencyWeights[ex.exercise] = 0.75;
-                    });
-                }
-
-                // Session targets fixed before retry loop
-                const sessionTargetPool = {};
-                sessionTargets.forEach(m => { sessionTargetPool[m] = 1; });
-
-                function weightedShuffle(arr, musclePool) {
-                    // Base shuffle using recency weights (no muscle pool)
-                    const recencyShuffle = a => a
-                        .map(e => ({ e, sort: Math.random() * (recencyWeights[e.exercise] || 1.0) }))
-                        .sort((a, b) => b.sort - a.sort)
-                        .map(x => x.e);
-
-                    if (!musclePool) return recencyShuffle(arr);
-
-                    // With muscle pool: only a direct primary-muscle match gets preference.
-                    // Everything else — secondary match, tertiary match, or no relation at all —
-                    // is treated the same and shuffled together purely by recency.
-                    const primaryMatch = arr.filter(e => (musclePool[e.primaryMuscle] || 0) > 0);
-                    const rest         = arr.filter(e => (musclePool[e.primaryMuscle] || 0) === 0);
-
-                    return [
-                        ...recencyShuffle(primaryMatch),
-                        ...recencyShuffle(rest)
-                    ];
-                }
+                // recencyWeights, sessionTargetPool and weightedShuffle() are all computed once,
+                // above the retry loop — they don't change between attempts (Phase 6 cleanup).
 
                 let prepMusclePool = null;    // kept for cool down — built after stretch phases
                 let stretchMusclePool = null;
@@ -11923,7 +11928,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.65</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.66</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
