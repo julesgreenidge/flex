@@ -1691,7 +1691,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="12 Jul 2026">
-<meta name="app-version" content="6.76">
+<meta name="app-version" content="6.77">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -7777,6 +7777,18 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 });
             }
 
+            // Diagnostic: full phase content with bodyPart tags. The log above only shows
+            // exercises matching the session target, so it can't answer "what's the actual
+            // upper/lower mix in this phase" — this one can, for every phase, every routine.
+            {
+                const allPhases = [...new Set(currentRoutine.map(e => e.phase))];
+                allPhases.forEach(phase => {
+                    const exs = currentRoutine.filter(e => e.phase === phase);
+                    const listing = exs.map(e => `${e.exercise}[${e.bodyPart || '?'}]`).join(', ');
+                    console.log(`[QS bodyPart] ${phase}: ${listing || '(empty)'}`);
+                });
+            }
+
             // Body balance swap — nudges the routine toward your chosen upper/lower split.
             // Skipped at the pure extremes (0 and 100) since those are already hard-filtered
             // to one side during generation, so there's nothing on the other side to swap.
@@ -12063,7 +12075,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.76</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.77</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
