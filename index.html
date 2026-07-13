@@ -1066,6 +1066,14 @@
         .segmented button + button {
             border-left: none;
         }
+        /* Type's 5-option row has longer labels than Duration/Hold — let them
+           wrap onto two lines at a smaller size instead of overflowing. */
+        .segmented .balance-seg-btn {
+            white-space: normal;
+            font-size: 11px;
+            line-height: 1.2;
+            padding: 8px 3px;
+        }
         .segmented button.selected {
             background: var(--seg-active, white);
             color: var(--seg-active-text, #1d1d1f);
@@ -1631,38 +1639,6 @@
             user-select: none;
         }
 
-        /* Upper/lower body balance slider (0-100%, snaps to 10% steps) */
-        .balance-slider {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 100%;
-            height: 6px;
-            border-radius: 3px;
-            background: linear-gradient(90deg, #764ba2, #e5e5e7 50%, #667eea);
-            outline: none;
-            margin: 0;
-        }
-        .balance-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: white;
-            border: 3px solid #667eea;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-            cursor: pointer;
-        }
-        .balance-slider::-moz-range-thumb {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: white;
-            border: 3px solid #667eea;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-            cursor: pointer;
-        }
-
         .settings-content-panel {
             display: block;
         }
@@ -1681,7 +1657,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="12 Jul 2026">
-<meta name="app-version" content="6.82">
+<meta name="app-version" content="6.83">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -1816,11 +1792,12 @@
                 <!-- Type -->
                 <div class="section">
                     <div class="section-title">Type</div>
-                    <div id="balanceSliderLabel" style="text-align:center;font-size:14px;font-weight:600;color:#1d1d1f;margin-bottom:10px;">Full Body</div>
-                    <input type="range" id="balanceSlider" class="balance-slider" min="0" max="100" step="10" value="50">
-                    <div style="display:flex;justify-content:space-between;font-size:11px;color:#86868b;margin-top:6px;">
-                        <span>Lower Body</span>
-                        <span>Upper Body</span>
+                    <div class="segmented">
+                        <button class="balance-seg-btn" data-value="0">Lower Body</button>
+                        <button class="balance-seg-btn" data-value="25">Mostly Lower</button>
+                        <button class="balance-seg-btn" data-value="50">Full Body</button>
+                        <button class="balance-seg-btn" data-value="75">Mostly Upper</button>
+                        <button class="balance-seg-btn" data-value="100">Upper Body</button>
                     </div>
                 </div>
                 <!-- Hold -->
@@ -2443,12 +2420,10 @@
 
             document.getElementById('settingsQuickStartBtn').addEventListener('click', function() {
                 activateSettingsTab('settingsQuickStartBtn', 'settingsQuickStartContent');
-                // Sync balance slider and hold pills from current settings
+                // Sync balance and hold pills from current settings
                 const savedBalance = appSettings.quickStartBalance ?? 50;
-                const settingsSlider = document.getElementById('settingsBalanceSlider');
-                const settingsSliderLabel = document.getElementById('settingsBalanceSliderLabel');
-                if (settingsSlider) settingsSlider.value = savedBalance;
-                if (settingsSliderLabel) settingsSliderLabel.textContent = balanceLabel(savedBalance);
+                selectPill('qs-balance-pill', String(savedBalance));
+                setRadioSelected('quickStartBalance', String(savedBalance));
                 selectPill('qs-hold-pill', appSettings.quickStartHold || 'short');
                 setRadioSelected('quickStartHold', appSettings.quickStartHold || 'short');
                 // Sync duration pills
@@ -2461,16 +2436,12 @@
                 if (durCustomInput) durCustomInput.value = appSettings.quickStartDurationCustomValue || 35;
             });
 
-            // QS balance slider + hold pill handlers
-            const settingsBalanceSliderEl = document.getElementById('settingsBalanceSlider');
-            if (settingsBalanceSliderEl) {
-                settingsBalanceSliderEl.addEventListener('input', function() {
-                    const value = parseInt(this.value, 10);
-                    const settingsSliderLabel = document.getElementById('settingsBalanceSliderLabel');
-                    if (settingsSliderLabel) settingsSliderLabel.textContent = balanceLabel(value);
-                });
-            }
             document.getElementById('settingsQuickStartContent').addEventListener('click', function(e) {
+                const balancePill = e.target.closest('.qs-balance-pill');
+                if (balancePill) {
+                    selectPill('qs-balance-pill', balancePill.dataset.value);
+                    setRadioSelected('quickStartBalance', balancePill.dataset.value);
+                }
                 const holdPill = e.target.closest('.qs-hold-pill');
                 if (holdPill) {
                     selectPill('qs-hold-pill', holdPill.dataset.value);
@@ -2984,7 +2955,7 @@
                     transitionSound: getRadioValue('transitionSound') || 'longbeep',
                     finalBongSound: getRadioValue('finalBongSound') || 'bowl',
                     splitsFrequency: parseFloat(getRadioValue('splitsFrequency') ?? '0.1'),
-                    quickStartBalance: parseInt((document.getElementById('settingsBalanceSlider') || {}).value ?? '50', 10),
+                    quickStartBalance: parseInt(getRadioValue('quickStartBalance') ?? '50', 10),
                     quickStartHold: getRadioValue('quickStartHold') || 'short',
                     quickStartDuration: getRadioValue('quickStartDuration') || 'last_used',
                     quickStartDurationCustomValue: parseInt((document.getElementById('settingsDurationCustomValue') || {}).value ?? '35', 10)
@@ -3847,14 +3818,17 @@
             return balance > 50 ? `${balance}% Upper` : `${100 - balance}% Lower`;
         }
 
-        // Moves the balance slider (and its label) to match the current bodyBalance value.
-        // Used whenever the app needs to re-sync the slider's visual position — e.g.
-        // restoring Quick Start, or returning to the main view after a routine finishes.
+        // Moves the Type selection (5-option segmented row) to match the current
+        // bodyBalance value. Used whenever the app needs to re-sync the control's
+        // visual position — e.g. restoring Quick Start, or returning to the main
+        // view after a routine finishes. Older saved routines can carry a balance
+        // that isn't exactly one of the 5 stops (0/25/50/75/100) — the row itself
+        // only ever offers those 5, so this snaps to whichever is closest purely
+        // for display; it doesn't change the stored bodyBalance value itself.
         function syncBalanceSliderUI() {
-            const slider = document.getElementById('balanceSlider');
-            const label = document.getElementById('balanceSliderLabel');
-            if (slider) slider.value = appState.bodyBalance;
-            if (label) label.textContent = balanceLabel(appState.bodyBalance);
+            const stops = [0, 25, 50, 75, 100];
+            const nearest = stops.reduce((a, b) => Math.abs(b - appState.bodyBalance) < Math.abs(a - appState.bodyBalance) ? b : a);
+            document.querySelectorAll('.balance-seg-btn').forEach(b => b.classList.toggle('selected', parseInt(b.dataset.value, 10) === nearest));
         }
         const GET_READY_TIME = 15; // 15 seconds for "Get Ready" phase
         let currentRoutine = [];
@@ -6305,11 +6279,11 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
         // setupCustomBuilderListeners() above. Content below is unchanged.
         function setupEventListenersTail() {
 
-            // Body balance slider (replaces the old Full/Upper/Lower Body buttons)
+            // Body balance control — 5-option segmented row (replaces the 0-100 slider,
+            // which looked out of place next to Duration/Hold's segmented buttons).
             function onBalanceSliderChange(value) {
                 setBodyBalance(value);
-                const label = document.getElementById('balanceSliderLabel');
-                if (label) label.textContent = balanceLabel(value);
+                document.querySelectorAll('.balance-seg-btn').forEach(b => b.classList.toggle('selected', parseInt(b.dataset.value, 10) === value));
                 const sub2 = document.getElementById('qsSubtitle');
                 if (sub2) sub2.textContent = balanceLabel(value) + ' · ' + (selectedHold === 'long' ? 'long hold' : 'short hold');
                 updateFocusDropdown(); // Update focus options based on new balance
@@ -6317,13 +6291,12 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 const splitsSection = document.getElementById('splitsSection');
                 if (splitsSection) splitsSection.style.display = value === 100 ? 'none' : 'block';
             }
-            const balanceSliderEl = document.getElementById('balanceSlider');
-            if (balanceSliderEl) {
-                balanceSliderEl.addEventListener('input', function() {
-                    onBalanceSliderChange(parseInt(this.value, 10));
+            document.querySelectorAll('.balance-seg-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    onBalanceSliderChange(parseInt(this.getAttribute('data-value'), 10));
                 });
-            }
-            
+            });
+
             // Function to update focus dropdown based on selected type
             window.updateFocusDropdown = function updateFocusDropdown() {
                 const focusSelect = document.getElementById('focusSelect');
@@ -7071,9 +7044,9 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             // Hide start button to prevent starting outdated routine if user re-generates
             
             // Read balance and hold from the currently selected UI controls
-            const _balanceSlider = document.getElementById('balanceSlider');
+            const _balanceBtn = document.querySelector('.balance-seg-btn.selected');
             const _holdBtn = document.querySelector('[data-hold].selected');
-            if (_balanceSlider) setBodyBalance(parseInt(_balanceSlider.value, 10));
+            if (_balanceBtn) setBodyBalance(parseInt(_balanceBtn.getAttribute('data-value'), 10));
             if (_holdBtn) { selectedHold = _holdBtn.getAttribute('data-hold'); longSession = selectedHold === 'long'; }
             // Final fallbacks
             if (!selectedType) setBodyBalance(50);
@@ -8254,13 +8227,13 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             longSession = selectedHold === 'long';
             selectedFocus = '';
 
-            // Sync balance slider and hold UI and read back selected values
+            // Sync balance and hold UI and read back selected values
             syncBalanceSliderUI();
             document.querySelectorAll('[data-hold]').forEach(b => { b.classList.remove('selected'); b.classList.toggle('selected', b.dataset.hold === selectedHold); });
             // Read back from UI in case controls were changed since last sync
-            const activeBalanceSlider = document.getElementById('balanceSlider');
+            const activeBalanceBtn = document.querySelector('.balance-seg-btn.selected');
             const activeHoldBtn = document.querySelector('[data-hold].selected');
-            if (activeBalanceSlider) setBodyBalance(parseInt(activeBalanceSlider.value, 10));
+            if (activeBalanceBtn) setBodyBalance(parseInt(activeBalanceBtn.getAttribute('data-value'), 10));
             if (activeHoldBtn) { selectedHold = activeHoldBtn.getAttribute('data-hold'); longSession = selectedHold === 'long'; }
 
             // Restore Quick Start routine if one exists, otherwise show empty state
@@ -11803,6 +11776,11 @@ function showStats() {
                 <!-- Quick Start Content -->
                 <div id="settingsQuickStartContent" class="settings-content-panel" style="display:none;">
                     <!-- Hidden radio — keep for getRadioValue() JS compatibility -->
+                    <input type="radio" name="quickStartBalance" value="0" style="display:none;">
+                    <input type="radio" name="quickStartBalance" value="25" style="display:none;">
+                    <input type="radio" name="quickStartBalance" value="50" style="display:none;">
+                    <input type="radio" name="quickStartBalance" value="75" style="display:none;">
+                    <input type="radio" name="quickStartBalance" value="100" style="display:none;">
                     <input type="radio" name="quickStartHold" value="short" style="display:none;">
                     <input type="radio" name="quickStartHold" value="long" style="display:none;">
                     <input type="radio" name="quickStartDuration" value="25" style="display:none;">
@@ -11814,16 +11792,6 @@ function showStats() {
 
                     <h2 style="margin-bottom:6px; font-size:24px; font-weight:800; letter-spacing:-0.5px; color:#1d1d1f;">Quick Start</h2>
                     <p style="font-size:14px; color:#86868b; margin-bottom:28px; line-height:1.5;">Set the default routine that launches when you tap Quick Start.</p>
-
-                    <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Type</div>
-                    <div id="settingsBalanceSliderLabel" style="text-align:center;font-size:14px;font-weight:600;color:#1d1d1f;margin-bottom:10px;">Full Body</div>
-                    <input type="range" id="settingsBalanceSlider" class="balance-slider" min="0" max="100" step="10" value="50">
-                    <div style="display:flex;justify-content:space-between;font-size:11px;color:#86868b;margin-top:6px;margin-bottom:32px;">
-                        <span>Lower Body</span>
-                        <span>Upper Body</span>
-                    </div>
-
-                    <div style="height:1px; background:#f0f0f5; margin-bottom:28px;"></div>
 
                     <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Duration</div>
                     <div style="display:flex; flex-wrap:wrap; gap:10px;">
@@ -11839,6 +11807,17 @@ function showStats() {
                     </div>
 
                     <div style="height:1px; background:#f0f0f5; margin:28px 0;"></div>
+
+                    <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Type</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:32px;">
+                        <div class="qs-balance-pill pill-option" data-value="0">Lower Body</div>
+                        <div class="qs-balance-pill pill-option" data-value="25">Mostly Lower</div>
+                        <div class="qs-balance-pill pill-option" data-value="50">Full Body</div>
+                        <div class="qs-balance-pill pill-option" data-value="75">Mostly Upper</div>
+                        <div class="qs-balance-pill pill-option" data-value="100">Upper Body</div>
+                    </div>
+
+                    <div style="height:1px; background:#f0f0f5; margin-bottom:28px;"></div>
 
                     <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Hold</div>
                     <div style="display:flex; flex-wrap:wrap; gap:10px;">
@@ -12171,7 +12150,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.82</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.83</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
