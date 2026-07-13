@@ -331,16 +331,6 @@
         input[type=number]::-webkit-inner-spin-button,
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
-        #durPickerCustomInput::placeholder { color: rgba(255,255,255,0.6); }
-        .dur-pick-btn {
-            display: flex; align-items: center; justify-content: center;
-            background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.25); border-radius: 14px;
-            padding: 15px 16px; cursor: pointer; width: 100%; text-align: center;
-            transition: all 0.15s; color: white; box-sizing: border-box;
-            font-size: 18px; font-weight: 700;
-        }
-        .dur-pick-btn:hover { background: rgba(255,255,255,0.28); border-color: rgba(255,255,255,0.6); }
-        .dur-pick-btn.selected { background: white; color: #667eea; border-color: white; }
 
         .phase-section {
             margin-bottom: 32px;
@@ -1691,7 +1681,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="12 Jul 2026">
-<meta name="app-version" content="6.81">
+<meta name="app-version" content="6.82">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -1765,39 +1755,15 @@
     <div id="mainView" style="display: none;">
         <!-- Left Column: Exercise Selection -->
         <div class="selection-column">
-            <!-- DURATION PICKER SCREEN — shown on every session load -->
-            <div id="durationPickerScreen" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:500; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; transition:opacity 0.4s ease, transform 0.4s ease; background:transparent;">
-                <div style="width:100%; max-width:320px; padding:0 24px; box-sizing:border-box; text-align:center;">
-                    <div style="font-size:52px; font-weight:800; color:white; letter-spacing:-2px; margin-bottom:32px;">flex.</div>
-                    <div style="font-size:15px; font-weight:400; color:rgba(255,255,255,0.8); margin-bottom:36px;">How much time do you have?</div>
-                    <div style="display:flex; flex-direction:column; gap:14px;" id="durationPickerOptions">
-                        <button onclick="selectDuration('25')" class="dur-pick-btn">25m</button>
-                        <button onclick="selectDuration('35')" class="dur-pick-btn">35m</button>
-                        <button onclick="selectDuration('45')" class="dur-pick-btn">45m</button>
-                        <button onclick="selectDuration('999')" class="dur-pick-btn">All</button>
-                        <div class="dur-pick-btn" style="cursor:default; gap:12px;">
-                            <span>Custom</span>
-                            <input type="number" id="durPickerCustomInput" placeholder="mins" min="20" max="180"
-                                style="width:60px; padding:4px 8px; border:none; border-radius:8px; font-size:16px; font-weight:600; font-family:inherit; outline:none; background:rgba(255,255,255,0.2); color:white; text-align:center; -webkit-appearance:none; -moz-appearance:textfield;"
-                                onkeydown="if(event.key==='Enter'&&parseInt(this.value)>=20){selectDuration('custom',parseInt(this.value));}"
-                                onclick="event.stopPropagation();">
-                        </div>
+            <!-- MAIN UI -->
+            <div id="mainUI" style="transition:opacity 0.4s ease;">
+                <div style="margin-bottom:28px; display:flex; align-items:center; justify-content:space-between;">
+                    <h1 style="margin:0; font-size:40px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1;">flex.</h1>
+                    <div id="durationPill" style="display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#667eea,#764ba2); border:none; border-radius:24px; padding:10px 18px; box-shadow:0 4px 14px rgba(102,126,234,0.35);">
+                        <span id="selectedDurationDisplay" style="font-size:18px; font-weight:800; color:white; letter-spacing:-0.5px;"></span>
                     </div>
                 </div>
             </div>
-
-            <!-- MAIN UI — hidden until duration selected -->
-            <div id="mainUI" style="opacity:0; pointer-events:none; transition:opacity 0.4s ease;">
-                <div style="margin-bottom:28px; display:flex; align-items:center; justify-content:space-between;">
-                    <h1 style="margin:0; font-size:40px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1;">flex.</h1>
-                    <button id="durationPill" onclick="showDurationPicker()" style="display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#667eea,#764ba2); border:none; border-radius:24px; padding:10px 18px; cursor:pointer; transition:background 0.3s, box-shadow 0.3s; box-shadow:0 4px 14px rgba(102,126,234,0.35);" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-                        <span id="selectedDurationDisplay" style="font-size:18px; font-weight:800; color:white; letter-spacing:-0.5px;"></span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Hidden duration buttons for JS compatibility -->
 
 
             <!-- BROWSER-STYLE TABS -->
@@ -1832,6 +1798,21 @@
             <!-- SHARED TYPE/HOLD CONTROLS -->
             <div id="controlsContainer" style="border-radius:12px;padding:16px;margin-top:16px;transition:background 0.3s, opacity 0.18s ease;">
             <div id="sharedTypeHold" style="display:none;">
+                <!-- Duration -->
+                <div class="section">
+                    <div class="section-title">Duration</div>
+                    <div class="segmented">
+                        <button class="dur-seg-btn" data-dur="25">25m</button>
+                        <button class="dur-seg-btn" data-dur="35">35m</button>
+                        <button class="dur-seg-btn" data-dur="45">45m</button>
+                        <button class="dur-seg-btn" data-dur="999">All</button>
+                        <button class="dur-seg-btn" data-dur="custom">Custom</button>
+                    </div>
+                    <div id="inlineCustomDurationWrap" style="display:none; margin-top:10px;">
+                        <input type="number" id="inlineCustomDurationInput" placeholder="Minutes" min="20" max="180"
+                            style="width:100%; padding:9px 10px; border:1.5px solid #e5e5e7; border-radius:10px; font-size:14px; font-family:inherit; box-sizing:border-box; outline:none; text-align:center;">
+                    </div>
+                </div>
                 <!-- Type -->
                 <div class="section">
                     <div class="section-title">Type</div>
@@ -2358,6 +2339,8 @@
                     // Only show mainView if we're not already in the timer (e.g. resumed routine)
                     if (!timerView || timerView.style.display !== 'grid') {
                         mainView.style.display = 'grid';
+                        PurpleBubbles.stop();
+                        showJumiChatBtn();
                     }
                     updateQuickStart();
                     // Update Quick Start button subtitle from settings
@@ -2468,6 +2451,14 @@
                 if (settingsSliderLabel) settingsSliderLabel.textContent = balanceLabel(savedBalance);
                 selectPill('qs-hold-pill', appSettings.quickStartHold || 'short');
                 setRadioSelected('quickStartHold', appSettings.quickStartHold || 'short');
+                // Sync duration pills
+                const savedDur = appSettings.quickStartDuration || 'last_used';
+                selectPill('qs-duration-pill', savedDur);
+                setRadioSelected('quickStartDuration', savedDur);
+                const durCustomWrap = document.getElementById('settingsDurationCustomWrap');
+                const durCustomInput = document.getElementById('settingsDurationCustomValue');
+                if (durCustomWrap) durCustomWrap.style.display = savedDur === 'custom' ? 'block' : 'none';
+                if (durCustomInput) durCustomInput.value = appSettings.quickStartDurationCustomValue || 35;
             });
 
             // QS balance slider + hold pill handlers
@@ -2484,6 +2475,19 @@
                 if (holdPill) {
                     selectPill('qs-hold-pill', holdPill.dataset.value);
                     setRadioSelected('quickStartHold', holdPill.dataset.value);
+                }
+                const durPill = e.target.closest('.qs-duration-pill');
+                if (durPill) {
+                    selectPill('qs-duration-pill', durPill.dataset.value);
+                    setRadioSelected('quickStartDuration', durPill.dataset.value);
+                    const durCustomWrap = document.getElementById('settingsDurationCustomWrap');
+                    if (durCustomWrap) {
+                        durCustomWrap.style.display = durPill.dataset.value === 'custom' ? 'block' : 'none';
+                        if (durPill.dataset.value === 'custom') {
+                            const inp = document.getElementById('settingsDurationCustomValue');
+                            if (inp) inp.focus();
+                        }
+                    }
                 }
             });
 
@@ -2981,7 +2985,9 @@
                     finalBongSound: getRadioValue('finalBongSound') || 'bowl',
                     splitsFrequency: parseFloat(getRadioValue('splitsFrequency') ?? '0.1'),
                     quickStartBalance: parseInt((document.getElementById('settingsBalanceSlider') || {}).value ?? '50', 10),
-                    quickStartHold: getRadioValue('quickStartHold') || 'short'
+                    quickStartHold: getRadioValue('quickStartHold') || 'short',
+                    quickStartDuration: getRadioValue('quickStartDuration') || 'last_used',
+                    quickStartDurationCustomValue: parseInt((document.getElementById('settingsDurationCustomValue') || {}).value ?? '35', 10)
                 };
                 // Keep the legacy label in sync for any old code that still reads it
                 appSettings.quickStartType = appSettings.quickStartBalance === 100 ? 'upper' : appSettings.quickStartBalance === 0 ? 'lower' : 'full';
@@ -3688,7 +3694,9 @@
             splitsFrequency: 0.1,
             quickStartType: 'full',   // legacy label, kept in sync with quickStartBalance for old code that reads it
             quickStartBalance: 50,    // 0-100: 0 = fully Lower Body, 100 = fully Upper Body, 50 = Full Body
-            quickStartHold: 'short'
+            quickStartHold: 'short',
+            quickStartDuration: 'last_used',  // '25'/'35'/'45'/'999'/'custom'/'last_used' — see resolveQuickStartDuration()
+            quickStartDurationCustomValue: 35
         };
 
         // Load settings from localStorage or use defaults
@@ -5310,93 +5318,89 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             
             // Helper to always show simple controls without toggling (used by cancel/generate)
             // Tab switching
-            // ── DURATION PICKER ──
-            (function() {
-                const durLabels = { '25':'25m', '35':'35m', '45':'45m', '60':'60m', '999':'All' };
+            // ── DURATION ── inline Duration section above Type (replaces the old
+            // full-screen "How much time do you have?" picker — see version notes).
+            const durLabels = { '25':'25m', '35':'35m', '45':'45m', '999':'All' };
 
-                window.selectDuration = function(val, customVal) {
-                    // Highlight selected button
-                    document.querySelectorAll('.dur-pick-btn').forEach(b => b.classList.remove('selected'));
-                    if (val !== 'custom') {
-                        const btns = document.querySelectorAll('.dur-pick-btn');
-                        const map = {'25':0,'35':1,'45':2,'999':3};
-                        if (map[val] !== undefined) btns[map[val]].classList.add('selected');
-                    }
+            // Resolve which duration to use whenever Quick Start is (re)entered, honouring
+            // the "Default behaviour" preference set in Settings > Quick Start > Duration —
+            // same pattern already used there for Type (quickStartBalance) and Hold
+            // (quickStartHold). 'last_used' means the duration of the last routine actually
+            // COMPLETED (read from routineHistory), not just the last one picked in the UI.
+            window.resolveQuickStartDuration = function() {
+                const pref = appSettings.quickStartDuration || 'last_used';
+                if (pref === 'last_used') {
+                    try {
+                        const history = JSON.parse(localStorage.getItem('routineHistory') || '[]');
+                        const last = history[history.length - 1];
+                        if (last && last.duration) return last.duration === 999 ? 999 : parseInt(last.duration);
+                    } catch (e) {}
+                    return 35; // no completed sessions yet
+                }
+                if (pref === 'custom') {
+                    const v = parseInt(appSettings.quickStartDurationCustomValue, 10);
+                    return (v && v >= 20) ? v : 35;
+                }
+                return pref === '999' ? 999 : parseInt(pref);
+            };
+
+            // Reflects selectedTime in the inline Duration section and the header pill —
+            // called on load, on entering Quick Start, and after loading a saved routine.
+            window.syncDurationSectionUI = function() {
+                document.querySelectorAll('.dur-seg-btn').forEach(b => b.classList.remove('selected'));
+                const customWrap = document.getElementById('inlineCustomDurationWrap');
+                const customInput = document.getElementById('inlineCustomDurationInput');
+                const key = selectedTime === 999 ? '999' : String(selectedTime);
+                const match = document.querySelector(`.dur-seg-btn[data-dur="${key}"]`);
+                if (match) {
+                    match.classList.add('selected');
+                    if (customWrap) customWrap.style.display = 'none';
+                } else {
+                    const customBtn = document.querySelector('.dur-seg-btn[data-dur="custom"]');
+                    if (customBtn) customBtn.classList.add('selected');
+                    if (customWrap) customWrap.style.display = 'block';
+                    if (customInput) customInput.value = selectedTime;
+                }
+                const display = document.getElementById('selectedDurationDisplay');
+                if (display) display.textContent = durLabels[key] || selectedTime + 'm';
+            };
+
+            document.querySelectorAll('.dur-seg-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const val = this.getAttribute('data-dur');
                     if (val === 'custom') {
-                        const inp = document.getElementById('durPickerCustomInput');
-                        inp.focus();
-                        if (!customVal) {
-                            return;
-                        }
-                        selectedTime = customVal;
-                        localStorage.setItem('globalDuration', String(customVal));
-                        document.getElementById('selectedDurationDisplay').textContent = customVal + 'm';
-                    } else {
-                        selectedTime = val === '999' ? 999 : parseInt(val);
-                        localStorage.setItem('globalDuration', val);
-                        document.getElementById('selectedDurationDisplay').textContent = durLabels[val] || val + 'm';
+                        document.querySelectorAll('.dur-seg-btn').forEach(b => b.classList.remove('selected'));
+                        this.classList.add('selected');
+                        const wrap = document.getElementById('inlineCustomDurationWrap');
+                        if (wrap) wrap.style.display = 'block';
+                        const inp = document.getElementById('inlineCustomDurationInput');
+                        if (inp) inp.focus();
+                        return; // wait for an actual value before committing
                     }
-                    // Highlight selected
-                    document.querySelectorAll('.dur-pick-btn').forEach(b => b.classList.remove('selected'));
-                    // Transition to main UI
-                    hideDurationPicker();
-                };
+                    selectedTime = val === '999' ? 999 : parseInt(val);
+                    localStorage.setItem('globalDuration', val);
+                    syncDurationSectionUI();
+                });
+            });
 
-                window.hideDurationPicker = function() {
-                    const picker = document.getElementById('durationPickerScreen');
-                    const main = document.getElementById('mainUI');
-                    picker.style.opacity = '0';
-                    picker.style.transform = 'translateY(-20px)';
-                    setTimeout(() => {
-                        picker.style.display = 'none';
-                        main.style.opacity = '1';
-                        main.style.pointerEvents = 'auto';
-                        PurpleBubbles.stop();
-                        showJumiChatBtn();
-                    }, 400);
+            (function() {
+                const inp = document.getElementById('inlineCustomDurationInput');
+                if (!inp) return;
+                const commit = function() {
+                    const v = parseInt(inp.value, 10);
+                    if (v >= 20) {
+                        selectedTime = v;
+                        localStorage.setItem('globalDuration', String(v));
+                        syncDurationSectionUI();
+                    }
                 };
-
-                window.showDurationPicker = function() {
-                    const picker = document.getElementById('durationPickerScreen');
-                    const main = document.getElementById('mainUI');
-                    hideJumiChatBtn();
-                    // Reset button opacity/transform in case previous stagger left them hidden
-                    Array.from(document.querySelectorAll('#durationPickerOptions > *')).forEach(b => {
-                        b.style.transition = '';
-                        b.style.opacity = '1';
-                        b.style.transform = '';
-                    });
-                    const bg = document.getElementById('purpleBackground');
-                    if (bg) bg.style.display = '';
-                    PurpleBubbles.start();
-                    picker.style.display = 'flex';
-                    picker.style.opacity = '0';
-                    picker.style.transform = 'translateY(-20px)';
-                    main.style.opacity = '0';
-                    main.style.pointerEvents = 'none';
-                    requestAnimationFrame(() => {
-                        picker.style.transform = 'translateY(0)';
-                        picker.style.opacity = '1';
-                    });
-                };
-
-                // Show picker after splash delay
-                setTimeout(() => {
-                    const picker = document.getElementById('durationPickerScreen');
-                    picker.style.opacity = '0';
-                    picker.style.transform = 'translateY(20px)';
-                    setTimeout(() => {
-                        picker.style.opacity = '1';
-                        picker.style.transform = 'translateY(0)';
-                    }, 50);
-                }, 800);
+                inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') commit(); });
+                inp.addEventListener('change', commit);
             })();
 
-            // ── DURATION INIT ── read saved duration on startup
-            {
-                const _saved = localStorage.getItem('globalDuration');
-                selectedTime = _saved ? (_saved === '999' ? 999 : parseInt(_saved)) : 35;
-            }
+            // ── DURATION INIT ── resolve default duration on startup and reflect it in the UI
+            selectedTime = resolveQuickStartDuration();
+            syncDurationSectionUI();
 
             // simpleTab/customTab removed — mode switching now via enterMode() directly
             
@@ -8240,10 +8244,11 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             enterMode('quick');
             sessionStorage.removeItem('jumiPrompt');
 
-            // Read duration
-            const _savedDur = localStorage.getItem('globalDuration');
-            if (_savedDur) selectedTime = _savedDur === '999' ? 999 : parseInt(_savedDur);
-            else if (!selectedTime) selectedTime = 35;
+            // Duration — resolve default (respecting the Settings > Quick Start > Duration
+            // preference), same pattern as Type (quickStartBalance) and Hold (quickStartHold)
+            // just below.
+            selectedTime = resolveQuickStartDuration();
+            syncDurationSectionUI();
             setBodyBalance(appSettings.quickStartBalance ?? bodyBalance ?? 50);
             selectedHold = appSettings.quickStartHold || selectedHold || 'short';
             longSession = selectedHold === 'long';
@@ -10756,7 +10761,8 @@ function showStats() {
             document.querySelectorAll('.hold-btn').forEach(b => b.classList.remove('selected'));
             const holdBtn = document.querySelector(`[data-hold="${routine.hold}"]`);
             if (holdBtn) holdBtn.classList.add('selected');
-            
+            syncDurationSectionUI();
+
             if (routine.focus) {
                 document.getElementById('focusSelect').value = routine.focus;
             }
@@ -11799,6 +11805,12 @@ function showStats() {
                     <!-- Hidden radio — keep for getRadioValue() JS compatibility -->
                     <input type="radio" name="quickStartHold" value="short" style="display:none;">
                     <input type="radio" name="quickStartHold" value="long" style="display:none;">
+                    <input type="radio" name="quickStartDuration" value="25" style="display:none;">
+                    <input type="radio" name="quickStartDuration" value="35" style="display:none;">
+                    <input type="radio" name="quickStartDuration" value="45" style="display:none;">
+                    <input type="radio" name="quickStartDuration" value="999" style="display:none;">
+                    <input type="radio" name="quickStartDuration" value="custom" style="display:none;">
+                    <input type="radio" name="quickStartDuration" value="last_used" style="display:none;">
 
                     <h2 style="margin-bottom:6px; font-size:24px; font-weight:800; letter-spacing:-0.5px; color:#1d1d1f;">Quick Start</h2>
                     <p style="font-size:14px; color:#86868b; margin-bottom:28px; line-height:1.5;">Set the default routine that launches when you tap Quick Start.</p>
@@ -11812,6 +11824,21 @@ function showStats() {
                     </div>
 
                     <div style="height:1px; background:#f0f0f5; margin-bottom:28px;"></div>
+
+                    <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Duration</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                        <div class="qs-duration-pill pill-option" data-value="25">25m</div>
+                        <div class="qs-duration-pill pill-option" data-value="35">35m</div>
+                        <div class="qs-duration-pill pill-option" data-value="45">45m</div>
+                        <div class="qs-duration-pill pill-option" data-value="999">All</div>
+                        <div class="qs-duration-pill pill-option" data-value="last_used">Last Used</div>
+                        <div class="qs-duration-pill pill-option" data-value="custom">Custom</div>
+                    </div>
+                    <div id="settingsDurationCustomWrap" style="display:none; margin-top:12px;">
+                        <input type="number" id="settingsDurationCustomValue" min="20" max="180" placeholder="Minutes" style="width:100%; padding:9px 10px; border:1.5px solid #e5e5e7; border-radius:10px; font-size:14px; font-family:inherit; box-sizing:border-box; outline:none;">
+                    </div>
+
+                    <div style="height:1px; background:#f0f0f5; margin:28px 0;"></div>
 
                     <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#667eea; margin-bottom:14px;">Hold</div>
                     <div style="display:flex; flex-wrap:wrap; gap:10px;">
@@ -12144,7 +12171,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.81</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.82</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
