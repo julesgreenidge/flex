@@ -1066,14 +1066,6 @@
         .segmented button + button {
             border-left: none;
         }
-        /* Type's 5-option row has longer labels than Duration/Hold — let them
-           wrap onto two lines at a smaller size instead of overflowing. */
-        .segmented .balance-seg-btn {
-            white-space: normal;
-            font-size: 11px;
-            line-height: 1.2;
-            padding: 8px 3px;
-        }
         .segmented button.selected {
             background: var(--seg-active, white);
             color: var(--seg-active-text, #1d1d1f);
@@ -1657,7 +1649,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="12 Jul 2026">
-<meta name="app-version" content="6.83">
+<meta name="app-version" content="6.84">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -1793,11 +1785,11 @@
                 <div class="section">
                     <div class="section-title">Type</div>
                     <div class="segmented">
-                        <button class="balance-seg-btn" data-value="0">Lower Body</button>
-                        <button class="balance-seg-btn" data-value="25">Mostly Lower</button>
-                        <button class="balance-seg-btn" data-value="50">Full Body</button>
-                        <button class="balance-seg-btn" data-value="75">Mostly Upper</button>
-                        <button class="balance-seg-btn" data-value="100">Upper Body</button>
+                        <button class="balance-seg-btn" data-value="0">Lower</button>
+                        <button class="balance-seg-btn" data-value="25">Low-Mid</button>
+                        <button class="balance-seg-btn" data-value="50">Full</button>
+                        <button class="balance-seg-btn" data-value="75">Up-Mid</button>
+                        <button class="balance-seg-btn" data-value="100">Upper</button>
                     </div>
                 </div>
                 <!-- Hold -->
@@ -6749,8 +6741,11 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
         function buildPhaseCandidatePool(phase, ctx) {
             const {
                 exercisesForGen, sessionTargets, reservedForActive, reservedForDeep,
-                excludedFromAll, usedExerciseNames, longSession, sessionTargetPool, weightedShuffle
+                excludedFromAll, usedExerciseNames, longSession, sessionTargetPool, weightedShuffle,
+                balanceWeightedShuffle
             } = ctx;
+            // bodyBalance itself is read from the global (window.bodyBalance / appState.bodyBalance)
+            // — same as matchesBalanceExtreme() just below does — not passed through ctx.
             const targetPool = sessionTargetPool && Object.keys(sessionTargetPool).length > 0 ? sessionTargetPool : null;
 
             if (phase === "Active Stretch") {
@@ -6771,7 +6766,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         && e.secondaryMuscle !== target
                         && matchesBalanceExtreme(e))
                     .map(e => ({...e, phase: "Active Stretch", duration: longSession ? 105 : 75}));
-                return [...reservedEx, ...weightedShuffle(candidates, targetPool)];
+                return [...reservedEx, ...balanceWeightedShuffle(candidates, bodyBalance, targetPool)];
             }
 
             if (phase === "Deep Stretch") {
@@ -6791,7 +6786,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         && e.secondaryMuscle !== target
                         && matchesBalanceExtreme(e))
                     .map(e => ({...e, phase: "Deep Stretch", duration: longSession ? 120 : 90}));
-                return [...reservedEx, ...weightedShuffle(candidates, targetPool)];
+                return [...reservedEx, ...balanceWeightedShuffle(candidates, bodyBalance, targetPool)];
             }
 
             if (phase === "Static Stretching") {
@@ -7457,15 +7452,27 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             // lower exercises happen to exist in the library (a plain weighted-sort doesn't:
             // tested it first and it converged to ~100/0 instead of 80/20 when one side had
             // more candidates than the other).
-            function balanceWeightedShuffle(arr, balance) {
+            function balanceWeightedShuffle(arr, balance, musclePool) {
                 const byRecency = a => a
                     .map(e => ({ e, sort: Math.random() * (recencyWeights[e.exercise] || 1.0) }))
                     .sort((a, b) => b.sort - a.sort)
                     .map(x => x.e);
 
+                // Optional third argument: same "primary-muscle-match goes first" trick
+                // weightedShuffle() uses, applied within each side's pool before the
+                // balance interleave below — lets Static/Active/Deep keep their existing
+                // target-muscle variety bias on top of being balance-aware. Prep phases
+                // call this with no musclePool, so they're unaffected (recency only).
+                const byMuscleThenRecency = a => {
+                    if (!musclePool) return byRecency(a);
+                    const primaryMatch = a.filter(e => (musclePool[e.primaryMuscle] || 0) > 0);
+                    const rest         = a.filter(e => (musclePool[e.primaryMuscle] || 0) === 0);
+                    return [...byRecency(primaryMatch), ...byRecency(rest)];
+                };
+
                 // 'full'-tagged exercises count as valid for either side, same as the pure-extreme filters do
-                const upperPool = byRecency(arr.filter(e => { const bp = (e.bodyPart||'').toLowerCase(); return bp === 'upper' || bp === 'full'; }));
-                const lowerPool = byRecency(arr.filter(e => { const bp = (e.bodyPart||'').toLowerCase(); return bp === 'lower' || bp === 'full'; }));
+                const upperPool = byMuscleThenRecency(arr.filter(e => { const bp = (e.bodyPart||'').toLowerCase(); return bp === 'upper' || bp === 'full'; }));
+                const lowerPool = byMuscleThenRecency(arr.filter(e => { const bp = (e.bodyPart||'').toLowerCase(); return bp === 'lower' || bp === 'full'; }));
 
                 const usedNames = new Set();
                 const result = [];
@@ -7555,7 +7562,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     // See buildPhaseCandidatePool() for the per-phase eligibility rules.
                     let allPhaseExercises = buildPhaseCandidatePool(phase, {
                         exercisesForGen, sessionTargets, reservedForActive, reservedForDeep,
-                        excludedFromAll, usedExerciseNames, longSession, sessionTargetPool, weightedShuffle
+                        excludedFromAll, usedExerciseNames, longSession, sessionTargetPool, weightedShuffle,
+                        balanceWeightedShuffle
                     });
 
                     // Deduplicate
@@ -7566,12 +7574,17 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         return true;
                     });
 
-                    // Active/Deep: pool is already [reservedEx, ...shuffledCandidates] — never reshuffle
-                    // All other phases: apply focus/body-type filtering then shuffle
-                    // Prep phases (Warm-Up/Foam Roller/Mobility) get NO muscle weighting — recency
-                    // shuffle only. Giving them the target-muscle pool let a handful of matching
-                    // exercises fill their small 2-3 slot quota every time, which quietly excluded
-                    // the other side of the body from prep at any balance other than 50/50.
+                    // Active/Deep: pool is already [reservedEx, ...balance-weighted candidates]
+                    // from buildPhaseCandidatePool() — never reshuffle here.
+                    // All other phases: apply focus/body-type filtering then shuffle.
+                    // Prep phases (Warm-Up/Foam Roller/Mobility) get NO target-muscle weighting —
+                    // balance-proportional + recency only. Giving them the target-muscle pool let
+                    // a handful of matching exercises fill their small 2-3 slot quota every time,
+                    // which quietly excluded the other side of the body from prep.
+                    // Static Stretching (the one WORKOUT_PHASE that reaches this chain — Active/Deep
+                    // are excluded above) now also gets balance-proportional weighting alongside its
+                    // existing target-muscle pool bias — previously it only got the target-pool bias,
+                    // with zero regard for upper/lower balance at any non-extreme slider value.
                     const phasePool = phase === 'Cool Down' ? stretchMusclePool
                         : PREP_PHASES.has(phase) ? null
                         : (sessionTargetPool && Object.keys(sessionTargetPool).length > 0 ? sessionTargetPool : null);
@@ -7582,13 +7595,15 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                             // Stretch phases: hard-split focus exercises to front (guarantee target muscle coverage)
                             focusExercises = allPhaseExercises.filter(e => e.primaryMuscle === selectedFocus);
                             const otherExercises = allPhaseExercises.filter(e => e.primaryMuscle !== selectedFocus);
-                            allPhaseExercises = [...weightedShuffle(focusExercises, phasePool), ...weightedShuffle(otherExercises, phasePool)];
+                            allPhaseExercises = [...balanceWeightedShuffle(focusExercises, bodyBalance, phasePool), ...balanceWeightedShuffle(otherExercises, bodyBalance, phasePool)];
                         } else if (bodyBalance === 100) {
                             allPhaseExercises = weightedShuffle(allPhaseExercises.filter(e => { const bp = (e.bodyPart||'').toLowerCase(); return bp === 'upper' || bp === 'full'; }), phasePool);
                         } else if (bodyBalance === 0) {
                             allPhaseExercises = weightedShuffle(allPhaseExercises.filter(e => { const bp = (e.bodyPart||'').toLowerCase(); return bp === 'lower' || bp === 'full'; }), phasePool);
                         } else if (PREP_PHASES.has(phase)) {
                             allPhaseExercises = balanceWeightedShuffle(allPhaseExercises, bodyBalance);
+                        } else if (WORKOUT_PHASES.has(phase)) {
+                            allPhaseExercises = balanceWeightedShuffle(allPhaseExercises, bodyBalance, phasePool);
                         } else {
                             allPhaseExercises = weightedShuffle(allPhaseExercises, phasePool);
                         }
@@ -7598,12 +7613,21 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         // at including a target-matching exercise too, "as far as possible" —
                         // only if this phase's own pool actually has one. The rest of the phase
                         // still fills from the shuffle above (recency, or recency+balance in
-                        // prep). Matches primary OR secondary muscle so e.g. "Foam Roll
-                        // Hamstrings" (secondaryMuscle: Calves) can stand in for a Calves target.
+                        // prep). Prefers a primary-muscle match (e.g. "Foam Roll Calves" for a
+                        // Calves target) and only falls back to a secondary match (e.g. "Foam
+                        // Roll Hamstrings", secondaryMuscle: Calves) if no primary exists in this
+                        // phase's pool. Every other target-matching exercise is then stripped out
+                        // of the general pool too, so the target can't quietly reappear a second
+                        // time via the ordinary fill below — the same "exactly one" guarantee
+                        // Static/Active/Deep already enforce, just applied here as well.
                         if (!WORKOUT_PHASES.has(phase) && !isAllExercises) {
                             const throughlineTarget = sessionTargets && sessionTargets.length > 0 ? sessionTargets[0] : null;
                             if (throughlineTarget) {
-                                focusExercises = allPhaseExercises.filter(e => exerciseMatchesTarget(e, throughlineTarget));
+                                const primaryMatches = allPhaseExercises.filter(e => (e.primaryMuscle || e.target) === throughlineTarget);
+                                const secondaryMatches = allPhaseExercises.filter(e => e.secondaryMuscle === throughlineTarget && (e.primaryMuscle || e.target) !== throughlineTarget);
+                                const pick = primaryMatches[0] || secondaryMatches[0] || null;
+                                focusExercises = pick ? [pick] : [];
+                                allPhaseExercises = allPhaseExercises.filter(e => !exerciseMatchesTarget(e, throughlineTarget));
                             }
                         }
                     }
@@ -12150,7 +12174,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.83</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.84</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
