@@ -1648,8 +1648,8 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="build-date" content="12 Jul 2026">
-<meta name="app-version" content="6.84">
+<meta name="build-date" content="17 Jul 2026">
+<meta name="app-version" content="6.86">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -3231,7 +3231,7 @@
                 o.frequency.value = 1200; o.type = 'sine';
                 const t = c.currentTime + offset;
                 g.gain.setValueAtTime(0, t);
-                g.gain.linearRampToValueAtTime(0.7, t + 0.01);
+                g.gain.linearRampToValueAtTime(0.8, t + 0.01);
                 g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
                 o.start(t); o.stop(t + 0.08);
             });
@@ -3246,7 +3246,7 @@
                 o.frequency.value = 1200; o.type = 'sine';
                 const t = c.currentTime + offset;
                 g.gain.setValueAtTime(0, t);
-                g.gain.linearRampToValueAtTime(0.7, t + 0.01);
+                g.gain.linearRampToValueAtTime(0.8, t + 0.01);
                 g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
                 o.start(t); o.stop(t + 0.08);
             });
@@ -9018,11 +9018,11 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             if (phase === 'Static Stretching' || phase === 'Deep Stretch' || phase === 'Cool Down') {
                 if (timeRemaining === 30 && !firedMidCues.has('w30')) {
                     firedMidCues.add('w30');
-                    playTripleBlip();
+                    playDoubleBlip();
                 }
                 if (timeRemaining === 15 && !firedMidCues.has('w15')) {
                     firedMidCues.add('w15');
-                    playDoubleBlip();
+                    playTripleBlip();
                 }
             }
         }
@@ -9941,13 +9941,36 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 return;
             }
             
+            // Recency scoring: same logic as the main generator — last session's exercises
+            // score lowest (most recent), exercises unseen in the last 3 sessions score
+            // highest (least recent, default 1.0).
+            const swapHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
+            const swapRecencyWeights = {};
+            if (swapHistory.length >= 1) {
+                (swapHistory[swapHistory.length - 1].routine || []).forEach(ex => {
+                    swapRecencyWeights[ex.exercise] = 0.25;
+                });
+            }
+            if (swapHistory.length >= 2) {
+                (swapHistory[swapHistory.length - 2].routine || []).forEach(ex => {
+                    if (!swapRecencyWeights[ex.exercise]) swapRecencyWeights[ex.exercise] = 0.5;
+                });
+            }
+            if (swapHistory.length >= 3) {
+                (swapHistory[swapHistory.length - 3].routine || []).forEach(ex => {
+                    if (!swapRecencyWeights[ex.exercise]) swapRecencyWeights[ex.exercise] = 0.75;
+                });
+            }
+            // Least recent (highest score) first, most recent (lowest score) last
+            const byRecencyDesc = (a, b) => (swapRecencyWeights[b.exercise] ?? 1.0) - (swapRecencyWeights[a.exercise] ?? 1.0);
+
             // Split exercises into two groups: same muscle and others
             const currentMuscle = exerciseToSwap.primaryMuscle;
-            const sameMuscle = availableSwaps.filter(ex => ex.primaryMuscle === currentMuscle);
+            const sameMuscle = availableSwaps.filter(ex => ex.primaryMuscle === currentMuscle).sort(byRecencyDesc);
             const otherMuscles = availableSwaps.filter(ex => ex.primaryMuscle !== currentMuscle);
-            
-            // Randomize the "other muscles" section (uses the shared shuffleArray() defined above)
-            const randomizedOthers = shuffleArray(otherMuscles);
+
+            // Order the "other muscles" section by recency score (least recent at top)
+            const randomizedOthers = [...otherMuscles].sort(byRecencyDesc);
             
             // Show modal with options
             const modal = document.getElementById('swapModal');
@@ -12174,7 +12197,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.84</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.86</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
