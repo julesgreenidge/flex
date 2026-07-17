@@ -1664,7 +1664,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="17 Jul 2026">
-<meta name="app-version" content="6.90">
+<meta name="app-version" content="6.91">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -1755,18 +1755,17 @@
                 <!-- Tab bar -->
                 <div style="display:flex;align-items:flex-end;gap:2px;">
 
-                    <button id="trueQuickStartBtn" onclick="trueQuickStart()" style="flex:1;position:relative;display:flex;align-items:center;justify-content:center;gap:7px;background:#f2f2f7;border:none;border-radius:10px 10px 0 0;padding:9px 18px 11px;cursor:pointer;transition:opacity 0.15s;white-space:nowrap;">
+                    <button id="trueQuickStartBtn" onclick="trueQuickStart()" style="flex:1;position:relative;display:flex;align-items:center;justify-content:center;gap:7px;background:transparent;border:none;border-bottom:2.5px solid #667eea;border-radius:0;padding:10px 18px;cursor:pointer;transition:opacity 0.15s;white-space:nowrap;">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#667eea" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                        <span style="font-size:13px;font-weight:600;color:#1c1c1e;">Quick Start</span>
-                        <div class="tab-cover" style="position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#f2f2f7;"></div>
+                        <span style="font-size:13px;font-weight:600;color:#667eea;">Quick Start</span>
                     </button>
 
-                    <button id="customCardBtn" onclick="enterMode('custom'); initCustomBuilder();" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#dddde2;border:none;border-radius:10px 10px 0 0;padding:9px 18px 10px;cursor:pointer;transition:opacity 0.15s;white-space:nowrap;">
+                    <button id="customCardBtn" onclick="enterMode('custom'); initCustomBuilder();" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:transparent;border:none;border-bottom:2.5px solid transparent;border-radius:0;padding:10px 18px;cursor:pointer;transition:opacity 0.15s;white-space:nowrap;">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#86868b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         <span style="font-size:13px;color:#636366;">Custom</span>
                     </button>
 
-                    <button id="starredBtn" onclick="openStarredList()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#dddde2;border:none;border-radius:10px 10px 0 0;padding:9px 18px 10px;cursor:pointer;transition:opacity 0.15s;white-space:nowrap;">
+                    <button id="starredBtn" onclick="openStarredList()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:transparent;border:none;border-bottom:2.5px solid transparent;border-radius:0;padding:10px 18px;cursor:pointer;transition:opacity 0.15s;white-space:nowrap;">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#86868b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                         <span style="font-size:13px;color:#636366;">Favourites</span>
                     </button>
@@ -4645,23 +4644,20 @@
         // Mode button active state — dims unselected buttons
         function setActiveCard(activeId) {
             const tabConfig = {
-                'trueQuickStartBtn': { activeBg: 'linear-gradient(135deg,#667eea,#764ba2)', inactiveBg: '#dddde2', activeStroke: 'white', inactiveStroke: '#86868b', activeText: 'white', activeWeight: '600' },
-                'customCardBtn':     { activeBg: '#1a3a5c',                                  inactiveBg: '#dddde2', activeStroke: 'white', inactiveStroke: '#86868b', activeText: 'white', activeWeight: '600' },
-                'starredBtn':        { activeBg: '#8b3a5a',                                  inactiveBg: '#dddde2', activeStroke: 'white', inactiveStroke: '#86868b', activeText: 'white', activeWeight: '600' },
+                'trueQuickStartBtn': { accent: '#667eea', inactiveStroke: '#86868b', activeWeight: '600' },
+                'customCardBtn':     { accent: '#1a3a5c', inactiveStroke: '#86868b', activeWeight: '600' },
+                'starredBtn':        { accent: '#8b3a5a', inactiveStroke: '#86868b', activeWeight: '600' },
             };
             Object.entries(tabConfig).forEach(([id, cfg]) => {
                 const btn = document.getElementById(id);
                 if (!btn) return;
                 const isActive = id === activeId;
-                btn.style.background = isActive ? cfg.activeBg : cfg.inactiveBg;
-                btn.style.paddingBottom = isActive ? '11px' : '10px';
-                const cover = btn.querySelector('.tab-cover');
-                if (cover) cover.style.background = isActive ? cfg.activeBg : 'transparent';
+                btn.style.borderBottomColor = isActive ? cfg.accent : 'transparent';
                 const svg = btn.querySelector('svg');
-                if (svg) svg.setAttribute('stroke', isActive ? cfg.activeStroke : cfg.inactiveStroke);
+                if (svg) svg.setAttribute('stroke', isActive ? cfg.accent : cfg.inactiveStroke);
                 const span = btn.querySelector('span');
                 if (span) {
-                    span.style.color = isActive ? cfg.activeText : '#636366';
+                    span.style.color = isActive ? cfg.accent : '#636366';
                     span.style.fontWeight = isActive ? cfg.activeWeight : '400';
                 }
             });
@@ -12254,7 +12250,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.90</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.91</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
