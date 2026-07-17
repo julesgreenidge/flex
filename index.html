@@ -1043,6 +1043,7 @@
 
         .segmented {
             display: flex;
+            position: relative;
             background: rgba(0,0,0,0.12);
             border-radius: 12px;
             padding: 3px;
@@ -1050,8 +1051,22 @@
             border: none;
             overflow: hidden;
         }
+        .segmented-indicator {
+            position: absolute;
+            top: 3px;
+            bottom: 3px;
+            border-radius: 9px;
+            background: var(--seg-active, white);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.06);
+            transition: left 0.25s cubic-bezier(0.4,0,0.2,1), width 0.25s cubic-bezier(0.4,0,0.2,1);
+            pointer-events: none;
+            opacity: 0;
+            z-index: 0;
+        }
         .segmented button {
             flex: 1;
+            position: relative;
+            z-index: 1;
             border: none;
             background: transparent;
             border-radius: 9px;
@@ -1067,10 +1082,10 @@
             border-left: none;
         }
         .segmented button.selected {
-            background: var(--seg-active, white);
+            background: transparent;
             color: var(--seg-active-text, #1d1d1f);
             border-left-color: transparent;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.06);
+            box-shadow: none;
         }
         .segmented button svg {
             transition: transform 0.2s;
@@ -1649,7 +1664,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="17 Jul 2026">
-<meta name="app-version" content="6.87">
+<meta name="app-version" content="6.88">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -5348,6 +5363,41 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     syncDurationSectionUI();
                 });
             });
+
+            // ===== SLIDING TRACK INDICATOR (v6.88 experiment — safe to remove as a block) =====
+            // Moves a single background pill behind whichever button in a .segmented row is
+            // .selected, instead of each button drawing its own background. Scoped to the
+            // Duration/Type/Hold rows inside #sharedTypeHold only — Settings' pill controls
+            // are untouched. Re-runs on any class change or resize within that container, so
+            // no call sites elsewhere needed to be edited.
+            (function() {
+                const track = document.getElementById('sharedTypeHold');
+                function positionSegmentIndicators() {
+                    document.querySelectorAll('.segmented').forEach(container => {
+                        const selected = container.querySelector('button.selected');
+                        let indicator = container.querySelector('.segmented-indicator');
+                        if (!selected || container.offsetWidth === 0) {
+                            if (indicator) indicator.style.opacity = '0';
+                            return;
+                        }
+                        if (!indicator) {
+                            indicator = document.createElement('div');
+                            indicator.className = 'segmented-indicator';
+                            container.insertBefore(indicator, container.firstChild);
+                        }
+                        indicator.style.opacity = '1';
+                        indicator.style.left = selected.offsetLeft + 'px';
+                        indicator.style.width = selected.offsetWidth + 'px';
+                    });
+                }
+                window.positionSegmentIndicators = positionSegmentIndicators;
+                window.addEventListener('resize', positionSegmentIndicators);
+                if (track) {
+                    new MutationObserver(positionSegmentIndicators).observe(track, { attributes: true, attributeFilter: ['class'], subtree: true });
+                    if (window.ResizeObserver) new ResizeObserver(positionSegmentIndicators).observe(track);
+                }
+            })();
+            // ===== END SLIDING TRACK INDICATOR =====
 
             (function() {
                 const inp = document.getElementById('inlineCustomDurationInput');
@@ -12197,7 +12247,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.87</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.88</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
