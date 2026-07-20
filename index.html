@@ -1664,7 +1664,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="17 Jul 2026">
-<meta name="app-version" content="6.91">
+<meta name="app-version" content="6.92">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -10510,8 +10510,10 @@ function showStats() {
                 if ('wakeLock' in navigator) {
                     wakeLock = await navigator.wakeLock.request('screen');
                     console.log('✅ Wake Lock active - screen will stay on');
-                    
-                    // Re-request if wake lock is released (e.g., tab becomes inactive)
+
+                    // The browser drops the lock on its own whenever the app loses focus
+                    // (switching apps, a notification, etc). Actual re-request on return
+                    // happens via the visibilitychange listener below.
                     wakeLock.addEventListener('release', () => {
                         console.log('⚠️ Wake Lock released');
                     });
@@ -10520,7 +10522,7 @@ function showStats() {
                 console.log('❌ Wake Lock not supported or failed:', err);
             }
         }
-        
+
         function releaseWakeLock() {
             if (wakeLock) {
                 wakeLock.release();
@@ -10528,6 +10530,17 @@ function showStats() {
                 console.log('🔓 Wake Lock released');
             }
         }
+
+        // Re-acquire the wake lock when the app comes back into view, but only if a
+        // routine is actively running (timer view visible). Without this, the screen
+        // can dim/lock after any brief backgrounding and never get protected again for
+        // the rest of the session — which also throttles the timer loop and causes
+        // countdown beeps to fire late or skip seconds.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && domCache.timerView && domCache.timerView.style.display === 'grid') {
+                requestWakeLock();
+            }
+        });
         
         window.toggleRoutineDetail = function(id) {
             const element = document.getElementById(id);
@@ -12250,7 +12263,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.91</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.92</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
