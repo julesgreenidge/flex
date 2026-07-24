@@ -1664,7 +1664,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="17 Jul 2026">
-<meta name="app-version" content="6.93">
+<meta name="app-version" content="6.94">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -7291,8 +7291,14 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 if (!target) return { reservedForActive, reservedForDeep, excludedFromAll, staticPrimary: null };
 
                 const staticPool = exercisesForGen.filter(e => e.phase === 'Static Stretching');
-                // Shuffle pool randomly so picks vary each Regenerate
-                const shuffled = arr => arr.slice().sort(() => Math.random() - 0.5);
+                // Weighted shuffle so picks vary each Regenerate but still favour exercises
+                // you haven't done recently — same recencyWeights used everywhere else in
+                // the generator, so this guaranteed target hit stops landing on the same
+                // exercise repeatedly just because the eligible pool is small.
+                const shuffled = arr => arr
+                    .map(e => ({ e, sort: Math.random() * (recencyWeights[e.exercise] || 1.0) }))
+                    .sort((a, b) => b.sort - a.sort)
+                    .map(x => x.e);
                 const staticPoolShuffled = shuffled(staticPool);
                 const allPrimaries = staticPoolShuffled.filter(e => (e.primaryMuscle || e.target) === target);
 
@@ -7421,6 +7427,30 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 });
             }
 
+            // Recency weighting: penalise recently seen exercises to encourage variety.
+            // Last session → 0.25 (strongly deprioritised), 2 sessions ago → 0.5, 3 sessions
+            // ago → 0.75. Reads localStorage and computed once here — previously this ran on
+            // every one of up to 400 retry attempts even though history can't change mid-generation.
+            // Moved above the target reservation block below so reserveTargetExercises() can
+            // also weight its picks by recency instead of using a pure random shuffle.
+            const recentHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
+            const recencyWeights = {};
+            if (recentHistory.length >= 1) {
+                (recentHistory[recentHistory.length - 1].routine || []).forEach(ex => {
+                    recencyWeights[ex.exercise] = 0.25;
+                });
+            }
+            if (recentHistory.length >= 2) {
+                (recentHistory[recentHistory.length - 2].routine || []).forEach(ex => {
+                    if (!recencyWeights[ex.exercise]) recencyWeights[ex.exercise] = 0.5;
+                });
+            }
+            if (recentHistory.length >= 3) {
+                (recentHistory[recentHistory.length - 3].routine || []).forEach(ex => {
+                    if (!recencyWeights[ex.exercise]) recencyWeights[ex.exercise] = 0.75;
+                });
+            }
+
             // ── TARGET SELECTION AND RESERVATION ──
             // Done ONCE before retry loop. Target, reservations, and exclusions are fixed for the generation.
             sessionTargets = [];
@@ -7443,28 +7473,6 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
                     console.log(`[QS] Target: ${target} | Static: ${reservation.staticPrimary ? reservation.staticPrimary.exercise : 'none'} | Active: ${[...reservedForActive].join(', ')||'none'} | Deep: ${[...reservedForDeep].join(', ')||'none'} | Excluded: ${[...excludedFromAll].join(', ')||'none'}`);
                 }
-            }
-
-            // Recency weighting: penalise recently seen exercises to encourage variety.
-            // Last session → 0.25 (strongly deprioritised), 2 sessions ago → 0.5, 3 sessions
-            // ago → 0.75. Reads localStorage and computed once here — previously this ran on
-            // every one of up to 400 retry attempts even though history can't change mid-generation.
-            const recentHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
-            const recencyWeights = {};
-            if (recentHistory.length >= 1) {
-                (recentHistory[recentHistory.length - 1].routine || []).forEach(ex => {
-                    recencyWeights[ex.exercise] = 0.25;
-                });
-            }
-            if (recentHistory.length >= 2) {
-                (recentHistory[recentHistory.length - 2].routine || []).forEach(ex => {
-                    if (!recencyWeights[ex.exercise]) recencyWeights[ex.exercise] = 0.5;
-                });
-            }
-            if (recentHistory.length >= 3) {
-                (recentHistory[recentHistory.length - 3].routine || []).forEach(ex => {
-                    if (!recencyWeights[ex.exercise]) recencyWeights[ex.exercise] = 0.75;
-                });
             }
 
             // Session targets fixed before retry loop
@@ -12263,7 +12271,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.93</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.94</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
