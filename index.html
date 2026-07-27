@@ -1664,7 +1664,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="17 Jul 2026">
-<meta name="app-version" content="6.95">
+<meta name="app-version" content="6.97">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -2466,6 +2466,12 @@
                         }
                     }
                 }
+                if (balancePill || holdPill || durPill) saveAllSettingsNow();
+            });
+
+            // Custom duration minutes field — auto-save as soon as it changes
+            document.getElementById('settingsQuickStartContent').addEventListener('change', function(e) {
+                if (e.target && e.target.id === 'settingsDurationCustomValue') saveAllSettingsNow();
             });
 
             document.getElementById('settingsSoundBtn').addEventListener('click', function() {
@@ -2519,7 +2525,11 @@
                 if (group === 'beepSoundSelect') playBeepPreview(value);
                 else if (group === 'transitionSound') playTransitionPreview(value);
                 else if (group === 'finalBongSound') playFinalBongPreview(value);
+                saveAllSettingsNow();
             });
+
+            // beepStartSeconds (countdown-length number field) — auto-save as soon as it changes
+            document.getElementById('beepStartSeconds').addEventListener('change', saveAllSettingsNow);
 
             document.getElementById('settingsFrontSplitsBtn').addEventListener('click', function() {
                 activateSettingsTab('settingsFrontSplitsBtn', 'settingsFrontSplitsContent');
@@ -2547,10 +2557,16 @@
                     p.style.fontWeight = selected ? '600' : '500';
                 });
                 setRadioSelected('splitsFrequency', pill.dataset.value);
+                saveAllSettingsNow();
             });
 
             document.getElementById('settingsExerciseDurationBtn').addEventListener('click', function() {
                 activateSettingsTab('settingsExerciseDurationBtn', 'settingsExerciseDurationContent');
+            });
+
+            // Exercise Duration number fields — auto-save as soon as any of them changes
+            document.getElementById('settingsExerciseDurationContent').addEventListener('change', function(e) {
+                if (e.target && e.target.tagName === 'INPUT') saveAllSettingsNow();
             });
 
             document.getElementById('settingsCustomExercisesBtn').addEventListener('click', function() {
@@ -2932,9 +2948,13 @@
                 activateSettingsTab('settingsKeyboardBtn', 'settingsKeyboardContent');
             });
 
-            // Close settings and save
-            document.getElementById('settingsCloseBtn').addEventListener('click', () => {
-                // Save all settings
+            // Rebuilds appSettings from every field currently in the Settings DOM and
+            // persists it immediately. Originally this only ran when closing the whole
+            // Settings screen via the button below — meaning any edit was silently lost
+            // if you left the screen any other way (refresh, back button, etc). Now
+            // called after every individual edit too (pill clicks, duration fields,
+            // resets) so nothing depends on remembering to close Settings a specific way.
+            function saveAllSettingsNow() {
                 appSettings = {
                     shortHoldRest: parseInt(document.getElementById('shortHoldRest').value),
                     longHoldRest: parseInt(document.getElementById('longHoldRest').value),
@@ -2977,7 +2997,11 @@
                     const _h = appSettings.quickStartHold || 'short';
                     _sub.textContent = balanceLabel(appSettings.quickStartBalance) + ' · ' + (_h === 'long' ? 'long hold' : 'short hold');
                 }
-                
+            }
+
+            // Close settings and save
+            document.getElementById('settingsCloseBtn').addEventListener('click', () => {
+                saveAllSettingsNow();
                 document.getElementById('settingsView').style.display = 'none';
                 document.getElementById('mainView').style.display = 'grid';
                 document.getElementById('csvUploadStatus').textContent = '';
@@ -3046,6 +3070,7 @@
                     document.getElementById('cooldownLongDuration').value = DEFAULT_SETTINGS.cooldownLongDuration;
                     document.getElementById('finalrestShortDuration').value = DEFAULT_SETTINGS.finalrestShortDuration;
                     document.getElementById('finalrestLongDuration').value = DEFAULT_SETTINGS.finalrestLongDuration;
+                    saveAllSettingsNow();
                 }
             });
 
@@ -11986,7 +12011,7 @@ function showStats() {
                         <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#c2410c;flex-shrink:0;display:inline-block;"></span>Foam Roller</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="foamrollerShortDuration" class="settings-input-table" min="5" max="120" step="5" value="30"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="foamrollerLongDuration" class="settings-input-table" min="5" max="180" step="5" value="30"><span style="font-size:12px;color:#86868b;">s</span></div></div>
                         <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#059669;flex-shrink:0;display:inline-block;"></span>Mobility</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="mobilityShortDuration" class="settings-input-table" min="5" max="120" step="5" value="30"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="mobilityLongDuration" class="settings-input-table" min="5" max="180" step="5" value="30"><span style="font-size:12px;color:#86868b;">s</span></div></div>
                         <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#4338ca;flex-shrink:0;display:inline-block;"></span>Static Stretching</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="staticstretchingShortDuration" class="settings-input-table" min="15" max="120" step="5" value="45"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="staticstretchingLongDuration" class="settings-input-table" min="30" max="180" step="5" value="75"><span style="font-size:12px;color:#86868b;">s</span></div></div>
-                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#9b2c52;flex-shrink:0;display:inline-block;"></span>Active Stretch</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="activestretchShortDuration" class="settings-input-table" min="15" max="120" step="5" value="45"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="activestretchLongDuration" class="settings-input-table" min="30" max="180" step="5" value="75"><span style="font-size:12px;color:#86868b;">s</span></div></div>
+                        <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#9b2c52;flex-shrink:0;display:inline-block;"></span>Active Stretch</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="activestretchShortDuration" class="settings-input-table" min="15" max="120" step="5" value="75"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="activestretchLongDuration" class="settings-input-table" min="30" max="180" step="5" value="105"><span style="font-size:12px;color:#86868b;">s</span></div></div>
                         <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#ca8a04;flex-shrink:0;display:inline-block;"></span>Deep Stretch</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="deepstretchShortDuration" class="settings-input-table" min="15" max="120" step="5" value="90"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="deepstretchLongDuration" class="settings-input-table" min="30" max="180" step="5" value="120"><span style="font-size:12px;color:#86868b;">s</span></div></div>
                         <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#d946ef;flex-shrink:0;display:inline-block;"></span>Splits</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="splitsShortDuration" class="settings-input-table" min="15" max="120" step="5" value="45"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="splitsLongDuration" class="settings-input-table" min="30" max="180" step="5" value="75"><span style="font-size:12px;color:#86868b;">s</span></div></div>
                         <div style="display:grid; grid-template-columns:1fr 110px 110px; gap:12px; align-items:center; padding:12px 20px; border-bottom:1px solid #f0f0f5;"><div style="font-size:14px; color:#1d1d1f; font-weight:500; display:flex; align-items:center; gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#db2777;flex-shrink:0;display:inline-block;"></span>Cool Down</div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="cooldownShortDuration" class="settings-input-table" min="5" max="120" step="5" value="45"><span style="font-size:12px;color:#86868b;">s</span></div><div style="display:flex;align-items:center;gap:4px;justify-content:center;"><input type="number" id="cooldownLongDuration" class="settings-input-table" min="5" max="180" step="5" value="45"><span style="font-size:12px;color:#86868b;">s</span></div></div>
@@ -12293,7 +12318,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.95</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.97</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
