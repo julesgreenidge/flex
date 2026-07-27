@@ -1664,7 +1664,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="17 Jul 2026">
-<meta name="app-version" content="6.94">
+<meta name="app-version" content="6.95">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -9038,6 +9038,24 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
         let lastBeepedSecond = null;
         let timerAnimationFrame = null;
 
+        // Diagnostic logging (v6.95) for reports of the countdown/beeps going erratic
+        // mid-routine on desktop, where the usual mobile screen-lock explanation doesn't
+        // apply. Purely observational — logs to console only, no behaviour change. A
+        // healthy tick of the timer loop is roughly 16ms; anything much longer means
+        // something stalled it (browser, OS, unknown). Logging exactly when and how long
+        // a stall lasted turns "it stuttered for a while" into real, checkable data.
+        let lastTimerTickAt = null;
+        function logTimerTickGap() {
+            const now = performance.now();
+            if (lastTimerTickAt !== null) {
+                const gap = now - lastTimerTickAt;
+                if (gap > 250) {
+                    console.warn(`[flex] Timer stutter: ${Math.round(gap)}ms gap between ticks at ${new Date().toLocaleTimeString()}`);
+                }
+            }
+            lastTimerTickAt = now;
+        }
+
         function updateProgressBar() {
             const barFill = document.getElementById('timerProgressBarFill');
             if (!barFill || !currentRoutine) return;
@@ -9104,8 +9122,10 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             timerPausedDuration = 0;
             lastBeepedSecond = null;
             firedMidCues = new Set();
-            
+            lastTimerTickAt = null;
+
             function updateTimer() {
+                logTimerTickGap();
                 if (isPaused) {
                     if (!timerPauseTime) {
                         timerPauseTime = performance.now();
@@ -9363,7 +9383,9 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
         function resumeTimerLoop() {
             // Restart the rAF loop using current totalDuration without resetting timerStartTime
             const durationMs = totalDuration * 1000;
+            lastTimerTickAt = null;
             function updateTimer() {
+                logTimerTickGap();
                 if (isPaused) {
                     if (!timerPauseTime) timerPauseTime = performance.now();
                     timerAnimationFrame = requestAnimationFrame(updateTimer);
@@ -12271,7 +12293,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.94</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.95</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
