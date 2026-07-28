@@ -1664,7 +1664,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="17 Jul 2026">
-<meta name="app-version" content="7.1">
+<meta name="app-version" content="7.2">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -2773,19 +2773,18 @@
                      + '<datalist id="' + listId + '">' + opts + '</datalist>';
             }
 
-            // The 7 real, independently-browsable library phases. Active Stretch and Deep
-            // Stretch are deliberately excluded from this checkbox list — Active Stretch is
-            // controlled by the "PNF Eligible" toggle below instead (clearer wording than a
-            // checkbox), and Deep Stretch is never a stored tag at all: every Static
-            // Stretching exercise is automatically eligible for it.
-            const EXERCISE_MODAL_PHASES = ['Warm-Up', 'Foam Roller', 'Mobility', 'Static Stretching', 'Splits', 'Cool Down', 'Final Rest'];
+            // The 8 selectable library phases. Deep Stretch is the only one excluded from
+            // this checkbox list — it's never a stored tag at all, since every Static
+            // Stretching exercise is automatically eligible for it. Active Stretch used to
+            // be set via a separate "PNF Eligible" toggle; it's now just one of these
+            // checkboxes like any other phase.
+            const EXERCISE_MODAL_PHASES = ['Warm-Up', 'Foam Roller', 'Mobility', 'Static Stretching', 'Active Stretch', 'Splits', 'Cool Down', 'Final Rest'];
 
             function exerciseModalHTML(ex, idx) {
                 const isEdit = idx !== null && idx !== undefined;
                 const allPhases = ex ? (ex.phases || (ex.phase ? [ex.phase] : [])) : ['Static Stretching'];
                 const checkedPhases = allPhases.filter(p => EXERCISE_MODAL_PHASES.includes(p));
-                const pnfChecked = ex ? (ex.phases ? ex.phases.includes('Active Stretch') : !!ex.pnf) : false;
-                const v = ex ? { ...ex, pnf: pnfChecked } : { exercise:'', primaryMuscle:'', position:'', sides:2, bodyPart:'lower', pnf:false };
+                const v = ex || { exercise:'', primaryMuscle:'', position:'', sides:2, bodyPart:'lower' };
                 const positionOptions = ['Kneeling','Lateral','Lunge','Prone','Seated','Standing','Supine','Tabletop'];
                 const phaseCheckboxes = EXERCISE_MODAL_PHASES.map(p => `
                         <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:#1d1d1f;background:#f9f9fb;border:1.5px solid #e0e0e5;border-radius:8px;padding:7px 11px;cursor:pointer;">
@@ -2832,13 +2831,6 @@
                                 </select></label>
                                 <label style="${lbl}">Body Part<select id="exBodyPart" style="${inp}">${bodyPartOpts}</select></label>
                             </div>
-                            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f9f9fb;border-radius:10px;border:1.5px solid #e0e0e5;">
-                                <div>
-                                    <div style="font-size:13px;font-weight:600;color:#1d1d1f;">PNF Eligible</div>
-                                    <div style="font-size:12px;color:#86868b;margin-top:1px;">Can be used in Active Stretch</div>
-                                </div>
-                                <label class="toggle-switch"><input type="checkbox" id="exPnf" ${v.pnf?'checked':''}/><span class="toggle-track"></span></label>
-                            </div>
                         </div>
                         <div style="padding:0 24px 20px;display:flex;justify-content:flex-end;gap:10px;">
                             <button onclick="document.getElementById('exModalOverlay').remove()" style="background:white;border:1.5px solid #e0e0e5;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;color:#636366;">Cancel</button>
@@ -2858,21 +2850,16 @@
 
             window.saveExerciseModal = function(idx) {
                 const checkedPhases = Array.from(document.querySelectorAll('.exPhaseCheck:checked')).map(cb => cb.value);
-                const pnfChecked = document.getElementById('exPnf') ? document.getElementById('exPnf').checked : false;
 
                 if (checkedPhases.length === 0) {
                     alert('Please select at least one phase.');
                     return;
                 }
 
-                // The checkboxes above are the full, explicit set of real phases this
-                // exercise belongs to. Active Stretch is the one tag they don't cover
-                // directly — the PNF toggle controls that instead — and Deep Stretch is
-                // never a stored tag (every Static Stretching exercise is auto-eligible).
-                let phases = [...checkedPhases];
-                if (checkedPhases.includes('Static Stretching') && pnfChecked) {
-                    phases.push('Active Stretch');
-                }
+                // The checkboxes are the full, explicit set of phases this exercise belongs
+                // to — Active Stretch included. Deep Stretch is the only tag never stored
+                // here: every Static Stretching exercise is auto-eligible for it.
+                const phases = [...checkedPhases];
 
                 const ex = {
                     exercise: document.getElementById('exName').value.trim(),
@@ -5314,12 +5301,11 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 return `<label style="font-size:13px; font-weight:600;">${f.label}
                     <input id="${f.id}" value="${f.val}" style="display:block; width:100%; margin-top:4px; border:1.5px solid #d2d2d7; border-radius:8px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;"/></label>`;
             }).join('');
-            // PNF dropdown
-            container.innerHTML += `<label style="font-size:13px;font-weight:600;">PNF eligible <span style="font-weight:400;font-size:12px;color:#86868b;">(can be used in Active Stretch)</span>
-                <select id="apPnf" style="display:block;width:100%;margin-top:4px;border:1.5px solid #d2d2d7;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;">
-                    <option value="0" ${!ex.pnf ? 'selected' : ''}>No</option>
-                    <option value="1" ${ex.pnf ? 'selected' : ''}>Yes</option>
-                </select></label>`;
+            // Active Stretch checkbox — additive metadata, not one of the main phase options above
+            container.innerHTML += `<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-top:2px;cursor:pointer;">
+                <input type="checkbox" id="apActiveStretch" ${(ex.phases && ex.phases.includes('Active Stretch')) || ex.pnf ? 'checked' : ''}/>
+                Also usable in Active Stretch
+                </label>`;
             // Show queue count
             const queueInfo = document.getElementById('apQueueInfo');
             const current = _pendingExercisesTotal - _pendingExercises.length + 1;
@@ -5339,12 +5325,12 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
         window.approveExercise = function() {
             const selectedPhase = document.getElementById('apPhase').value;
-            const pnfChecked = document.getElementById('apPnf') ? document.getElementById('apPnf').value === '1' : false;
+            const activeStretchChecked = document.getElementById('apActiveStretch') ? document.getElementById('apActiveStretch').checked : false;
             // Jumi only ever proposes one phase — cross-phase tagging is something you add
-            // manually afterward, same as for any other exercise. PNF eligibility is folded
-            // straight into the phases list as an "Active Stretch" tag.
+            // manually afterward, same as for any other exercise. The Active Stretch
+            // checkbox above adds that one additional tag directly.
             const phases = [selectedPhase];
-            if (selectedPhase === 'Static Stretching' && pnfChecked) phases.push('Active Stretch');
+            if (selectedPhase === 'Static Stretching' && activeStretchChecked) phases.push('Active Stretch');
             const ex = {
                 exercise: document.getElementById('apName').value.trim(),
                 primaryMuscle: document.getElementById('apTarget').value.trim(),
@@ -12593,7 +12579,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">7.1</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">7.2</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
