@@ -1664,7 +1664,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="17 Jul 2026">
-<meta name="app-version" content="7.0">
+<meta name="app-version" content="7.1">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -2773,16 +2773,24 @@
                      + '<datalist id="' + listId + '">' + opts + '</datalist>';
             }
 
+            // The 7 real, independently-browsable library phases. Active Stretch and Deep
+            // Stretch are deliberately excluded from this checkbox list — Active Stretch is
+            // controlled by the "PNF Eligible" toggle below instead (clearer wording than a
+            // checkbox), and Deep Stretch is never a stored tag at all: every Static
+            // Stretching exercise is automatically eligible for it.
+            const EXERCISE_MODAL_PHASES = ['Warm-Up', 'Foam Roller', 'Mobility', 'Static Stretching', 'Splits', 'Cool Down', 'Final Rest'];
+
             function exerciseModalHTML(ex, idx) {
                 const isEdit = idx !== null && idx !== undefined;
-                // Single-phase display only for now — a checkbox-based multi-phase editor
-                // is a later stage. Shows the exercise's first tagged phase; the PNF toggle
-                // below reflects (and controls) its "Active Stretch" tag specifically.
-                const displayPhase = ex ? (ex.phases ? ex.phases[0] : ex.phase) : 'Static Stretching';
+                const allPhases = ex ? (ex.phases || (ex.phase ? [ex.phase] : [])) : ['Static Stretching'];
+                const checkedPhases = allPhases.filter(p => EXERCISE_MODAL_PHASES.includes(p));
                 const pnfChecked = ex ? (ex.phases ? ex.phases.includes('Active Stretch') : !!ex.pnf) : false;
-                const v = ex ? { ...ex, phase: displayPhase, pnf: pnfChecked } : { exercise:'', phase:'Static Stretching', primaryMuscle:'', position:'', sides:2, bodyPart:'lower', pnf:false };
+                const v = ex ? { ...ex, pnf: pnfChecked } : { exercise:'', primaryMuscle:'', position:'', sides:2, bodyPart:'lower', pnf:false };
                 const positionOptions = ['Kneeling','Lateral','Lunge','Prone','Seated','Standing','Supine','Tabletop'];
-                const phaseOpts = PHASE_OPTIONS.map(p => `<option value="${p}"${p===v.phase?' selected':''}>${p}</option>`).join('');
+                const phaseCheckboxes = EXERCISE_MODAL_PHASES.map(p => `
+                        <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:#1d1d1f;background:#f9f9fb;border:1.5px solid #e0e0e5;border-radius:8px;padding:7px 11px;cursor:pointer;">
+                            <input type="checkbox" class="exPhaseCheck" value="${p}"${checkedPhases.includes(p) ? ' checked' : ''} style="margin:0;"/>${p}
+                        </label>`).join('');
                 const muscleOpts = MUSCLE_OPTIONS_GLOBAL.map(m => `<option value="${m}">`).join('');
                 const positionOpts = positionOptions.map(p => `<option value="${p}">`).join('');
                 const bodyPartOpts = ['upper','lower','full'].map(b => `<option value="${b}"${b===v.bodyPart?' selected':''}>${b.charAt(0).toUpperCase()+b.slice(1)}</option>`).join('');
@@ -2798,7 +2806,9 @@
                         </div>
                         <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px;">
                             <label style="${lbl}">Name<input id="exName" value="${v.exercise}" placeholder="e.g. Pigeon Pose" style="${inp}" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e0e0e5'"/></label>
-                            <label style="${lbl}">Phase<select id="exPhase" style="${inp}">${phaseOpts}</select></label>
+                            <div style="${lbl}">Phases <span style="font-weight:400;font-size:12px;color:#86868b;">(select all that apply)</span>
+                                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">${phaseCheckboxes}</div>
+                            </div>
                             <label style="${lbl}">Primary Muscle
                                 <input id="exTarget" list="exTargetList" value="${v.primaryMuscle||''}" autocomplete="off" placeholder="e.g. Glutes" style="${inp}" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e0e0e5'"/>
                                 <datalist id="exTargetList">${muscleOpts}</datalist>
@@ -2847,21 +2857,21 @@
             };
 
             window.saveExerciseModal = function(idx) {
-                const isEdit = idx !== null && idx !== undefined && idx !== 'null';
-                const existing = isEdit ? exercises[idx] : null;
-                const selectedPhase = document.getElementById('exPhase').value;
+                const checkedPhases = Array.from(document.querySelectorAll('.exPhaseCheck:checked')).map(cb => cb.value);
                 const pnfChecked = document.getElementById('exPnf') ? document.getElementById('exPnf').checked : false;
 
-                // This form only shows/controls one phase at a time (a checkbox-based
-                // multi-phase editor is a later stage) — so any OTHER cross-phase tags the
-                // exercise already had are preserved rather than silently dropped. The PNF
-                // toggle is the one exception: it directly controls the "Active Stretch" tag,
-                // so it's added or removed exactly as ticked.
-                let phases = existing && existing.phases ? [...existing.phases] : [];
-                if (!phases.includes(selectedPhase)) phases.push(selectedPhase);
-                if (selectedPhase === 'Static Stretching') {
-                    if (pnfChecked && !phases.includes('Active Stretch')) phases.push('Active Stretch');
-                    if (!pnfChecked) phases = phases.filter(p => p !== 'Active Stretch');
+                if (checkedPhases.length === 0) {
+                    alert('Please select at least one phase.');
+                    return;
+                }
+
+                // The checkboxes above are the full, explicit set of real phases this
+                // exercise belongs to. Active Stretch is the one tag they don't cover
+                // directly — the PNF toggle controls that instead — and Deep Stretch is
+                // never a stored tag (every Static Stretching exercise is auto-eligible).
+                let phases = [...checkedPhases];
+                if (checkedPhases.includes('Static Stretching') && pnfChecked) {
+                    phases.push('Active Stretch');
                 }
 
                 const ex = {
@@ -3745,7 +3755,7 @@
         // once per user, instead of re-checking your whole exercise library on
         // every single page load. Adding a new migration later: give it the next
         // number, wrap it in "if (dataSchemaVersion < N)", and bump this constant.
-        const CURRENT_SCHEMA_VERSION = 12;
+        const CURRENT_SCHEMA_VERSION = 13;
         let dataSchemaVersion = parseInt(localStorage.getItem('dataSchemaVersion') || '0', 10);
 
         // Migration 1: stale active stretch durations (pre-v6.30 defaults were 45/75)
@@ -4635,6 +4645,44 @@
                         if (needsCleanup) {
                             saveExercises();
                             console.log('✓ Retired phase/duration/rest/pnf fields from exercise library — phases[] is now the only phase field');
+                        }
+                    }
+
+                    // Migration 13: apply the reviewed exercise-list-reimagined spreadsheet's
+                    // cross-phase tagging to the live library, and add the handful of
+                    // exercises from that list that weren't in the app yet (e.g. Elephant
+                    // Walks, Reverse Prayer, Sleeper Stretch). Migrations 11/12 only ever
+                    // carried forward each exercise's OLD single phase (plus PNF folded into
+                    // Active Stretch) — the actual Warm-Up/Mobility and Static
+                    // Stretching/Cool Down cross-links from the user's reviewed spreadsheet
+                    // were never written to the live library until now, which is why they
+                    // weren't showing up as cross-phase badges in Custom Exercises.
+                    if (dataSchemaVersion < 13) {
+                        let needsPhaseOverlay = false;
+                        exercises = exercises.map(ex => {
+                            const canonical = CANONICAL_EXERCISE_PHASES[ex.exercise];
+                            if (!canonical) return ex;
+                            const same = Array.isArray(ex.phases) && ex.phases.length === canonical.length && canonical.every(p => ex.phases.includes(p));
+                            if (same) return ex;
+                            needsPhaseOverlay = true;
+                            return { ...ex, phases: [...canonical] };
+                        });
+
+                        const existingNames = new Set(exercises.map(ex => ex.exercise));
+                        const defaultsByName = {};
+                        getDefaultExercises().forEach(d => { defaultsByName[d.exercise] = d; });
+                        let addedCount = 0;
+                        Object.keys(CANONICAL_EXERCISE_PHASES).forEach(name => {
+                            if (existingNames.has(name)) return;
+                            const def = defaultsByName[name];
+                            if (!def) return; // safety: only add exercises we have full metadata for
+                            exercises.push({ ...def });
+                            addedCount++;
+                        });
+
+                        if (needsPhaseOverlay || addedCount > 0) {
+                            saveExercises();
+                            console.log(`✓ Applied reviewed cross-phase tagging to exercise library${addedCount ? ' and added ' + addedCount + ' new exercise(s)' : ''}`);
                         }
                     }
 
@@ -6545,6 +6593,118 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             document.getElementById('floatingStarBtn').addEventListener('click', openStarModal);
         }
 
+        // Authoritative phases[] for every exercise in the user's reviewed and approved
+        // exercise-list-reimagined spreadsheet (the source of truth for which exercises
+        // are cross-tagged into more than one phase — e.g. Elephant Walks in both
+        // Warm-Up and Mobility, or Butterfly Stretch in Static Stretching, Active
+        // Stretch AND Cool Down). Applied both to the seed data below (new installs)
+        // and as a one-time overlay migration for existing libraries (Migration 13),
+        // matched by exact exercise name.
+        const CANONICAL_EXERCISE_PHASES = {
+            'Ankle Bounces': ['Warm-Up', 'Mobility'],
+            'Arm Swings': ['Warm-Up'],
+            'Band Pull Aparts': ['Warm-Up'],
+            'Banded Overhead Shoulder Stretch': ['Warm-Up'],
+            'Bird-Dog': ['Warm-Up'],
+            'Butt Kicks': ['Warm-Up'],
+            'Elephant Walks': ['Warm-Up', 'Mobility'],
+            'High Knees Marching': ['Warm-Up'],
+            'Hip Circles (Kneeling)': ['Warm-Up'],
+            'Hip Circles (Standing)': ['Warm-Up'],
+            'Jumping Jacks': ['Warm-Up'],
+            'Knee Circles': ['Warm-Up'],
+            'Leg Swings (Front)': ['Warm-Up'],
+            'Leg Swings (Side)': ['Warm-Up'],
+            'Scapular CARs': ['Warm-Up', 'Mobility'],
+            'Shoulder Rolls': ['Warm-Up'],
+            'Side Leg Kick': ['Warm-Up'],
+            'Standing Snow Angels': ['Warm-Up'],
+            'Torso Twists (Standing)': ['Warm-Up', 'Mobility'],
+            'Wrist CARs': ['Warm-Up', 'Mobility'],
+            'Foam Roll Abductors': ['Foam Roller'],
+            'Foam Roll Adductors': ['Foam Roller'],
+            'Foam Roll Calves': ['Foam Roller'],
+            'Foam Roll Glutes': ['Foam Roller'],
+            'Foam Roll Hamstrings': ['Foam Roller'],
+            'Foam Roll Hip Flexors': ['Foam Roller'],
+            'Foam Roll IT Band': ['Foam Roller'],
+            'Foam Roll Lats': ['Foam Roller'],
+            'Foam Roll Lower Back': ['Foam Roller'],
+            'Foam Roll Pecs': ['Foam Roller'],
+            'Foam Roll Quads': ['Foam Roller'],
+            'Foam Roll Upper Back': ['Foam Roller'],
+            '90/90 Hip Transitions': ['Warm-Up', 'Mobility'],
+            'Ankle CARs': ['Warm-Up', 'Mobility'],
+            'Cat-Cow': ['Mobility'],
+            'Downward Dog With Pedal': ['Warm-Up', 'Mobility'],
+            'Fire Hydrant': ['Warm-Up', 'Mobility'],
+            'Glute Bridge (Dynamic)': ['Mobility'],
+            'Hip Hinge': ['Warm-Up', 'Mobility'],
+            'Open Book (Dynamic)': ['Warm-Up', 'Mobility'],
+            "Prone I's": ['Warm-Up', 'Mobility'],
+            "Prone T's": ['Warm-Up', 'Mobility'],
+            "Prone W's": ['Warm-Up', 'Mobility'],
+            "Prone Y's": ['Warm-Up', 'Mobility'],
+            'Scorpion': ['Mobility'],
+            'Seated Point and Flex': ['Warm-Up', 'Mobility'],
+            'Seated Spinal Twist (Dynamic)': ['Warm-Up', 'Mobility'],
+            'Seated Straight Leg Raise': ['Mobility'],
+            'Shoulder Squeeze': ['Mobility'],
+            'Side Lying Leg Lift': ['Warm-Up', 'Mobility'],
+            'Thread The Needle': ['Mobility'],
+            'Butterfly Stretch': ['Static Stretching', 'Active Stretch', 'Cool Down'],
+            'Cow Face (Arms)': ['Static Stretching', 'Active Stretch'],
+            'Cow Face (Legs)': ['Static Stretching', 'Active Stretch'],
+            'Cross Body Shoulder Stretch': ['Static Stretching', 'Active Stretch'],
+            'Deep Squat': ['Static Stretching', 'Active Stretch'],
+            'Frog Pose': ['Static Stretching', 'Active Stretch'],
+            'Gate Pose': ['Static Stretching', 'Active Stretch'],
+            'Glute Bridge (Static)': ['Static Stretching'],
+            'Half Saddle': ['Static Stretching', 'Active Stretch'],
+            'Half Seated Frog': ['Static Stretching', 'Active Stretch'],
+            'High Lunge': ['Static Stretching', 'Active Stretch'],
+            'Kneeling Bent Knee Calf Stretch': ['Static Stretching', 'Active Stretch'],
+            'Low Lunge': ['Static Stretching', 'Active Stretch'],
+            'Neck Stretch (Front)': ['Static Stretching', 'Cool Down'],
+            'Neck Stretch (Side)': ['Static Stretching', 'Cool Down'],
+            'One Legged Frog': ['Static Stretching', 'Active Stretch'],
+            'Open Book (Static)': ['Static Stretching', 'Cool Down'],
+            'Overhead Tricep Stretch': ['Static Stretching', 'Active Stretch'],
+            'Pancake': ['Static Stretching', 'Active Stretch'],
+            'Pigeon Pose': ['Static Stretching', 'Active Stretch'],
+            'Pyramid Stretch': ['Static Stretching', 'Active Stretch'],
+            'Reverse Prayer': ['Static Stretching', 'Active Stretch', 'Cool Down'],
+            'Runners Stretch': ['Static Stretching', 'Active Stretch'],
+            'Saddle': ['Static Stretching', 'Active Stretch'],
+            'Seal': ['Static Stretching'],
+            'Seated Figure 4 Stretch': ['Static Stretching', 'Active Stretch'],
+            'Seated Forward Fold': ['Static Stretching', 'Active Stretch'],
+            'Seated Spinal Twist (Passive)': ['Static Stretching'],
+            "Side Child's Pose": ['Static Stretching', 'Cool Down'],
+            'Sleeper Stretch': ['Static Stretching', 'Active Stretch'],
+            'Splits On Wall': ['Static Stretching', 'Active Stretch', 'Cool Down'],
+            'Standing Chest Opener': ['Static Stretching'],
+            'Standing Forward Fold': ['Static Stretching', 'Active Stretch'],
+            'Standing IT Band Stretch': ['Static Stretching', 'Active Stretch'],
+            'Standing Quad Stretch': ['Static Stretching', 'Active Stretch'],
+            'Supine Figure 4 Stretch': ['Static Stretching', 'Active Stretch'],
+            'Supine IT Band Stretch': ['Static Stretching', 'Active Stretch'],
+            'Supine Lizard': ['Static Stretching', 'Active Stretch'],
+            'Twisted Cross': ['Static Stretching'],
+            'Twisted Reclined Big Toe Pose': ['Static Stretching', 'Active Stretch'],
+            'Wide Legged Forward Fold': ['Static Stretching', 'Active Stretch'],
+            'Wrist Leans': ['Static Stretching'],
+            'Front Splits': ['Splits'],
+            "Child's Pose": ['Static Stretching', 'Cool Down'],
+            'Foam Roller Chest Stretch': ['Cool Down'],
+            'Happy Baby': ['Static Stretching', 'Cool Down'],
+            'Puppy Dog': ['Static Stretching', 'Cool Down'],
+            'Supine Butterfly': ['Static Stretching', 'Cool Down'],
+            'Supine Split': ['Static Stretching', 'Cool Down'],
+            'Two Knee Spinal Twist': ['Static Stretching', 'Cool Down'],
+            'Savasana': ['Final Rest'],
+        };
+
         function getDefaultExercises() {
             // Exercises match the CSV exactly. Deep Stretch is NOT a separate data phase —
             // the generator promotes Static Stretching exercises to Deep Stretch at runtime
@@ -6647,17 +6807,43 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 {phase: "Cool Down", exercise: "Supine Split", position: "Supine", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Adductors", secondaryMuscle: "Hamstrings"},
                 {phase: "Cool Down", exercise: "Two Knee Spinal Twist", position: "Supine", sides: 2, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Lower Back", secondaryMuscle: "Abs", tertiaryMuscle: "Glutes"},
                 {phase: "Cool Down", exercise: "Child's Pose", position: "Tabletop", sides: 1, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Upper Back", secondaryMuscle: "Lats", tertiaryMuscle: "Shoulders"},
-                {phase: "Final Rest", exercise: "Savasana", position: "Supine", sides: 1, bodyPart: "full", duration: 120, rest: 0, primaryMuscle: "None"}
+                {phase: "Final Rest", exercise: "Savasana", position: "Supine", sides: 1, bodyPart: "full", duration: 120, rest: 0, primaryMuscle: "None"},
+                // Added to match the reviewed exercise-list-reimagined spreadsheet — these
+                // were part of the original cross-phase exercise list but hadn't been added
+                // to the app's library yet (see CANONICAL_EXERCISE_PHASES above for phases).
+                {phase: "Warm-Up", exercise: "Band Pull Aparts", position: "Standing", sides: 1, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Upper Back", secondaryMuscle: "Shoulders"},
+                {phase: "Warm-Up", exercise: "Butt Kicks", position: "Standing", sides: 1, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Quadriceps", secondaryMuscle: "Hip Flexors", tertiaryMuscle: "Hamstrings"},
+                {phase: "Warm-Up", exercise: "Elephant Walks", position: "Standing", sides: 1, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Hamstrings", secondaryMuscle: "Calves", tertiaryMuscle: "Lower Back"},
+                {phase: "Warm-Up", exercise: "Scapular CARs", position: "Standing", sides: 1, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Upper Back", secondaryMuscle: "Shoulders"},
+                {phase: "Warm-Up", exercise: "Side Leg Kick", position: "Lateral", sides: 2, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Abductors", secondaryMuscle: "Glutes", tertiaryMuscle: "Hip Flexors"},
+                {phase: "Warm-Up", exercise: "Standing Snow Angels", position: "Standing", sides: 1, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Shoulders", secondaryMuscle: "Upper Back"},
+                {phase: "Warm-Up", exercise: "Prone I's", position: "Prone", sides: 1, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Upper Back", secondaryMuscle: "Shoulders"},
+                {phase: "Warm-Up", exercise: "Prone T's", position: "Prone", sides: 1, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Upper Back", secondaryMuscle: "Shoulders"},
+                {phase: "Warm-Up", exercise: "Prone W's", position: "Prone", sides: 1, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Upper Back", secondaryMuscle: "Shoulders"},
+                {phase: "Warm-Up", exercise: "Prone Y's", position: "Prone", sides: 1, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Upper Back", secondaryMuscle: "Shoulders"},
+                {phase: "Mobility", exercise: "Seated Straight Leg Raise", position: "Seated", sides: 2, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Hip Flexors", secondaryMuscle: "Quadriceps", tertiaryMuscle: "Abs"},
+                {phase: "Mobility", exercise: "Shoulder Squeeze", position: "Standing", sides: 1, bodyPart: "upper", duration: 30, rest: 15, primaryMuscle: "Upper Back", secondaryMuscle: "Shoulders"},
+                {phase: "Warm-Up", exercise: "Side Lying Leg Lift", position: "Lateral", sides: 2, bodyPart: "lower", duration: 30, rest: 15, primaryMuscle: "Abductors", secondaryMuscle: "Glutes"},
+                {phase: "Static Stretching", exercise: "Reverse Prayer", position: "Standing", sides: 1, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Chest", secondaryMuscle: "Shoulders", tertiaryMuscle: "Wrists"},
+                {phase: "Static Stretching", exercise: "Sleeper Stretch", position: "Lateral", sides: 2, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Shoulders"},
+                {phase: "Static Stretching", exercise: "Standing IT Band Stretch", position: "Standing", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Abductors", secondaryMuscle: "Glutes", tertiaryMuscle: "Lower Back"},
+                {phase: "Static Stretching", exercise: "Supine IT Band Stretch", position: "Supine", sides: 2, bodyPart: "lower", duration: 45, rest: 15, primaryMuscle: "Abductors", secondaryMuscle: "Glutes", tertiaryMuscle: "Lower Back"}
             ];
             // phase/duration/rest/pnf are retired — phases[] is the only phase field now,
             // and duration/rest are always resolved from Settings at the point an exercise
             // is placed into a routine slot (see instantiateForPhase), never stored here.
+            // CANONICAL_EXERCISE_PHASES is the source of truth for cross-phase tagging;
+            // the old single-phase + PNF-boolean derivation is only a fallback for the
+            // (currently none) exercises that might somehow not be in that map.
             return raw.map(e => {
-                const pnf = PNF_ELIGIBLE_DEFAULT.has(e.exercise);
-                const phases = [e.phase];
-                if (e.phase === 'Static Stretching' && pnf) phases.push('Active Stretch');
+                let phases = CANONICAL_EXERCISE_PHASES[e.exercise];
+                if (!phases) {
+                    const pnf = PNF_ELIGIBLE_DEFAULT.has(e.exercise);
+                    phases = [e.phase];
+                    if (e.phase === 'Static Stretching' && pnf) phases.push('Active Stretch');
+                }
                 const { phase, duration, rest, ...rest_ } = e;
-                return { ...rest_, phases };
+                return { ...rest_, phases: [...phases] };
             });
         }
 
@@ -12407,7 +12593,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">7.0</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">7.1</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
