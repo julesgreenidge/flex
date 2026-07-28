@@ -1664,7 +1664,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="17 Jul 2026">
-<meta name="app-version" content="6.97">
+<meta name="app-version" content="7.0">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -2292,8 +2292,14 @@
         // Sort comparator for ordering exercises by their phase's position in PHASE_ORDER.
         // Replaces the `phaseOrder.indexOf(a.phase) - phaseOrder.indexOf(b.phase)` pattern
         // that's currently repeated at roughly ten separate call sites.
+        // Works on both shapes: a routine instance (single .phase string) and a library
+        // exercise (.phases list) — for the latter, sorts by whichever tagged phase comes
+        // first in PHASE_ORDER.
         function comparePhaseOrder(a, b) {
-            return PHASE_ORDER.indexOf(a.phase) - PHASE_ORDER.indexOf(b.phase);
+            const phaseOf = (x) => Array.isArray(x.phases)
+                ? x.phases.reduce((best, p) => PHASE_ORDER.indexOf(p) < PHASE_ORDER.indexOf(best) ? p : best, x.phases[0])
+                : x.phase;
+            return PHASE_ORDER.indexOf(phaseOf(a)) - PHASE_ORDER.indexOf(phaseOf(b));
         }
 
         // Human-readable label for a hold type, e.g. holdLabel('long') -> 'long hold',
@@ -2607,15 +2613,25 @@
 
                 const phaseOrder = PHASE_ORDER; // was a duplicate literal — now points at the shared constant
 
+                // The "Active Stretch" tag is PNF-eligibility metadata, not a real library
+                // phase group (Active/Deep Stretch are only ever reached by promoting a
+                // Static Stretching exercise at generation time), so it's excluded from
+                // display here. A cross-phase exercise appears under every real phase it's
+                // tagged for, with a badge on each card naming its other phase(s).
+                const LIBRARY_DISPLAY_PHASES = new Set(['Warm-Up', 'Foam Roller', 'Mobility', 'Static Stretching', 'Splits', 'Cool Down', 'Final Rest']);
+                const displayPhasesFor = (ex) => ex.phases.filter(p => LIBRARY_DISPLAY_PHASES.has(p));
+
                 // Update count line
                 const countEl = document.getElementById('exLibCount');
-                if (countEl) countEl.textContent = `${exercises.length} exercises across ${phaseOrder.filter(p => exercises.some(e => e.phase === p)).length} phases`;
+                if (countEl) countEl.textContent = `${exercises.length} exercises across ${phaseOrder.filter(p => exercises.some(e => displayPhasesFor(e).includes(p))).length} phases`;
 
                 const cardStyle = (colour) => `display:flex;align-items:center;background:white;border:1px solid #e5e5e7;border-radius:10px;margin-bottom:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);`;
 
-                const makeCard = (ex, colour) => {
+                const makeCard = (ex, colour, shownPhase) => {
                     const globalIdx = exercises.indexOf(ex);
                     const isCustom = ex._custom;
+                    const otherPhases = displayPhasesFor(ex).filter(p => p !== shownPhase);
+                    const crossPhaseBadge = otherPhases.length ? ` <span style="font-size:10px;background:#eef2ff;color:#4c51bf;padding:1px 6px;border-radius:10px;font-weight:600;">+${otherPhases.join(', +')}</span>` : '';
                     const metaStr = `<span style="font-size:11px;color:#c0c0c8;">· ${ex.position} · ${ex.sides}x</span>`;
                     return `<div data-idx="${globalIdx}" draggable="true"
                         ondragstart="exDragStart(event,${globalIdx})"
@@ -2626,7 +2642,7 @@
                         <div style="width:4px;background:${colour};align-self:stretch;flex-shrink:0;"></div>
                         <span style="color:#c7c7cc;font-size:14px;cursor:grab;padding:0 10px;flex-shrink:0;">⠿</span>
                         <div style="flex:1;padding:10px 4px 10px 0;min-width:0;">
-                            <div style="font-size:13px;font-weight:600;color:#1d1d1f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px;">${ex.exercise}${isCustom ? ' <span style="font-size:10px;background:#f0eef8;color:#667eea;padding:1px 6px;border-radius:10px;font-weight:600;">custom</span>' : ''}</div>
+                            <div style="font-size:13px;font-weight:600;color:#1d1d1f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px;">${ex.exercise}${isCustom ? ' <span style="font-size:10px;background:#f0eef8;color:#667eea;padding:1px 6px;border-radius:10px;font-weight:600;">custom</span>' : ''}${crossPhaseBadge}</div>
                             <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">${muscleDisplayChips(ex)} ${metaStr}</div>
                         </div>
                         <div style="display:flex;gap:4px;padding:0 10px;flex-shrink:0;">
@@ -2655,7 +2671,7 @@
                     } else {
                         html += `<div style="font-size:12px;color:#86868b;margin-bottom:14px;">${filtered.length} result${filtered.length !== 1 ? 's' : ''} for "${search}"</div>`;
                         phaseOrder.forEach(phase => {
-                            const phaseExercises = filtered.filter(e => e.phase === phase)
+                            const phaseExercises = filtered.filter(e => displayPhasesFor(e).includes(phase))
                                 .sort((a,b) => a.exercise.localeCompare(b.exercise));
                             if (!phaseExercises.length) return;
                             const colour = phaseColours[phase] || '#667eea';
@@ -2664,13 +2680,13 @@
                                 <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#86868b;">${phase}</span>
                                 <div style="flex:1;height:2px;background:${colour};opacity:0.2;border-radius:2px;"></div>
                             </div>`;
-                            phaseExercises.forEach(ex => { html += makeCard(ex, colour); });
+                            phaseExercises.forEach(ex => { html += makeCard(ex, colour, phase); });
                         });
                     }
                 } else {
                     // Default mode — collapsible phase groups
                     phaseOrder.forEach(phase => {
-                        const phaseExercises = exercises.filter(e => e.phase === phase)
+                        const phaseExercises = exercises.filter(e => displayPhasesFor(e).includes(phase))
                             .sort((a,b) => a.exercise.localeCompare(b.exercise));
                         if (!phaseExercises.length) return;
                         const colour = phaseColours[phase] || '#667eea';
@@ -2683,7 +2699,7 @@
                                 <div style="color:#c7c7cc;font-size:11px;transform:rotate(${isOpen ? '180' : '0'}deg);transition:transform 0.2s;">▼</div>
                             </div>
                             ${isOpen ? `<div style="border-top:1px solid #f0f0f5;padding:8px 8px 2px 8px;">
-                                ${phaseExercises.map(ex => makeCard(ex, colour)).join('')}
+                                ${phaseExercises.map(ex => makeCard(ex, colour, phase)).join('')}
                             </div>` : ''}
                         </div>`;
                     });
@@ -2759,15 +2775,12 @@
 
             function exerciseModalHTML(ex, idx) {
                 const isEdit = idx !== null && idx !== undefined;
-                const v = ex || { exercise:'', phase:'Static Stretching', primaryMuscle:'', position:'', sides:2, bodyPart:'lower', duration:45, rest:15, pnf:false };
-                // Helper: default duration for a given phase (used by phase change handler below)
-                function defaultDurationForPhase(phase) {
-                    const short = ['Warm-Up','Foam Roller','Mobility'];
-                    const long  = ['Static Stretching','Active Stretch','Deep Stretch','Splits','Cool Down'];
-                    if (short.includes(phase)) return 30;
-                    if (long.includes(phase))  return 45;
-                    return 30;
-                }
+                // Single-phase display only for now — a checkbox-based multi-phase editor
+                // is a later stage. Shows the exercise's first tagged phase; the PNF toggle
+                // below reflects (and controls) its "Active Stretch" tag specifically.
+                const displayPhase = ex ? (ex.phases ? ex.phases[0] : ex.phase) : 'Static Stretching';
+                const pnfChecked = ex ? (ex.phases ? ex.phases.includes('Active Stretch') : !!ex.pnf) : false;
+                const v = ex ? { ...ex, phase: displayPhase, pnf: pnfChecked } : { exercise:'', phase:'Static Stretching', primaryMuscle:'', position:'', sides:2, bodyPart:'lower', pnf:false };
                 const positionOptions = ['Kneeling','Lateral','Lunge','Prone','Seated','Standing','Supine','Tabletop'];
                 const phaseOpts = PHASE_OPTIONS.map(p => `<option value="${p}"${p===v.phase?' selected':''}>${p}</option>`).join('');
                 const muscleOpts = MUSCLE_OPTIONS_GLOBAL.map(m => `<option value="${m}">`).join('');
@@ -2785,7 +2798,7 @@
                         </div>
                         <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px;">
                             <label style="${lbl}">Name<input id="exName" value="${v.exercise}" placeholder="e.g. Pigeon Pose" style="${inp}" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e0e0e5'"/></label>
-                            <label style="${lbl}">Phase<select id="exPhase" style="${inp}" onchange="(function(){var d=defaultDurationForPhase(this.value);var durEl=document.getElementById('exDuration');if(durEl&&!durEl.dataset.userEdited)durEl.value=d;}).call(this)">${phaseOpts}</select></label>
+                            <label style="${lbl}">Phase<select id="exPhase" style="${inp}">${phaseOpts}</select></label>
                             <label style="${lbl}">Primary Muscle
                                 <input id="exTarget" list="exTargetList" value="${v.primaryMuscle||''}" autocomplete="off" placeholder="e.g. Glutes" style="${inp}" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e0e0e5'"/>
                                 <datalist id="exTargetList">${muscleOpts}</datalist>
@@ -2836,18 +2849,30 @@
             window.saveExerciseModal = function(idx) {
                 const isEdit = idx !== null && idx !== undefined && idx !== 'null';
                 const existing = isEdit ? exercises[idx] : null;
+                const selectedPhase = document.getElementById('exPhase').value;
+                const pnfChecked = document.getElementById('exPnf') ? document.getElementById('exPnf').checked : false;
+
+                // This form only shows/controls one phase at a time (a checkbox-based
+                // multi-phase editor is a later stage) — so any OTHER cross-phase tags the
+                // exercise already had are preserved rather than silently dropped. The PNF
+                // toggle is the one exception: it directly controls the "Active Stretch" tag,
+                // so it's added or removed exactly as ticked.
+                let phases = existing && existing.phases ? [...existing.phases] : [];
+                if (!phases.includes(selectedPhase)) phases.push(selectedPhase);
+                if (selectedPhase === 'Static Stretching') {
+                    if (pnfChecked && !phases.includes('Active Stretch')) phases.push('Active Stretch');
+                    if (!pnfChecked) phases = phases.filter(p => p !== 'Active Stretch');
+                }
+
                 const ex = {
                     exercise: document.getElementById('exName').value.trim(),
-                    phase: document.getElementById('exPhase').value,
                     primaryMuscle: document.getElementById('exTarget').value.trim(),
                     secondaryMuscle: document.getElementById('exSecondary').value.trim() || undefined,
                     tertiaryMuscle: document.getElementById('exTertiary').value.trim() || undefined,
                     position: document.getElementById('exPosition').value.trim(),
                     sides: parseInt(document.getElementById('exSides').value),
                     bodyPart: document.getElementById('exBodyPart').value,
-                    pnf: document.getElementById('exPnf') ? document.getElementById('exPnf').checked : false,
-                    duration: existing ? existing.duration : defaultDurationForPhase(document.getElementById('exPhase').value),
-                    rest: existing ? existing.rest : 15
+                    phases,
                 };
                 if (!ex.exercise || !ex.primaryMuscle || !ex.position) {
                     alert('Please fill in Name, Primary Muscle, and Position.');
@@ -3720,7 +3745,7 @@
         // once per user, instead of re-checking your whole exercise library on
         // every single page load. Adding a new migration later: give it the next
         // number, wrap it in "if (dataSchemaVersion < N)", and bump this constant.
-        const CURRENT_SCHEMA_VERSION = 10;
+        const CURRENT_SCHEMA_VERSION = 12;
         let dataSchemaVersion = parseInt(localStorage.getItem('dataSchemaVersion') || '0', 10);
 
         // Migration 1: stale active stretch durations (pre-v6.30 defaults were 45/75)
@@ -4572,7 +4597,48 @@
                         }
                     }
 
-                    // All 9 migrations checked (or skipped) above — stamp the schema version
+                    // Migration 11: add phases[] — the new cross-phase-aware field, foundation
+                    // for the exercise-sheet redesign (Warm-Up/Mobility/Static/Cool Down links,
+                    // PNF folded into an "Active Stretch" tag instead of its own column).
+                    // Purely additive: phase/pnf are left exactly as they are and still drive
+                    // the app for now. A later stage switches every phase check over to
+                    // phases[] and retires phase/pnf for good — this step just lays the data
+                    // down so nothing has to be re-derived (or lost) when that happens.
+                    if (dataSchemaVersion < 11) {
+                        let needsPhasesFill = false;
+                        exercises = exercises.map(ex => {
+                            if (ex.phases) return ex;
+                            needsPhasesFill = true;
+                            const phases = [ex.phase];
+                            if (ex.phase === 'Static Stretching' && ex.pnf) phases.push('Active Stretch');
+                            return {...ex, phases};
+                        });
+                        if (needsPhasesFill) {
+                            saveExercises();
+                            console.log('✓ Added phases[] field to exercise library (foundation for cross-phase support)');
+                        }
+                    }
+
+                    // Migration 12: retire phase/duration/rest/pnf now that every part of the
+                    // app reads phases[] instead — Migration 11 (above) already guaranteed
+                    // phases[] exists on everything, so this is just cleanup. Duration/rest
+                    // are dropped for good: they're resolved fresh from Settings, per phase,
+                    // the moment an exercise is placed into a routine slot (never stored).
+                    if (dataSchemaVersion < 12) {
+                        let needsCleanup = false;
+                        exercises = exercises.map(ex => {
+                            if (!('phase' in ex) && !('duration' in ex) && !('rest' in ex) && !('pnf' in ex)) return ex;
+                            needsCleanup = true;
+                            const { phase, duration, rest, pnf, ...clean } = ex;
+                            return clean;
+                        });
+                        if (needsCleanup) {
+                            saveExercises();
+                            console.log('✓ Retired phase/duration/rest/pnf fields from exercise library — phases[] is now the only phase field');
+                        }
+                    }
+
+                    // All migrations checked (or skipped) above — stamp the schema version
                     // so none of them re-run on future loads until a new one is added.
                     if (dataSchemaVersion < CURRENT_SCHEMA_VERSION) {
                         localStorage.setItem('dataSchemaVersion', String(CURRENT_SCHEMA_VERSION));
@@ -5048,7 +5114,8 @@
             const goals = getJumiGoals();
             const exerciseLibraryList = exercises.map(e => {
                 const muscles = [e.primaryMuscle, e.secondaryMuscle ? `secondary: ${e.secondaryMuscle}` : null, e.tertiaryMuscle ? `tertiary: ${e.tertiaryMuscle}` : null].filter(Boolean).join(', ');
-                return `${e.exercise} (${e.phase} | ${muscles})`;
+                const phaseList = (e.phases || [e.phase]).join('/');
+                return `${e.exercise} (${phaseList} | ${muscles})`;
             }).join(', ');
             const currentRoutineSummary = (currentRoutine && currentRoutine.length > 0)
                 ? `The user currently has this ${selectedType || 'simple'} routine on screen (${currentRoutine.length} exercises):\n` +
@@ -5223,18 +5290,22 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
 
         window.approveExercise = function() {
+            const selectedPhase = document.getElementById('apPhase').value;
+            const pnfChecked = document.getElementById('apPnf') ? document.getElementById('apPnf').value === '1' : false;
+            // Jumi only ever proposes one phase — cross-phase tagging is something you add
+            // manually afterward, same as for any other exercise. PNF eligibility is folded
+            // straight into the phases list as an "Active Stretch" tag.
+            const phases = [selectedPhase];
+            if (selectedPhase === 'Static Stretching' && pnfChecked) phases.push('Active Stretch');
             const ex = {
                 exercise: document.getElementById('apName').value.trim(),
-                phase: document.getElementById('apPhase').value,
                 primaryMuscle: document.getElementById('apTarget').value.trim(),
                 secondaryMuscle: document.getElementById('apSecondary').value.trim() || undefined,
                 tertiaryMuscle: document.getElementById('apTertiary').value.trim() || undefined,
                 position: document.getElementById('apPosition').value.trim(),
                 sides: parseInt(document.getElementById('apSides').value),
                 bodyPart: document.getElementById('apBodyPart').value,
-                pnf: document.getElementById('apPnf') ? document.getElementById('apPnf').value === '1' : false,
-                duration: 45,
-                rest: 15
+                phases,
             };
             if (!ex.exercise || !ex.primaryMuscle || !ex.position) {
                 alert('Please fill in Name, Primary Muscle, and Position.');
@@ -5540,25 +5611,33 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     filtered = filtered.filter(ex =>
                         ex.exercise.toLowerCase().includes(search) ||
                         ex.primaryMuscle.toLowerCase().includes(search) ||
-                        ex.phase.toLowerCase().includes(search) ||
+                        ex.phases.some(p => p.toLowerCase().includes(search)) ||
                         ex.position.toLowerCase().includes(search)
                     );
                 }
-                
+
                 if (customFilters.muscle.length > 0) {
                     filtered = filtered.filter(ex => customFilters.muscle.includes(ex.primaryMuscle));
                 }
                 if (customFilters.phase.length > 0) {
-                    filtered = filtered.filter(ex => customFilters.phase.includes(ex.phase));
+                    filtered = filtered.filter(ex => ex.phases.some(p => customFilters.phase.includes(p)));
                 }
                 if (customFilters.position.length > 0) {
                     filtered = filtered.filter(ex => customFilters.position.includes(ex.position));
                 }
-                
+
+                // Groups by the exercise's real phases — same phases this table has always
+                // shown, not the "Active Stretch" tag (that's PNF-eligibility metadata, not
+                // a pickable slot here; Active/Deep Stretch are still reached by dragging a
+                // Static Stretching exercise onto one of those zones, same as today). A
+                // cross-phase exercise appears under every phase it's tagged for.
+                const PICKER_PHASES = new Set(['Warm-Up', 'Foam Roller', 'Mobility', 'Static Stretching', 'Splits', 'Cool Down', 'Final Rest']);
                 const byPhase = {};
                 filtered.forEach(ex => {
-                    if (!byPhase[ex.phase]) byPhase[ex.phase] = [];
-                    byPhase[ex.phase].push(ex);
+                    ex.phases.filter(p => PICKER_PHASES.has(p)).forEach(p => {
+                        if (!byPhase[p]) byPhase[p] = [];
+                        byPhase[p].push(ex);
+                    });
                 });
                 
                 let html = `
@@ -5590,12 +5669,17 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     `;
                     
                     exs.forEach(ex => {
-                        const exJson = JSON.stringify(ex);
+                        // Stamp which phase this specific card is shown/dragged under — needed
+                        // so drop handlers know the intended slot for a cross-phase exercise,
+                        // since the library entry itself can list more than one phase.
+                        const cardEx = {...ex, _pickedPhase: phase};
+                        const exJson = JSON.stringify(cardEx);
                         const exData = exJson.replace(/"/g, '&quot;');
-                        let dur = ex.duration;
-                        if (ex.phase === 'Static Stretching' || ex.phase === 'Active Stretch') dur = 45;
-                        else if (ex.phase === 'Deep Stretch') dur = 90;
-                        
+                        // Preview duration always shows the short-hold reference value —
+                        // this table isn't tied to whichever hold length ends up picked.
+                        const durKey = PHASE_DURATION_KEY[phase];
+                        const dur = durKey ? (appSettings[durKey + 'ShortDuration'] ?? 30) : 30;
+
                         html += `
                             <tr>
                                 <td colspan="5" style="padding: 0 8px 8px 8px;">
@@ -5649,10 +5733,24 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 document.querySelectorAll('.ex-checkbox').forEach(cb => cb.checked = checked);
             };
             
+            // The Custom Builder doesn't commit to short/long hold until Start is pressed
+            // (startCustomRoutine re-derives every item's real duration at that point via
+            // applyDurationSettings), so items just carry a short-hold reference duration
+            // while being arranged — always the short value, regardless of whatever hold
+            // was last used elsewhere in the app.
+            function builderDurationFor(targetPhase) {
+                const key = PHASE_DURATION_KEY[targetPhase];
+                return key ? (appSettings[key + 'ShortDuration'] ?? 30) : 30;
+            }
+            function instantiateForBuilder(e, targetPhase) {
+                return { ...e, phase: targetPhase, duration: builderDurationFor(targetPhase), rest: appSettings.shortHoldRest ?? 15 };
+            }
+
             window.addSingleEx = function(exData) {
                 const ex = JSON.parse(exData.replace(/&quot;/g, '"'));
-                const insertIdx = findInsertPosition(ex.phase);
-                customRoutine.splice(insertIdx, 0, ex);
+                const targetPhase = ex._pickedPhase || ex.phases[0];
+                const insertIdx = findInsertPosition(targetPhase);
+                customRoutine.splice(insertIdx, 0, instantiateForBuilder(ex, targetPhase));
                 saveCustomState();
                 renderRoutineBuilder();
             };
@@ -5761,10 +5859,9 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         `;
                     } else {
                         exs.forEach(ex => {
-                            let dur = ex.duration;
-                            if (ex.phase === 'Static Stretching' || ex.phase === 'Active Stretch') dur = 45;
-                            else if (ex.phase === 'Deep Stretch') dur = 90;
-                            
+                            // ex.duration is already correct for its phase (set by
+                            // instantiateForBuilder when it was placed) — no override needed.
+                            const dur = ex.duration;
                             const sidesStr = ex.sides > 1 ? `${dur}s × ${ex.sides}` : `${dur}s`;
                             
                             html += `
@@ -5807,8 +5904,12 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             }
             
             function canPlaceInPhase(exercise, targetPhase) {
-                const originalPhase = exercise.phase;
-                
+                // exercise is either an already-placed routine instance (single .phase) or
+                // a fresh drag from the picker table, which is stamped with _pickedPhase
+                // for whichever phase group the card was shown under (falling back to its
+                // first tagged phase if that's somehow missing).
+                const originalPhase = exercise.phase || exercise._pickedPhase || (exercise.phases && exercise.phases[0]);
+
                 // Front Splits can only go in Splits phase
                 if (exercise.exercise === 'Front Splits') {
                     return targetPhase === 'Splits';
@@ -5905,72 +6006,46 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         const ex = JSON.parse(exerciseData.replace(/&quot;/g, '"'));
                         
                         if (!canPlaceInPhase(ex, targetPhase)) {
-                            const correctPhase = ex.phase;
+                            const correctPhase = ex._pickedPhase || ex.phases[0];
                             const stretchPhases = ['Static Stretching', 'Active Stretch', 'Deep Stretch'];
-                            
+
                             const validPhases = stretchPhases.includes(correctPhase) ? 'Static Stretching, Active Stretch, or Deep Stretch' : `the ${correctPhase} phase`;
                             const message = `${ex.exercise} can only be added to ${validPhases}.\n\nClick OK to add it to ${correctPhase}.`;
-                            
+
                             const shouldMove = await customConfirm(message);
-                            
+
                             if (shouldMove) {
                                 // For stretch exercises, default to Static Stretching
                                 const targetPhaseForAdd = stretchPhases.includes(correctPhase) ? 'Static Stretching' : correctPhase;
-                                
-                                // Update phase and duration
-                                ex.phase = targetPhaseForAdd;
-                                if (targetPhaseForAdd === 'Static Stretching') {
-                                    ex.duration = 45;
-                                } else if (targetPhaseForAdd === 'Active Stretch') {
-                                    ex.duration = 45;
-                                } else if (targetPhaseForAdd === 'Deep Stretch') {
-                                    ex.duration = 90;
-                                }
                                 const insertIdx = findInsertPosition(targetPhaseForAdd);
-                                customRoutine.splice(insertIdx, 0, {...ex});
+                                customRoutine.splice(insertIdx, 0, instantiateForBuilder(ex, targetPhaseForAdd));
                                 saveCustomState();
                                 renderRoutineBuilder();
                             }
                             return;
                         }
-                        
-                        // Update phase and duration to match target
-                        ex.phase = targetPhase;
-                        if (targetPhase === 'Static Stretching') {
-                            ex.duration = 45;
-                        } else if (targetPhase === 'Active Stretch') {
-                            ex.duration = 45;
-                        } else if (targetPhase === 'Deep Stretch') {
-                            ex.duration = 90;
-                        }
-                        
-                        customRoutine.splice(targetIdx, 0, {...ex});
+
+                        customRoutine.splice(targetIdx, 0, instantiateForBuilder(ex, targetPhase));
                         saveCustomState();
                         renderRoutineBuilder();
                     }
                 } else if (draggedIdx !== null) {
                     // Reordering within routine - validate phase compatibility
                     const movedExercise = customRoutine[draggedIdx];
-                    
+
                     if (!canPlaceInPhase(movedExercise, targetPhase)) {
                         await customAlert(`Cannot move ${movedExercise.exercise} to ${targetPhase} phase. You can only reorder within the same phase.`);
                         draggedIdx = null;
                         renderRoutineBuilder();
                         return;
                     }
-                    
+
                     // If moving between stretch phases, update phase and duration
                     if (movedExercise.phase !== targetPhase) {
                         movedExercise.phase = targetPhase;
-                        if (targetPhase === 'Static Stretching') {
-                            movedExercise.duration = 45;
-                        } else if (targetPhase === 'Active Stretch') {
-                            movedExercise.duration = 45;
-                        } else if (targetPhase === 'Deep Stretch') {
-                            movedExercise.duration = 90;
-                        }
+                        movedExercise.duration = builderDurationFor(targetPhase);
                     }
-                    
+
                     if (draggedIdx !== targetIdx) {
                         const moved = customRoutine.splice(draggedIdx, 1)[0];
                         const newIdx = draggedIdx < targetIdx ? targetIdx - 1 : targetIdx;
@@ -6017,47 +6092,27 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         const ex = JSON.parse(exerciseData.replace(/&quot;/g, '"'));
                         
                         if (!canPlaceInPhase(ex, phase)) {
-                            const correctPhase = ex.phase;
+                            const correctPhase = ex._pickedPhase || ex.phases[0];
                             const stretchPhases = ['Static Stretching', 'Active Stretch', 'Deep Stretch'];
-                            
+
                             const validPhases = stretchPhases.includes(correctPhase) ? 'Static Stretching, Active Stretch, or Deep Stretch' : `the ${correctPhase} phase`;
                             const message = `${ex.exercise} can only be added to ${validPhases}.\n\nClick OK to add it to ${correctPhase}.`;
-                            
+
                             const shouldMove = await customConfirm(message);
-                            
+
                             if (shouldMove) {
                                 // For stretch exercises, default to Static Stretching
                                 const targetPhaseForAdd = stretchPhases.includes(correctPhase) ? 'Static Stretching' : correctPhase;
-                                
-                                ex.phase = targetPhaseForAdd;
-                                if (targetPhaseForAdd === 'Static Stretching') {
-                                    ex.duration = 45;
-                                } else if (targetPhaseForAdd === 'Active Stretch') {
-                                    ex.duration = 45;
-                                } else if (targetPhaseForAdd === 'Deep Stretch') {
-                                    ex.duration = 90;
-                                }
-                                
                                 const insertIdx = findInsertPosition(targetPhaseForAdd);
-                                customRoutine.splice(insertIdx, 0, {...ex});
+                                customRoutine.splice(insertIdx, 0, instantiateForBuilder(ex, targetPhaseForAdd));
                                 saveCustomState();
                                 renderRoutineBuilder();
                             }
                             return;
                         }
-                        
-                        // Update exercise phase and duration based on target
-                        ex.phase = phase;
-                        if (phase === 'Static Stretching') {
-                            ex.duration = 45;
-                        } else if (phase === 'Active Stretch') {
-                            ex.duration = 45;
-                        } else if (phase === 'Deep Stretch') {
-                            ex.duration = 90;
-                        }
-                        
+
                         const insertIdx = findInsertPosition(phase);
-                        customRoutine.splice(insertIdx, 0, {...ex});
+                        customRoutine.splice(insertIdx, 0, instantiateForBuilder(ex, phase));
                         saveCustomState();
                         renderRoutineBuilder();
                     }
@@ -6066,25 +6121,19 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     const moved = customRoutine[draggedIdx];
                     if (!canPlaceInPhase(moved, phase)) {
                         const correctPhase = moved.phase;
-                        
+
                         const stretchPhases = ['Static Stretching', 'Active Stretch', 'Deep Stretch'];
                         const validPhases = stretchPhases.includes(correctPhase) ? 'Static Stretching, Active Stretch, or Deep Stretch' : `the ${correctPhase} phase`;
                         const message = `${moved.exercise} can only be placed in ${validPhases}.\n\nClick OK to move it to ${correctPhase}.`;
-                        
+
                         const shouldMove = await customConfirm(message);
-                        
+
                         if (shouldMove) {
                             const targetPhaseForMove = correctPhase;
-                            
+
                             customRoutine.splice(draggedIdx, 1);
                             moved.phase = targetPhaseForMove;
-                            if (targetPhaseForMove === 'Static Stretching') {
-                                moved.duration = 45;
-                            } else if (targetPhaseForMove === 'Active Stretch') {
-                                moved.duration = 45;
-                            } else if (targetPhaseForMove === 'Deep Stretch') {
-                                moved.duration = 90;
-                            }
+                            moved.duration = builderDurationFor(targetPhaseForMove);
                             const insertIdx = findInsertPosition(targetPhaseForMove);
                             customRoutine.splice(insertIdx, 0, moved);
                         }
@@ -6095,17 +6144,11 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         }
                         return;
                     }
-                    
+
                     // Update exercise phase and duration
                     moved.phase = phase;
-                    if (phase === 'Static Stretching') {
-                        moved.duration = 45;
-                    } else if (phase === 'Active Stretch') {
-                        moved.duration = 45;
-                    } else if (phase === 'Deep Stretch') {
-                        moved.duration = 90;
-                    }
-                    
+                    moved.duration = builderDurationFor(phase);
+
                     customRoutine.splice(draggedIdx, 1);
                     const insertIdx = findInsertPosition(phase);
                     customRoutine.splice(insertIdx, 0, moved);
@@ -6159,7 +6202,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 
                 let opts = [];
                 if (type === 'muscle') opts = [...new Set(exercises.map(ex => ex.primaryMuscle))].sort();
-                else if (type === 'phase') opts = [...new Set(exercises.map(ex => ex.phase))].sort();
+                else if (type === 'phase') opts = [...new Set(exercises.flatMap(ex => ex.phases).filter(p => p !== 'Active Stretch' && p !== 'Deep Stretch'))].sort();
                 else opts = [...new Set(exercises.map(ex => ex.position))].sort();
                 
                 let html = `
@@ -6249,7 +6292,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 // - Splits phase can only contain Front Splits
                 const splitsViolations = [];
                 selectedExercises.forEach(ex => {
-                    if (ex.exercise === 'Front Splits' && ex.phase !== 'Splits') {
+                    const exPhase = ex._pickedPhase || ex.phases[0];
+                    if (ex.exercise === 'Front Splits' && exPhase !== 'Splits') {
                         splitsViolations.push(`Front Splits can only be added to the Splits phase.`);
                     }
                 });
@@ -6259,7 +6303,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     }
                 });
                 selectedExercises.forEach(ex => {
-                    if (ex.phase === 'Splits' && ex.exercise !== 'Front Splits') {
+                    const exPhase = ex._pickedPhase || ex.phases[0];
+                    if (exPhase === 'Splits' && ex.exercise !== 'Front Splits') {
                         splitsViolations.push(`The Splits phase can only contain Front Splits.`);
                     }
                 });
@@ -6268,20 +6313,21 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     return;
                 }
 
-                // Group by phase
+                // Group by the phase each card was shown/selected under
                 const byPhase = {};
                 selectedExercises.forEach(ex => {
-                    if (!byPhase[ex.phase]) byPhase[ex.phase] = [];
-                    byPhase[ex.phase].push(ex);
+                    const exPhase = ex._pickedPhase || ex.phases[0];
+                    if (!byPhase[exPhase]) byPhase[exPhase] = [];
+                    byPhase[exPhase].push(ex);
                 });
-                
+
                 // Insert each phase group at correct position
                 phaseOrder.forEach(phase => {
                     const exercises = byPhase[phase];
                     if (!exercises) return;
-                    
+
                     let insertIndex = findInsertPosition(phase);
-                    customRoutine.splice(insertIndex, 0, ...exercises.map(ex => ({...ex})));
+                    customRoutine.splice(insertIndex, 0, ...exercises.map(ex => instantiateForBuilder(ex, phase)));
                 });
 
                 // Mark as custom mode as soon as exercises are added
@@ -6603,7 +6649,16 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 {phase: "Cool Down", exercise: "Child's Pose", position: "Tabletop", sides: 1, bodyPart: "upper", duration: 45, rest: 15, primaryMuscle: "Upper Back", secondaryMuscle: "Lats", tertiaryMuscle: "Shoulders"},
                 {phase: "Final Rest", exercise: "Savasana", position: "Supine", sides: 1, bodyPart: "full", duration: 120, rest: 0, primaryMuscle: "None"}
             ];
-            return raw.map(e => ({...e, pnf: e.hasOwnProperty('pnf') ? e.pnf : PNF_ELIGIBLE_DEFAULT.has(e.exercise)}));
+            // phase/duration/rest/pnf are retired — phases[] is the only phase field now,
+            // and duration/rest are always resolved from Settings at the point an exercise
+            // is placed into a routine slot (see instantiateForPhase), never stored here.
+            return raw.map(e => {
+                const pnf = PNF_ELIGIBLE_DEFAULT.has(e.exercise);
+                const phases = [e.phase];
+                if (e.phase === 'Static Stretching' && pnf) phases.push('Active Stretch');
+                const { phase, duration, rest, ...rest_ } = e;
+                return { ...rest_, phases };
+            });
         }
 
         // ===== CSV PARSING =====
@@ -6665,68 +6720,70 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             }
         }
 
+        // Reimagined sheet: no phase/duration/rest/PNF columns any more. Each exercise is
+        // tagged into one or more of 8 phase columns (a "y" marks membership) — most
+        // exercises get exactly one tick, cross-phase ones get two or more. PNF eligibility
+        // is folded into the "Active Stretch" tick. Duration/rest are never stored per
+        // exercise — they're always resolved from Settings, per phase, at the point an
+        // exercise is actually placed into a routine slot.
+        const PHASE_COLUMNS = [
+            ['warm-up', 'Warm-Up'], ['foam roller', 'Foam Roller'], ['mobility', 'Mobility'],
+            ['static stretching', 'Static Stretching'], ['active stretch', 'Active Stretch'],
+            ['splits', 'Splits'], ['cool down', 'Cool Down'], ['final rest', 'Final Rest'],
+        ];
+
         async function parseCSV(csvText) {
             const lines = csvText.trim().split('\n');
             const parsedExercises = [];
-            
+
             if (lines.length < 2) {
                 await customAlert('❌ CSV Error: File must have at least a header row and one exercise row.');
                 return parsedExercises;
             }
-            
+
             // Validate header
             const header = lines[0].trim().toLowerCase();
-            const requiredHeaders = ['phase', 'exercise', 'primarymuscle', 'position', 'sides', 'bodypart', 'duration', 'rest'];
+            const requiredHeaders = ['exercise', 'primarymuscle', 'position', 'sides', 'bodypart'];
             const missingHeaders = requiredHeaders.filter(h => !header.includes(h));
-            
+
             if (missingHeaders.length > 0) {
-                await customAlert(`❌ CSV Error: Missing required columns: ${missingHeaders.join(', ')}\n\nRequired: Phase, Exercise, PrimaryMuscle, Position, Sides, BodyPart, Duration, Rest`);
+                await customAlert(`❌ CSV Error: Missing required columns: ${missingHeaders.join(', ')}\n\nRequired: Exercise, PrimaryMuscle, Position, Sides, BodyPart, plus at least one phase column.`);
                 return parsedExercises;
             }
-            
-            
+
             // Parse headers once outside the loop
             const headerFields = lines[0].trim().split(',').map(h => h.trim().toLowerCase().replace(/^"|"$/g, ''));
             const colIdx = (name) => headerFields.indexOf(name);
 
+            const phaseColsPresent = PHASE_COLUMNS.filter(([h]) => colIdx(h) >= 0);
+            if (phaseColsPresent.length === 0) {
+                await customAlert('❌ CSV Error: No phase columns found. Expected one column per phase (Warm-Up, Foam Roller, Mobility, Static Stretching, Active Stretch, Splits, Cool Down, Final Rest) with "y" marking which phases each exercise belongs to.');
+                return parsedExercises;
+            }
+
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
-                
+
                 const fields = line.split(',').map(f => f.trim().replace(/^"|"$/g, ''));
-                
-                if (fields.length < 8) {
-                    console.warn(`Row ${i + 1}: Not enough columns (${fields.length}/8)`);
-                    continue;
-                }
-                
-                const parseTime = (timeStr) => {
-                    if (!timeStr) return 30;
-                    if (timeStr.includes(':')) {
-                        const parts = timeStr.split(':');
-                        return parseInt(parts[0]) * 60 + parseInt(parts[1]);
-                    }
-                    return parseInt(timeStr) || 30;
-                };
 
                 // Use header-based column mapping so column order doesn't matter
                 const col = (name) => {
                     const idx = colIdx(name);
                     return idx >= 0 ? (fields[idx] || '').trim() : '';
                 };
-                
+
+                const phases = phaseColsPresent.filter(([h]) => col(h).toLowerCase() === 'y').map(([, name]) => name);
+
                 const exercise = {
-                    phase:           col('phase'),
                     exercise:        col('exercise'),
                     position:        col('position'),
                     sides:           parseInt(col('sides')) || 1,
                     bodyPart:        col('bodypart').toLowerCase(),
-                    duration:        parseTime(col('duration')),
-                    rest:            parseTime(col('rest')),
                     primaryMuscle:   col('primarymuscle'),
                     secondaryMuscle: col('secondarymuscle') || undefined,
                     tertiaryMuscle:  col('tertiarymuscle') || undefined,
-                    pnf:             col('pnf') === '1' ? true : false,
+                    phases,
                 };
 
                 // Sanity check: primaryMuscle should not look like a position
@@ -6735,32 +6792,33 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     await customAlert(`❌ CSV Error: Column mapping looks wrong — "${exercise.primaryMuscle}" appears to be a position, not a muscle. Please check your CSV column order.`);
                     return parsedExercises;
                 }
-                
-                // Validate required fields — Final Rest exercises don't need a primaryMuscle
-                if (!exercise.phase || !exercise.exercise || !exercise.position) {
+
+                // Validate required fields
+                if (!exercise.exercise || !exercise.position) {
                     console.warn(`Row ${i + 1}: Missing required field(s)`);
                     continue;
                 }
+                if (exercise.phases.length === 0) {
+                    console.warn(`Row ${i + 1} (${exercise.exercise}): No phase ticked, skipping`);
+                    continue;
+                }
+                // Final Rest exercises don't need a primaryMuscle
                 if (!exercise.primaryMuscle) {
-                    if (exercise.phase === 'Final Rest') {
+                    if (exercise.phases.includes('Final Rest')) {
                         exercise.primaryMuscle = 'None';
                     } else {
                         console.warn(`Row ${i + 1}: Missing primaryMuscle`);
                         continue;
                     }
                 }
-                
-                if (exercise.duration % 5 !== 0 || exercise.rest % 5 !== 0) {
-                    console.warn(`Row ${i + 1} (${exercise.exercise}): Duration/Rest not multiple of 5, skipping`);
-                } else {
-                    parsedExercises.push(exercise);
-                }
+
+                parsedExercises.push(exercise);
             }
-            
+
             if (parsedExercises.length === 0) {
                 await customAlert('❌ CSV Error: No valid exercises found. Please check your CSV format.');
             }
-            
+
             return parsedExercises;
         }
 
@@ -6802,14 +6860,42 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             return true;
         }
 
+        // ===== CROSS-PHASE EXERCISES =====
+        // Every exercise now carries a phases[] list instead of one fixed phase — e.g.
+        // Elephant Walks is tagged both Warm-Up and Mobility, so it can fill either slot.
+        // instantiateForPhase() is the single place that "places" a library exercise into
+        // a concrete routine slot: it stamps a definite singular phase onto that one
+        // instance (routine items still have a single phase — only the library entry has
+        // a list) and looks up its duration fresh from Settings for THAT phase, since a
+        // borrowed exercise's correct length depends on where it landed, not its other
+        // eligible phases. Rest always comes from the global short/long hold setting —
+        // there's no per-phase rest, unlike duration. Duplicate prevention needs no extra
+        // code: usedExerciseNames is already shared and keyed by exercise name across
+        // every phase in the routine.
+        const PHASE_DURATION_KEY = {
+            'Warm-Up': 'warmup', 'Foam Roller': 'foamroller', 'Mobility': 'mobility',
+            'Static Stretching': 'staticstretching', 'Active Stretch': 'activestretch',
+            'Deep Stretch': 'deepstretch', 'Splits': 'splits', 'Cool Down': 'cooldown',
+            'Final Rest': 'finalrest',
+        };
+        function instantiateForPhase(e, targetPhase, overrides) {
+            const key = PHASE_DURATION_KEY[targetPhase];
+            const duration = key ? (longSession ? appSettings[key + 'LongDuration'] : appSettings[key + 'ShortDuration']) : e.duration;
+            const rest = longSession ? appSettings.longHoldRest : appSettings.shortHoldRest;
+            return { ...e, ...(overrides || {}), phase: targetPhase, duration, rest };
+        }
+
         // Builds the raw candidate list of exercises for a given phase, before any
         // shuffling, variety-capping or count-limiting is applied. Each phase type has
         // its own rule for what counts as a candidate:
         //  - Active Stretch / Deep Stretch: hard-inject the exercise reserved for the
-        //    session target, plus PNF/other candidates that are NOT the target muscle
-        //    (the reserved exercise is what guarantees the target appears here).
+        //    session target, plus other candidates that are NOT the target muscle (the
+        //    reserved exercise is what guarantees the target appears here). Both draw
+        //    from anything tagged Static Stretching, cross-phase or not; Active Stretch
+        //    additionally requires the "Active Stretch" tag (replaces the old PNF flag).
         //  - Static Stretching: inject the target primary exercise (or secondary, if no
-        //    primary match exists), plus every other eligible exercise.
+        //    primary match exists), plus every other eligible exercise — including
+        //    anything cross-tagged into Static Stretching from another home phase.
         //  - Everything else: just every exercise tagged for this phase.
         // Pure function — reads its inputs, doesn't mutate anything. Extracted unchanged
         // from generateRoutine() in Phase 6 of the maintainability plan.
@@ -6827,20 +6913,20 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 const target = sessionTargets[0];
                 // Hard-inject reserved exercise only
                 const reservedEx = exercisesForGen
-                    .filter(e => e.phase === "Static Stretching" && reservedForActive.has(e.exercise) && !usedExerciseNames.has(e.exercise))
-                    .map(e => ({...e, phase: "Active Stretch", duration: longSession ? 105 : 75, isReserved: true, reservedPhase: 'activestretch'}));
-                // Candidates: PNF eligible, not reserved, not excluded, NOT target muscle (reserved handles target)
+                    .filter(e => e.phases.includes("Static Stretching") && reservedForActive.has(e.exercise) && !usedExerciseNames.has(e.exercise))
+                    .map(e => instantiateForPhase(e, "Active Stretch", { isReserved: true, reservedPhase: 'activestretch' }));
+                // Candidates: Active Stretch tagged, not reserved, not excluded, NOT target muscle (reserved handles target)
                 const candidates = exercisesForGen
-                    .filter(e => e.phase === "Static Stretching"
+                    .filter(e => e.phases.includes("Static Stretching")
+                        && e.phases.includes("Active Stretch")
                         && !reservedForActive.has(e.exercise)
                         && !reservedForDeep.has(e.exercise)
                         && !excludedFromAll.has(e.exercise)
                         && !usedExerciseNames.has(e.exercise)
-                        && !!e.pnf
                         && (e.primaryMuscle || e.target) !== target
                         && e.secondaryMuscle !== target
                         && matchesBalanceExtreme(e))
-                    .map(e => ({...e, phase: "Active Stretch", duration: longSession ? 105 : 75}));
+                    .map(e => instantiateForPhase(e, "Active Stretch"));
                 return [...reservedEx, ...balanceWeightedShuffle(candidates, bodyBalance, targetPool)];
             }
 
@@ -6848,11 +6934,11 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 const target = sessionTargets[0];
                 // Hard-inject reserved exercise only
                 const reservedEx = exercisesForGen
-                    .filter(e => e.phase === "Static Stretching" && reservedForDeep.has(e.exercise) && !usedExerciseNames.has(e.exercise))
-                    .map(e => ({...e, phase: "Deep Stretch", duration: longSession ? 120 : 90, isReserved: true, reservedPhase: 'deepstretch'}));
+                    .filter(e => e.phases.includes("Static Stretching") && reservedForDeep.has(e.exercise) && !usedExerciseNames.has(e.exercise))
+                    .map(e => instantiateForPhase(e, "Deep Stretch", { isReserved: true, reservedPhase: 'deepstretch' }));
                 // Candidates: not reserved, not excluded, NOT target muscle (reserved handles target)
                 const candidates = exercisesForGen
-                    .filter(e => e.phase === "Static Stretching"
+                    .filter(e => e.phases.includes("Static Stretching")
                         && !reservedForDeep.has(e.exercise)
                         && !reservedForActive.has(e.exercise)
                         && !excludedFromAll.has(e.exercise)
@@ -6860,7 +6946,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         && (e.primaryMuscle || e.target) !== target
                         && e.secondaryMuscle !== target
                         && matchesBalanceExtreme(e))
-                    .map(e => ({...e, phase: "Deep Stretch", duration: longSession ? 120 : 90}));
+                    .map(e => instantiateForPhase(e, "Deep Stretch"));
                 return [...reservedEx, ...balanceWeightedShuffle(candidates, bodyBalance, targetPool)];
             }
 
@@ -6870,7 +6956,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 // If no primary match exists for the target in this phase, fall back to a secondary match
                 // — primary is always the first port of call, secondary only when primary isn't available.
                 const targetPrimaryPool = target ? exercisesForGen.filter(e =>
-                    e.phase === "Static Stretching" &&
+                    e.phases.includes("Static Stretching") &&
                     (e.primaryMuscle || e.target) === target &&
                     !reservedForActive.has(e.exercise) &&
                     !reservedForDeep.has(e.exercise) &&
@@ -6878,7 +6964,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     !usedExerciseNames.has(e.exercise)
                 ) : [];
                 const targetSecondaryPool = (target && targetPrimaryPool.length === 0) ? exercisesForGen.filter(e =>
-                    e.phase === "Static Stretching" &&
+                    e.phases.includes("Static Stretching") &&
                     e.secondaryMuscle === target &&
                     !reservedForActive.has(e.exercise) &&
                     !reservedForDeep.has(e.exercise) &&
@@ -6886,19 +6972,21 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     !usedExerciseNames.has(e.exercise)
                 ) : [];
                 const targetPick = targetPrimaryPool[0] || targetSecondaryPool[0] || null;
-                const targetPrimary = targetPick ? [{...targetPick, isReserved: true}] : [];
+                const targetPrimary = targetPick ? [{...instantiateForPhase(targetPick, "Static Stretching"), isReserved: true}] : [];
                 const others = exercisesForGen.filter(e =>
-                    e.phase === "Static Stretching" &&
+                    e.phases.includes("Static Stretching") &&
                     !reservedForActive.has(e.exercise) &&
                     !reservedForDeep.has(e.exercise) &&
                     !excludedFromAll.has(e.exercise) &&
                     !usedExerciseNames.has(e.exercise) &&
                     (targetPick ? e.exercise !== targetPick.exercise : true)
-                );
+                ).map(e => instantiateForPhase(e, "Static Stretching"));
                 return [...targetPrimary, ...others];
             }
 
-            return exercisesForGen.filter(e => e.phase === phase);
+            return exercisesForGen
+                .filter(e => e.phases.includes(phase))
+                .map(e => instantiateForPhase(e, phase));
         }
 
         // Given the candidate pool for a phase (already built by buildPhaseCandidatePool
@@ -7152,11 +7240,14 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             }
             
             
-            // Deep-copy exercises so we don't mutate the master array with duration settings
+            // Deep-copy exercises so we don't mutate the master array
             // If prioritisedExercises provided (Jumi mode), use that ordering directly
+            // Duration is no longer stored on library exercises — buildPhaseCandidatePool
+            // assigns it per-instance (via instantiateForPhase) once each exercise is
+            // actually placed into a specific phase slot, since a cross-phase exercise's
+            // correct duration depends on WHICH phase it ends up in, not its home phase.
             const exercisesForGen = (prioritisedExercises || exercises).map(ex => ({...ex}));
-            applyDurationSettings(exercisesForGen);
-            
+
             const targetMinutes = selectedTime;
             const isAllExercises = targetMinutes === 999;
             const targetSeconds = isAllExercises ? 999999 : targetMinutes * 60;
@@ -7263,14 +7354,19 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 //    - must appear in 2+ of Warm-Up / Foam Roller / Mobility
                 const prepPhases = ['Warm-Up', 'Foam Roller', 'Mobility'];
                 const musclesInStaticPrimary = new Set(
-                    exList.filter(e => e.phase === 'Static Stretching').map(e => e.primaryMuscle).filter(Boolean)
+                    exList.filter(e => e.phases.includes('Static Stretching')).map(e => e.primaryMuscle).filter(Boolean)
                 );
                 const musclesPrepCoverage = {};
                 exList.forEach(e => {
-                    if (prepPhases.includes(e.phase) && e.primaryMuscle) {
-                        if (!musclesPrepCoverage[e.primaryMuscle]) musclesPrepCoverage[e.primaryMuscle] = new Set();
-                        musclesPrepCoverage[e.primaryMuscle].add(e.phase);
-                    }
+                    if (!e.primaryMuscle) return;
+                    // A cross-phase exercise tagged into two prep phases counts toward both —
+                    // e.g. one tagged Warm-Up + Mobility contributes coverage for either.
+                    e.phases.forEach(p => {
+                        if (prepPhases.includes(p)) {
+                            if (!musclesPrepCoverage[e.primaryMuscle]) musclesPrepCoverage[e.primaryMuscle] = new Set();
+                            musclesPrepCoverage[e.primaryMuscle].add(p);
+                        }
+                    });
                 });
 
                 const eligible = [...musclesInStaticPrimary].filter(m =>
@@ -7315,7 +7411,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 const excludedFromAll = new Set();
                 if (!target) return { reservedForActive, reservedForDeep, excludedFromAll, staticPrimary: null };
 
-                const staticPool = exercisesForGen.filter(e => e.phase === 'Static Stretching');
+                const staticPool = exercisesForGen.filter(e => e.phases.includes('Static Stretching'));
                 // Weighted shuffle so picks vary each Regenerate but still favour exercises
                 // you haven't done recently — same recencyWeights used everywhere else in
                 // the generator, so this guaranteed target hit stops landing on the same
@@ -7332,8 +7428,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 const staticPrimary = allPrimaries[0] || null;
 
                 // 2. Reserve for Active: PNF-eligible, randomised — prefer a DIFFERENT primary over the static one, then secondary
-                const activePrimaries = staticPoolShuffled.filter(e => !!e.pnf && (e.primaryMuscle || e.target) === target && e.exercise !== (staticPrimary && staticPrimary.exercise));
-                const activeSecondaries = staticPoolShuffled.filter(e => !!e.pnf && e.secondaryMuscle === target);
+                const activePrimaries = staticPoolShuffled.filter(e => e.phases.includes('Active Stretch') && (e.primaryMuscle || e.target) === target && e.exercise !== (staticPrimary && staticPrimary.exercise));
+                const activeSecondaries = staticPoolShuffled.filter(e => e.phases.includes('Active Stretch') && e.secondaryMuscle === target);
                 const activeCandidate = activePrimaries[0] || activeSecondaries[0] || null;
                 if (activeCandidate) reservedForActive.add(activeCandidate.exercise);
 
@@ -7595,11 +7691,14 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 
                 // Find Savasana
                 const savasanaOriginal = exercisesForGen.find(e => e.exercise === "Savasana");
-                
-                // Create copy to avoid mutating the original object
-                // Use the actual duration from CSV, don't override it
-                const savasana = savasanaOriginal ? {...savasanaOriginal, rest: 0} : null;
-                
+
+                // Duration is no longer stored on the library exercise — resolve it from
+                // Settings for Final Rest, same as everywhere else. Rest stays 0 regardless
+                // since nothing follows Final Rest in a routine.
+                const savasana = savasanaOriginal
+                    ? { ...savasanaOriginal, phase: 'Final Rest', duration: (longSession ? appSettings.finalrestLongDuration : appSettings.finalrestShortDuration) ?? 120, rest: 0 }
+                    : null;
+
                 const savasanaTime = savasana ? calculateExerciseTime(savasana) : 0;
                 
                 // Reserve time: Savasana + Cool Down + Active Stretch + Deep Stretch minimum.
@@ -7609,7 +7708,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 const deepStretchDuration = longSession ? 120 : 90;
 
                 // Estimate Active/Deep Stretch time using average sides from actual Static pool
-                const staticPoolForEstimate = exercisesForGen.filter(e => e.phase === 'Static Stretching' && e.exercise !== 'Savasana');
+                const staticPoolForEstimate = exercisesForGen.filter(e => e.phases.includes('Static Stretching') && e.exercise !== 'Savasana');
                 const avgActiveSides = staticPoolForEstimate.length > 0
                     ? staticPoolForEstimate.reduce((sum, e) => sum + (e.sides || 1), 0) / staticPoolForEstimate.length
                     : 1.5;
@@ -7741,12 +7840,16 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 }
 
                 
-                // Add cool down exercises
-                let coolDownExercises = exercisesForGen.filter(e => 
-                    e.phase === "Cool Down" && 
+                // Add cool down exercises — instantiated immediately (unlike the other
+                // phases, this pool is built directly here rather than through
+                // buildPhaseCandidatePool) so every downstream push already carries a
+                // concrete phase/duration/rest, including anything cross-tagged in from
+                // another home phase (e.g. a Static Stretching exercise tagged Cool Down).
+                let coolDownExercises = exercisesForGen.filter(e =>
+                    e.phases.includes("Cool Down") &&
                     e.exercise !== "Savasana" &&
                     !usedExerciseNames.has(e.exercise)
-                );
+                ).map(e => instantiateForPhase(e, "Cool Down"));
                 
                 // Deduplicate cool down exercises
                 const seenCoolDown = new Set();
@@ -7974,13 +8077,13 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         const candidates = exercisesForGen.filter(e =>
                             (e.bodyPart||'').toLowerCase() === swapTo &&
                             !usedNames.has(e.exercise) &&
-                            e.phase === toReplace.phase
+                            e.phases.includes(toReplace.phase)
                         );
                         if (candidates.length === 0) continue;
                         const replacement = candidates[Math.floor(Math.random() * candidates.length)];
                         const idx = currentRoutine.findIndex(e => e.exercise === toReplace.exercise);
                         if (idx !== -1) {
-                            currentRoutine[idx] = {...replacement, duration: toReplace.duration, rest: toReplace.rest};
+                            currentRoutine[idx] = {...replacement, phase: toReplace.phase, duration: toReplace.duration, rest: toReplace.rest};
                             swapped++;
                         }
                     }
@@ -8080,8 +8183,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                     WORKOUT_PHASES.forEach(phase => {
                         if (!phaseHasRoom(phase)) return;
                         availableUnique.push(...exercisesForGen.filter(ex =>
-                            ex.phase === phase && ex.exercise !== 'Savasana' && !usedNames.has(ex.exercise) && bodyPartOK(ex)
-                        ));
+                            ex.phases.includes(phase) && ex.exercise !== 'Savasana' && !usedNames.has(ex.exercise) && bodyPartOK(ex)
+                        ).map(ex => instantiateForPhase(ex, phase)));
                     });
                     availableUnique = shuffleArray(availableUnique);
 
@@ -8212,7 +8315,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 // Count static stretches used
                 const staticCount = bestRoutine.filter(ex => ex.phase === 'Static Stretching').length;
                 const deepCount = bestRoutine.filter(ex => ex.phase === 'Deep Stretch').length;
-                const totalStatic = exercisesForGen.filter(ex => ex.phase === 'Static Stretching' && ex.exercise !== 'Savasana').length;
+                const totalStatic = exercisesForGen.filter(ex => ex.phases.includes('Static Stretching') && ex.exercise !== 'Savasana').length;
             }
             
             // VALIDATE: Just check for statistics, but DO NOT REMOVE DUPLICATES
@@ -8608,24 +8711,18 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         });
                     }
                     
-                    // For Active Stretch and Deep Stretch, check for Static Stretches alternatives
-                    // For Static Stretching, also search for base 45s (the CSV base duration)
-                    // (always search for 45s base exercises regardless of actual duration)
-                    let checkDuration = ex.duration;
+                    // For Active Stretch and Deep Stretch, check for Static Stretching alternatives
+                    // (both are promoted from Static Stretching at runtime, not separate library phases).
+                    // Duration is no longer stored on library items — it's always resolved from
+                    // Settings at instantiation time — so phase membership alone determines eligibility.
                     let checkPhase = ex.phase;
-                    
                     if (ex.phase === 'Active Stretch' || ex.phase === 'Deep Stretch') {
                         checkPhase = 'Static Stretching';
-                        checkDuration = 45;
-                    } else if (ex.phase === 'Static Stretching') {
-                        // Static Stretching exercises are always base 45s in the exercises array
-                        checkDuration = 45;
                     }
-                    
-                    let availableAlternatives = exercises.filter(e => 
-                        e.phase === checkPhase && 
+
+                    let availableAlternatives = exercises.filter(e =>
+                        e.phases.includes(checkPhase) &&
                         e.sides === ex.sides &&
-                        e.duration === checkDuration &&
                         !usedNames.has(e.exercise) &&
                         !reservedForOtherPhases.has(e.exercise) &&
                         e.exercise !== 'Savasana'
@@ -9527,6 +9624,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
         function buildChatContext() {
 
+            const now = Date.now();
             const allHistory = JSON.parse(localStorage.getItem('routineHistory') || '[]');
             const phaseOrder = PHASE_ORDER; // was a duplicate literal — now points at the shared constant
             const wins = [
@@ -9538,16 +9636,22 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 {label:'1 week',    ms:  7*24*60*60*1000},
             ];
 
-            // Per-exercise stats
+            // Per-exercise-per-phase stats. Keyed by "exercise|phase" (not just exercise
+            // name) so a cross-phase exercise — e.g. Elephant Walks done in both Warm-Up
+            // and Mobility — gets its own row and counts for each phase it was actually
+            // used in, instead of every occurrence being silently folded into whichever
+            // phase the exercise happened to be logged under first.
             const exStats = {};
             allHistory.forEach(s => {
                 const sMs = new Date(s.date).getTime();
                 (s.routine || []).forEach(ex => {
-                    if (!exStats[ex.exercise]) exStats[ex.exercise] = {
-                        phase: ex.phase||'', primaryMuscle: ex.primaryMuscle || ex.target||'', secondaryMuscle: ex.secondaryMuscle||'', tertiaryMuscle: ex.tertiaryMuscle||'', position: ex.position||'', sides: ex.sides||1,
+                    const phase = ex.phase || '';
+                    const key = ex.exercise + '|' + phase;
+                    if (!exStats[key]) exStats[key] = {
+                        exercise: ex.exercise, phase, primaryMuscle: ex.primaryMuscle || ex.target||'', secondaryMuscle: ex.secondaryMuscle||'', tertiaryMuscle: ex.tertiaryMuscle||'', position: ex.position||'', sides: ex.sides||1,
                         counts: {}, mins: {}, lastMs: 0
                     };
-                    const e = exStats[ex.exercise];
+                    const e = exStats[key];
                     if (sMs > e.lastMs) e.lastMs = sMs;
                     wins.forEach(w => {
                         if (now - sMs <= w.ms) {
@@ -9585,12 +9689,12 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             table += `${'---'} | `.repeat(19).slice(0,-3) + '\n';
 
             phaseOrder.forEach(phase => {
-                const phaseExs = Object.entries(exStats)
-                    .filter(([,e]) => e.phase === phase)
-                    .sort((a,b) => b[1].counts['12m']||0 - a[1].counts['12m']||0);
-                phaseExs.forEach(([name, e]) => {
+                const phaseExs = Object.values(exStats)
+                    .filter(e => e.phase === phase)
+                    .sort((a,b) => (b.counts['12 months']||0) - (a.counts['12 months']||0));
+                phaseExs.forEach(e => {
                     const row = [
-                        name, phase, e.primaryMuscle, e.secondaryMuscle||'—', e.tertiaryMuscle||'—', e.position, e.sides,
+                        e.exercise, phase, e.primaryMuscle, e.secondaryMuscle||'—', e.tertiaryMuscle||'—', e.position, e.sides,
                         ...wins.map(w => e.counts[w.label]||0),
                         ...wins.map(w => e.mins[w.label]||0),
                         daysAgo(e.lastMs)
@@ -10023,8 +10127,8 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             // usedNames excludes ALL exercises already in the routine (any phase)
             const usedNames = new Set(currentRoutine.map(ex => ex.exercise));
             
-            let availableSwaps = exercises.filter(ex => 
-                ex.phase === searchPhase && 
+            let availableSwaps = exercises.filter(ex =>
+                ex.phases.includes(searchPhase) &&
                 ex.sides === sides &&
                 !usedNames.has(ex.exercise) &&
                 ex.exercise !== 'Savasana'
@@ -10126,25 +10230,18 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
         
         window.selectSwapExercise = function(routineIndex, optionIndex) {
             const originalExercise = currentRoutine[routineIndex];
-            let newExercise = {...window.currentSwapOptions[optionIndex]};
-            
-            // If we were swapping an Active Stretch, convert the new Static Stretch to Active Stretch
-            if (window.isSwappingActiveStretch) {
-                newExercise.phase = 'Active Stretch';
-                // Use the original exercise's duration (could be 45s or 90s depending on longSession)
-                newExercise.duration = originalExercise.duration;
-            }
-            // If we were swapping a Deep Stretch, convert the new Static Stretch to Deep Stretch
-            else if (window.isSwappingDeepStretch) {
-                newExercise.phase = 'Deep Stretch';
-                // Use the original exercise's duration (could be 90s or 120s depending on longSession)
-                newExercise.duration = originalExercise.duration;
-            }
-            // If swapping a Static Stretch, preserve the duration
-            else if (originalExercise.phase === 'Static Stretching') {
-                newExercise.duration = originalExercise.duration;
-            }
-            
+            const picked = window.currentSwapOptions[optionIndex];
+
+            // Land the picked exercise into whichever slot it's replacing — Active/Deep
+            // Stretch stay their promoted phase, everything else keeps the original slot's
+            // phase. instantiateForPhase looks its duration up fresh from Settings for
+            // that phase, same as generation does, so a cross-phase pick doesn't keep
+            // whatever duration it had in its other eligible phase.
+            const targetPhase = (window.isSwappingActiveStretch) ? 'Active Stretch'
+                : (window.isSwappingDeepStretch) ? 'Deep Stretch'
+                : originalExercise.phase;
+            const newExercise = instantiateForPhase(picked, targetPhase);
+
             currentRoutine[routineIndex] = newExercise;
             closeSwapModal();
             displayRoutine();
@@ -10280,28 +10377,18 @@ function showStats() {
                 const phases = ["Warm-Up", "Foam Roller", "Mobility", "Static Stretching", "Active Stretch", "Deep Stretch", "Cool Down", "Final Rest"];
                 
                 phases.forEach(phase => {
-                    // Deep Stretch and Active Stretch don't exist in CSV - they're Static Stretching exercises
+                    // Deep Stretch and Active Stretch are tagged as Static Stretching + their own marker tag
                     const lookupPhase = (phase === "Deep Stretch" || phase === "Active Stretch") ? "Static Stretching" : phase;
-                    const phaseExercises = allExercises.filter(ex => ex.phase === lookupPhase);
+                    const phaseExercises = allExercises.filter(ex => ex.phases.includes(lookupPhase));
                     if (phaseExercises.length > 0) {
                         // Add 1-3 exercises from this phase
                         const numExercises = Math.min(Math.floor(Math.random() * 3) + 1, phaseExercises.length);
                         const shuffled = phaseExercises.sort(() => 0.5 - Math.random());
                         const selected = shuffled.slice(0, numExercises);
-                        
-                        // If this is Deep Stretch, convert Static exercises to Deep (90s duration)
-                        if (phase === "Deep Stretch") {
-                            selected.forEach(ex => {
-                                routine.push({...ex, phase: "Deep Stretch", duration: 90});
-                            });
-                        } else if (phase === "Active Stretch") {
-                            // Active Stretch keeps original duration (set by Quick Start: 75s short / 105s long)
-                            selected.forEach(ex => {
-                                routine.push({...ex, phase: "Active Stretch"});
-                            });
-                        } else {
-                            routine.push(...selected);
-                        }
+                        // instantiateForPhase stamps the concrete phase/duration/rest for this sample entry
+                        selected.forEach(ex => {
+                            routine.push(instantiateForPhase(ex, phase));
+                        });
                     }
                 });
                 
@@ -10410,15 +10497,17 @@ function showStats() {
                 if (tCmp !== 0) return tCmp;
                 return (a.position || '').localeCompare(b.position || '');
             });
-            const headers = ['phase', 'exercise', 'position', 'sides', 'bodyPart', 'duration', 'rest', 'primaryMuscle', 'secondaryMuscle', 'tertiaryMuscle', 'pnf'];
+            const phaseHeaders = PHASE_COLUMNS.map(([, name]) => name);
+            const headers = ['exercise', 'position', 'sides', 'bodyPart', 'primaryMuscle', 'secondaryMuscle', 'tertiaryMuscle', ...phaseHeaders];
             const rows = [headers, ...sorted.map(e => {
                 const def = defaultMap[e.exercise];
+                const phases = e.phases || [];
                 const enriched = {
                     ...e,
                     secondaryMuscle: e.secondaryMuscle ?? (def ? def.secondaryMuscle : undefined),
                     tertiaryMuscle:  e.tertiaryMuscle  ?? (def ? def.tertiaryMuscle  : undefined),
-                    pnf: e.pnf ? 1 : 0,
                 };
+                phaseHeaders.forEach(name => { enriched[name] = phases.includes(name) ? 'y' : ''; });
                 return headers.map(h => '"' + String(enriched[h] ?? '').replace(/"/g, '""') + '"');
             })];
             const csv = rows.map(r => r.join(',')).join('\n');
@@ -12318,7 +12407,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">6.97</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">7.0</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
