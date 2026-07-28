@@ -1664,7 +1664,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="17 Jul 2026">
-<meta name="app-version" content="7.2">
+<meta name="app-version" content="7.3">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -5566,8 +5566,12 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             
             window.initCustomBuilder = function initCustomBuilder() {
                 if (customRoutine.length === 0) {
+                    // Savasana always seeds a fresh custom routine's Final Rest slot by
+                    // default. It's pulled from the library (no phase/duration/rest stored
+                    // there any more) and instantiated into a real routine instance here —
+                    // rest is forced to 0 since it's always the last exercise in the routine.
                     const savasana = exercises.find(ex => ex.exercise === 'Savasana');
-                    if (savasana) customRoutine.push({...savasana});
+                    if (savasana) customRoutine.push({ ...instantiateForBuilder(savasana, 'Final Rest'), rest: 0 });
                 }
                 
                 customHistory = [JSON.parse(JSON.stringify(customRoutine))];
@@ -6913,19 +6917,25 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 return parsedExercises;
             }
 
+            // Header matching ignores case, spaces and hyphens, so "Body Part", "bodyPart"
+            // and "bodypart" (and "Warm-Up" / "Warm Up") are all recognised the same way —
+            // needed since the exported CSV uses spaced/capitalised headers for readability
+            // while imports may come from either style.
+            const norm = s => s.toLowerCase().replace(/[\s-]+/g, '');
+
             // Validate header
-            const header = lines[0].trim().toLowerCase();
+            const header = norm(lines[0].trim());
             const requiredHeaders = ['exercise', 'primarymuscle', 'position', 'sides', 'bodypart'];
             const missingHeaders = requiredHeaders.filter(h => !header.includes(h));
 
             if (missingHeaders.length > 0) {
-                await customAlert(`❌ CSV Error: Missing required columns: ${missingHeaders.join(', ')}\n\nRequired: Exercise, PrimaryMuscle, Position, Sides, BodyPart, plus at least one phase column.`);
+                await customAlert(`❌ CSV Error: Missing required columns: ${missingHeaders.join(', ')}\n\nRequired: Exercise, Primary Muscle, Position, Sides, Body Part, plus at least one phase column.`);
                 return parsedExercises;
             }
 
             // Parse headers once outside the loop
-            const headerFields = lines[0].trim().split(',').map(h => h.trim().toLowerCase().replace(/^"|"$/g, ''));
-            const colIdx = (name) => headerFields.indexOf(name);
+            const headerFields = lines[0].trim().split(',').map(h => norm(h.trim().replace(/^"|"$/g, '')));
+            const colIdx = (name) => headerFields.indexOf(norm(name));
 
             const phaseColsPresent = PHASE_COLUMNS.filter(([h]) => colIdx(h) >= 0);
             if (phaseColsPresent.length === 0) {
@@ -10670,17 +10680,29 @@ function showStats() {
                 return (a.position || '').localeCompare(b.position || '');
             });
             const phaseHeaders = PHASE_COLUMNS.map(([, name]) => name);
-            const headers = ['exercise', 'position', 'sides', 'bodyPart', 'primaryMuscle', 'secondaryMuscle', 'tertiaryMuscle', ...phaseHeaders];
-            const rows = [headers, ...sorted.map(e => {
+            // Internal field keys (used to look values up off `enriched` below) vs. the
+            // nicer display labels written to the CSV header row — kept separate so
+            // renaming a header for readability doesn't touch the phase names/field
+            // names used everywhere else in the app.
+            const fieldKeys = ['exercise', 'position', 'sides', 'bodyPart', 'primaryMuscle', 'secondaryMuscle', 'tertiaryMuscle', ...phaseHeaders];
+            const displayLabels = {
+                exercise: 'Exercise', position: 'Position', sides: 'Sides', bodyPart: 'Body Part',
+                primaryMuscle: 'Primary Muscle', secondaryMuscle: 'Secondary Muscle', tertiaryMuscle: 'Tertiary Muscle',
+                'Warm-Up': 'Warm Up',
+            };
+            const headerRow = fieldKeys.map(k => displayLabels[k] || k);
+            const capitalise = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+            const rows = [headerRow, ...sorted.map(e => {
                 const def = defaultMap[e.exercise];
                 const phases = e.phases || [];
                 const enriched = {
                     ...e,
+                    bodyPart: capitalise(e.bodyPart),
                     secondaryMuscle: e.secondaryMuscle ?? (def ? def.secondaryMuscle : undefined),
                     tertiaryMuscle:  e.tertiaryMuscle  ?? (def ? def.tertiaryMuscle  : undefined),
                 };
                 phaseHeaders.forEach(name => { enriched[name] = phases.includes(name) ? 'y' : ''; });
-                return headers.map(h => '"' + String(enriched[h] ?? '').replace(/"/g, '""') + '"');
+                return fieldKeys.map(k => '"' + String(enriched[k] ?? '').replace(/"/g, '""') + '"');
             })];
             const csv = rows.map(r => r.join(',')).join('\n');
             const blob = new Blob([csv], {type: 'text/csv'});
@@ -12579,7 +12601,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">7.2</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">7.3</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
