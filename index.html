@@ -1664,7 +1664,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="17 Jul 2026">
-<meta name="app-version" content="7.3">
+<meta name="app-version" content="7.4">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -5266,11 +5266,16 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
         function openExApproval() {
             if (!_pendingExercises.length) return;
             const ex = _pendingExercises[0];
-            // Active Stretch and Deep Stretch are promoted from Static at runtime — not separate library phases
-            const phaseOptions = ['Warm-Up','Foam Roller','Mobility','Static Stretching','Splits','Cool Down','Final Rest'];
+            // Jumi still only suggests one "best fit" phase, but that's now just the
+            // pre-checked box in the same multi-select checkbox group used everywhere
+            // else — you can tick additional phases (including Active Stretch) right here
+            // instead of adding them manually afterward.
+            const suggestedPhase = EXERCISE_MODAL_PHASES.includes(ex.phase) ? ex.phase : 'Static Stretching';
+            const preCheckedPhases = new Set([suggestedPhase]);
+            if (ex.pnf || (ex.phases && ex.phases.includes('Active Stretch'))) preCheckedPhases.add('Active Stretch');
+
             const fields = [
                 {id:'apName', label:'Name', val: ex.exercise || ''},
-                {id:'apPhase', label:'Phase', val: phaseOptions.includes(ex.phase) ? ex.phase : 'Static Stretching', type:'select', options: phaseOptions},
                 {id:'apTarget', label:'Primary Muscle', val: ex.primaryMuscle || '', type:'muscle'},
                 {id:'apSecondary', label:'Secondary Muscle', val: ex.secondaryMuscle || '', type:'muscle', optional: true},
                 {id:'apTertiary', label:'Tertiary Muscle', val: ex.tertiaryMuscle || '', type:'muscle', optional: true},
@@ -5278,8 +5283,7 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 {id:'apSides', label:'Sides', val: ex.sides || 2, type:'select', options:[1,2]},
                 {id:'apBodyPart', label:'Body Part', val: ex.bodyPart || 'lower', type:'select', options:['upper','lower','full']},
             ];
-            const container = document.getElementById('exApprovalFields');
-            container.innerHTML = fields.map(f => {
+            const fieldHTML = (f) => {
                 if (f.type === 'select') {
                     return `<label style="font-size:13px; font-weight:600;">${f.label}
                         <select id="${f.id}" style="display:block; width:100%; margin-top:4px; border:1.5px solid #d2d2d7; border-radius:8px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;">
@@ -5300,12 +5304,18 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                 }
                 return `<label style="font-size:13px; font-weight:600;">${f.label}
                     <input id="${f.id}" value="${f.val}" style="display:block; width:100%; margin-top:4px; border:1.5px solid #d2d2d7; border-radius:8px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;"/></label>`;
-            }).join('');
-            // Active Stretch checkbox — additive metadata, not one of the main phase options above
-            container.innerHTML += `<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-top:2px;cursor:pointer;">
-                <input type="checkbox" id="apActiveStretch" ${(ex.phases && ex.phases.includes('Active Stretch')) || ex.pnf ? 'checked' : ''}/>
-                Also usable in Active Stretch
+            };
+            const phaseCheckboxesHTML = EXERCISE_MODAL_PHASES.map(p => `
+                <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:#1d1d1f;background:#f9f9fb;border:1.5px solid #e0e0e5;border-radius:8px;padding:7px 11px;cursor:pointer;">
+                    <input type="checkbox" class="apPhaseCheck" value="${p}"${preCheckedPhases.has(p) ? ' checked' : ''} style="margin:0;"/>${p}
+                </label>`).join('');
+            const phaseFieldHTML = `<label style="font-size:13px;font-weight:600;">Phases <span style="font-weight:400;font-size:12px;color:#86868b;">(select all that apply)</span>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">${phaseCheckboxesHTML}</div>
                 </label>`;
+
+            const container = document.getElementById('exApprovalFields');
+            container.innerHTML = fieldHTML(fields[0]) + phaseFieldHTML + fields.slice(1).map(fieldHTML).join('');
+
             // Show queue count
             const queueInfo = document.getElementById('apQueueInfo');
             const current = _pendingExercisesTotal - _pendingExercises.length + 1;
@@ -5324,13 +5334,11 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
 
 
         window.approveExercise = function() {
-            const selectedPhase = document.getElementById('apPhase').value;
-            const activeStretchChecked = document.getElementById('apActiveStretch') ? document.getElementById('apActiveStretch').checked : false;
-            // Jumi only ever proposes one phase — cross-phase tagging is something you add
-            // manually afterward, same as for any other exercise. The Active Stretch
-            // checkbox above adds that one additional tag directly.
-            const phases = [selectedPhase];
-            if (selectedPhase === 'Static Stretching' && activeStretchChecked) phases.push('Active Stretch');
+            const phases = Array.from(document.querySelectorAll('.apPhaseCheck:checked')).map(cb => cb.value);
+            if (phases.length === 0) {
+                alert('Please select at least one phase.');
+                return;
+            }
             const ex = {
                 exercise: document.getElementById('apName').value.trim(),
                 primaryMuscle: document.getElementById('apTarget').value.trim(),
@@ -12601,7 +12609,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">7.3</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">7.4</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
