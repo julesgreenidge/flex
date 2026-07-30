@@ -1664,7 +1664,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="17 Jul 2026">
-<meta name="app-version" content="7.4">
+<meta name="app-version" content="7.5">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -2296,9 +2296,18 @@
         // exercise (.phases list) — for the latter, sorts by whichever tagged phase comes
         // first in PHASE_ORDER.
         function comparePhaseOrder(a, b) {
-            const phaseOf = (x) => Array.isArray(x.phases)
-                ? x.phases.reduce((best, p) => PHASE_ORDER.indexOf(p) < PHASE_ORDER.indexOf(best) ? p : best, x.phases[0])
-                : x.phase;
+            // Routine instances (built via instantiateForPhase/instantiateForBuilder) carry
+            // a concrete singular .phase AND still have the library's .phases[] array left
+            // over from the spread — .phase must win whenever it's present, since that's
+            // the phase slot the exercise was actually placed into. .phases[] is only used
+            // as a fallback for true library objects that have no singular .phase at all
+            // (previously this checked .phases first, which meant a cross-phase exercise
+            // placed into e.g. Mobility could get sorted as if it were still in Warm-Up).
+            const phaseOf = (x) => x.phase
+                ? x.phase
+                : (Array.isArray(x.phases)
+                    ? x.phases.reduce((best, p) => PHASE_ORDER.indexOf(p) < PHASE_ORDER.indexOf(best) ? p : best, x.phases[0])
+                    : undefined);
             return PHASE_ORDER.indexOf(phaseOf(a)) - PHASE_ORDER.indexOf(phaseOf(b));
         }
 
@@ -5950,36 +5959,58 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
             }
             
             function canPlaceInPhase(exercise, targetPhase) {
-                // exercise is either an already-placed routine instance (single .phase) or
-                // a fresh drag from the picker table, which is stamped with _pickedPhase
-                // for whichever phase group the card was shown under (falling back to its
-                // first tagged phase if that's somehow missing).
-                const originalPhase = exercise.phase || exercise._pickedPhase || (exercise.phases && exercise.phases[0]);
-
                 // Front Splits can only go in Splits phase
                 if (exercise.exercise === 'Front Splits') {
                     return targetPhase === 'Splits';
                 }
-                
+
                 // Splits phase can only contain Front Splits
                 if (targetPhase === 'Splits') {
                     return exercise.exercise === 'Front Splits';
                 }
-                
-                // Same phase is always OK
-                if (originalPhase === targetPhase) {
-                    return true;
-                }
-                
-                // Allow movement between Static Stretching, Active Stretch, and Deep Stretch
-                const stretchPhases = ['Static Stretching', 'Active Stretch', 'Deep Stretch'];
-                if (stretchPhases.includes(originalPhase) && stretchPhases.includes(targetPhase)) {
-                    return true;
-                }
-                
+
+                // Check the exercise's FULL cross-phase tag list, not just a single
+                // "original phase" — a cross-tagged exercise (e.g. Splits On Wall, tagged
+                // Static Stretching + Active Stretch + Cool Down) is eligible for every
+                // phase it's tagged for, not only whichever one it happened to be
+                // picked/placed under. Falls back to a single phase for anything that
+                // somehow has no phases[] (shouldn't normally happen).
+                const tagList = Array.isArray(exercise.phases) && exercise.phases.length > 0
+                    ? exercise.phases
+                    : [exercise.phase || exercise._pickedPhase].filter(Boolean);
+
+                if (tagList.includes(targetPhase)) return true;
+
+                // Deep Stretch is never a stored tag — every Static Stretching / Active
+                // Stretch exercise is promoted to it at runtime, so it's reachable from
+                // either tag (and vice versa, for symmetry).
+                const stretchTags = ['Static Stretching', 'Active Stretch'];
+                if (targetPhase === 'Deep Stretch' && tagList.some(p => stretchTags.includes(p))) return true;
+                if (stretchTags.includes(targetPhase) && tagList.includes('Deep Stretch')) return true;
+
                 return false;
             }
-            
+
+            // Shared by dropOnRow/zoneDrop: when a placement is rejected, builds the
+            // "can only be added to X, Y, or Z" message from the exercise's ACTUAL
+            // phases[] tag list (falling back to _pickedPhase/first tag if missing),
+            // instead of a hardcoded 3-phase stretch list — so a cross-phase exercise
+            // like Splits On Wall correctly lists all of its real eligible phases.
+            function describeValidPhases(ex) {
+                const tagList = Array.isArray(ex.phases) && ex.phases.length > 0
+                    ? ex.phases
+                    : [ex._pickedPhase || (ex.phases && ex.phases[0])].filter(Boolean);
+                const displayPhases = [...tagList];
+                if (tagList.some(p => p === 'Static Stretching' || p === 'Active Stretch') && !displayPhases.includes('Deep Stretch')) {
+                    displayPhases.push('Deep Stretch');
+                }
+                const defaultPhase = (ex._pickedPhase && tagList.includes(ex._pickedPhase)) ? ex._pickedPhase : tagList[0];
+                const validPhasesText = displayPhases.length > 1
+                    ? displayPhases.slice(0, -1).join(', ') + ', or ' + displayPhases[displayPhases.length - 1]
+                    : `the ${displayPhases[0]} phase`;
+                return { validPhasesText, defaultPhase };
+            }
+
             window.dragFromTable = function(e) {
                 const exData = e.currentTarget.getAttribute('data-exercise');
                 e.dataTransfer.effectAllowed = 'copy';
@@ -6052,19 +6083,14 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         const ex = JSON.parse(exerciseData.replace(/&quot;/g, '"'));
                         
                         if (!canPlaceInPhase(ex, targetPhase)) {
-                            const correctPhase = ex._pickedPhase || ex.phases[0];
-                            const stretchPhases = ['Static Stretching', 'Active Stretch', 'Deep Stretch'];
-
-                            const validPhases = stretchPhases.includes(correctPhase) ? 'Static Stretching, Active Stretch, or Deep Stretch' : `the ${correctPhase} phase`;
-                            const message = `${ex.exercise} can only be added to ${validPhases}.\n\nClick OK to add it to ${correctPhase}.`;
+                            const { validPhasesText, defaultPhase } = describeValidPhases(ex);
+                            const message = `${ex.exercise} can only be added to ${validPhasesText}.\n\nClick OK to add it to ${defaultPhase}.`;
 
                             const shouldMove = await customConfirm(message);
 
                             if (shouldMove) {
-                                // For stretch exercises, default to Static Stretching
-                                const targetPhaseForAdd = stretchPhases.includes(correctPhase) ? 'Static Stretching' : correctPhase;
-                                const insertIdx = findInsertPosition(targetPhaseForAdd);
-                                customRoutine.splice(insertIdx, 0, instantiateForBuilder(ex, targetPhaseForAdd));
+                                const insertIdx = findInsertPosition(defaultPhase);
+                                customRoutine.splice(insertIdx, 0, instantiateForBuilder(ex, defaultPhase));
                                 saveCustomState();
                                 renderRoutineBuilder();
                             }
@@ -6138,19 +6164,14 @@ MUSCLE LOAD TIERS: Each exercise has muscles at three tiers. primaryMuscle = dir
                         const ex = JSON.parse(exerciseData.replace(/&quot;/g, '"'));
                         
                         if (!canPlaceInPhase(ex, phase)) {
-                            const correctPhase = ex._pickedPhase || ex.phases[0];
-                            const stretchPhases = ['Static Stretching', 'Active Stretch', 'Deep Stretch'];
-
-                            const validPhases = stretchPhases.includes(correctPhase) ? 'Static Stretching, Active Stretch, or Deep Stretch' : `the ${correctPhase} phase`;
-                            const message = `${ex.exercise} can only be added to ${validPhases}.\n\nClick OK to add it to ${correctPhase}.`;
+                            const { validPhasesText, defaultPhase } = describeValidPhases(ex);
+                            const message = `${ex.exercise} can only be added to ${validPhasesText}.\n\nClick OK to add it to ${defaultPhase}.`;
 
                             const shouldMove = await customConfirm(message);
 
                             if (shouldMove) {
-                                // For stretch exercises, default to Static Stretching
-                                const targetPhaseForAdd = stretchPhases.includes(correctPhase) ? 'Static Stretching' : correctPhase;
-                                const insertIdx = findInsertPosition(targetPhaseForAdd);
-                                customRoutine.splice(insertIdx, 0, instantiateForBuilder(ex, targetPhaseForAdd));
+                                const insertIdx = findInsertPosition(defaultPhase);
+                                customRoutine.splice(insertIdx, 0, instantiateForBuilder(ex, defaultPhase));
                                 saveCustomState();
                                 renderRoutineBuilder();
                             }
@@ -11277,9 +11298,11 @@ function showStats() {
             // No adjustment needed - just copy exercises as-is
             customRoutine = currentRoutine.map(ex => ({...ex}));
             
-            // Reset history for clean undo/redo
+            // Reset history for clean undo/redo (the app-wide variable is customHistoryIdx —
+            // this previously wrote to a differently-named, unused customHistoryIndex,
+            // leaving the real undo/redo pointer stale from any prior builder session)
             customHistory = [JSON.parse(JSON.stringify(customRoutine))];
-            customHistoryIndex = 0;
+            customHistoryIdx = 0;
             
             // Get all exercises and populate the table
             const allExercises = getDefaultExercises();
@@ -11290,13 +11313,20 @@ function showStats() {
             // Clear any active filters
             customFilters = { muscle: [], phase: [], position: [] };
             renderFilterChips();
-            
-            renderExerciseTable();
-            
-            renderRoutineBuilder();
-            
-            // Switch to custom mode
+
+            // Switch to custom mode BEFORE rendering the builder — enterMode() calls
+            // updateFloatingButtons(), which unconditionally hides the green Short/Long
+            // Hold start buttons (deferring to renderRoutineBuilder() to show them again
+            // if there's a routine). Calling it first, then rendering after, matches the
+            // Custom tab's own click handler. Previously this ran in the opposite order,
+            // so entering the builder via "Edit" (Quick Start -> Edit) always undid
+            // renderRoutineBuilder()'s work and left the buttons hidden until the next
+            // add/delete triggered a fresh render.
             enterMode('custom');
+
+            renderExerciseTable();
+
+            renderRoutineBuilder();
         };
         
         // Helper functions for stats rendering
@@ -12609,7 +12639,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">7.4</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">7.5</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
