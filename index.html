@@ -1664,7 +1664,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="build-date" content="17 Jul 2026">
-<meta name="app-version" content="7.6">
+<meta name="app-version" content="7.7">
 </head>
 <body>
     <!-- Shared purple background with continuous bubble animation -->
@@ -3967,19 +3967,24 @@
         function playBeep() {
             const src = document.getElementById("beepSound");
             if (!src) return;
-            
-            const beep = src.cloneNode(true);
-            beep.volume = 0.7;
-            beep.play().catch(() => {});
+            // Reuse the one persistent audio element instead of cloning a fresh one on
+            // every call — cloning left an ever-growing pile of orphaned <audio> elements
+            // over a routine, which caused the beep timing to drift worse over time and
+            // let leftover clips get triggered later by unrelated media-key presses.
+            src.pause();
+            src.currentTime = 0;
+            src.volume = 0.7;
+            src.play().catch(() => {});
         }
 
         function playLongBeep() {
             const src = document.getElementById("longBeepSound");
             if (!src) return;
-            
-            const beep = src.cloneNode(true);
-            beep.volume = 0.85;
-            beep.play().catch(() => {});
+            // Same fix as playBeep() above — reuse instead of clone.
+            src.pause();
+            src.currentTime = 0;
+            src.volume = 0.85;
+            src.play().catch(() => {});
         }
 
         function playBong() {
@@ -12643,7 +12648,7 @@ function showStats() {
                     <p style="font-size:13px; color:#86868b; margin-bottom:24px; line-height:1.5;">About this app.</p>
 
                     <div style="background:white; border:1.5px solid #ebebf0; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:32px 24px;">
-                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">7.6</div>
+                        <div id="appVersionDisplay" style="font-size:64px; font-weight:800; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:8px;">7.7</div>
                         <div style="font-size:22px; font-weight:700; color:#1d1d1f; margin-bottom:6px;">flex.</div>
                         <div id="buildDateDisplay" style="font-size:13px; color:#aeaeb2;"></div>
                     </div>
